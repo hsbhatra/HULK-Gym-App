@@ -9,7 +9,6 @@
 import cron from "node-cron";
 import Subscription from "../models/subscription.model.js";
 import Installment  from "../models/installment.model.js";
-import nodemailer   from "nodemailer";
 import { SUBSCRIPTION_STATUS, INSTALLMENT_STATUS, REMINDER_DAYS, EMAIL_CONFIG } from "../utils/constants.js";
 import { createTransporter, FROM_ADDRESS } from "../services/email/transporter.js";
 

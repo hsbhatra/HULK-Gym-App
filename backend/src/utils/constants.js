@@ -81,17 +81,20 @@ export const COOKIE_CONFIG = {
 };
 
 export const EMAIL_CONFIG = {
-  FROM_NAME: process.env.GYM_NAME,
+  FROM_NAME: process.env.GYM_NAME || "Hulk Gym",
   SUBJECTS: {
-    REGISTRATION_OTP: "Verify Your" + process.env.GYM_NAME + "Account",
-    FORGOT_PASSWORD_OTP: "Reset Your" + process.env.GYM_NAME + "Password",
+    // REGISTRATION_OTP: "Verify Your " + process.env.GYM_NAME + " Account",
+    // FORGOT_PASSWORD_OTP: "Reset Your " + process.env.GYM_NAME + " Password",
+
+    REGISTRATION_OTP: `Verify Your ${process.env.GYM_NAME || "Hulk Gym"} Account`,
+    FORGOT_PASSWORD_OTP: `Reset Your ${process.env.GYM_NAME || "Hulk Gym"} Password`,
   },
   OTP_VALIDITY_TEXT: `${OTP_CONFIG.EXPIRY_MINUTES} minutes`,
 };
 
 export const GYM_CONFIG = {
-  NAME  : process.env.GYM_NAME,
-  PREFIX: process.env.GYM_USER_ID_PREFIX,
+  NAME  : process.env.GYM_NAME            || "Hulk Gym",
+  PREFIX: process.env.GYM_USER_ID_PREFIX  || "hulkgym",
 };
 
 export const PLAN_DURATIONS = {
@@ -144,4 +147,5 @@ export const GRACE_PERIOD_DAYS = 3;
 
 export const REMINDER_DAYS = [7, 3, 1]; // days before expiry to send reminders
 
-export const RECEIPT_PREFIX = process.env.GYM_USER_ID_PREFIX; // {Prefix}-{Year}-00001
+export const RECEIPT_PREFIX = process.env.GYM_RECEIPT_PREFIX || "HLK";
+// GYM_USER_ID_PREFIX = "hulkgym" → receipts become "hulkgym-2026-00001"
