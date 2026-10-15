@@ -54,7 +54,7 @@ export const sendPaymentReceipt = async (user, subscription, payment) => {
                         ✅
                       </div>
                       <h2 style="margin:16px 0 4px; color:#1a1a1a; font-size:20px;">Payment Successful</h2>
-                      <p style="margin:0; color:#888; font-size:13px;">Thank you for joining ATMOS Gym, ${user.firstName}!</p>
+                      <p style="margin:0; color:#888; font-size:13px;">Thank you for joining HULK Gym, ${user.firstName}!</p>
                     </div>
 
                     <table width="100%" cellpadding="0" cellspacing="0"
@@ -108,7 +108,7 @@ export const sendPaymentReceipt = async (user, subscription, payment) => {
   `;
 
   await transporter.sendMail({
-    from: `"${EMAIL_CONFIG.FROM_NAME}" <${process.env.EMAIL_USER}>`,
+    from: `"${EMAIL_CONFIG.FROM_NAME}" <${FROM_ADDRESS}>`,
     to: user.email,
     subject: `Payment Receipt — ${payment.receiptNumber}`,
     html,
@@ -207,7 +207,7 @@ export const sendOfflinePaymentReceipt = async (
   `;
 
   await transporter.sendMail({
-    from: `"${EMAIL_CONFIG.FROM_NAME}" <${process.env.EMAIL_USER}>`,
+    from: `"${EMAIL_CONFIG.FROM_NAME}" <${FROM_ADDRESS}>`,
     to: user.email,
     subject: `Membership Activated — ${payment.receiptNumber}`,
     html,

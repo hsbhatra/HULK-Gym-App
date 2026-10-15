@@ -9,14 +9,8 @@
 import cron from "node-cron";
 import Subscription from "../models/subscription.model.js";
 import Installment  from "../models/installment.model.js";
-import nodemailer   from "nodemailer";
 import { SUBSCRIPTION_STATUS, INSTALLMENT_STATUS, REMINDER_DAYS, EMAIL_CONFIG } from "../utils/constants.js";
 import { createTransporter, FROM_ADDRESS } from "../services/email/transporter.js";
-
-// const createTransporter = () => nodemailer.createTransport({
-//   service: "gmail",
-//   auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-// });
 
 const formatDate = (date) =>
   new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
@@ -30,7 +24,7 @@ const sendReminderEmail = async (user, subscription, daysLeft) => {
   const isExpired   = daysLeft <= 0;
 
   const subject = isExpired
-    ? `Your ATMOS Gym membership has expired`
+    ? `Your HULK Gym membership has expired`
     : `Your membership expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`;
 
   const html = `
@@ -43,7 +37,7 @@ const sendReminderEmail = async (user, subscription, daysLeft) => {
               style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
               <tr>
                 <td style="background:#0a0a0a;padding:28px 32px;">
-                  <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;letter-spacing:1px;">⚡ ATMOS GYM</h1>
+                  <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;letter-spacing:1px;">⚡ HULK GYM</h1>
                 </td>
               </tr>
               <tr>
@@ -80,7 +74,7 @@ const sendReminderEmail = async (user, subscription, daysLeft) => {
               <tr>
                 <td style="background:#f9f9f9;padding:20px 32px;border-top:1px solid #eee;">
                   <p style="margin:0;color:#aaa;font-size:12px;text-align:center;">
-                    © ${new Date().getFullYear()} ATMOS Gym. All rights reserved.
+                    © ${new Date().getFullYear()} HULK Gym. All rights reserved.
                   </p>
                 </td>
               </tr>

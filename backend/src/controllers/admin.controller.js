@@ -28,7 +28,7 @@ import { sendOfflinePaymentReceipt } from "../services/email/paymentEmail.servic
 export const searchMembers = asyncHandler(async (req, res) => {
   const { q = "", page = 1, limit = 10 } = req.query;
   const skip = (Number(page) - 1) * Number(limit);
-  const trimmed = q.trim() || "atmosgym"; // default shows all members
+  const trimmed = q.trim() || "gym"; // default shows all members
 
   const orConditions = [
     { firstName: { $regex: trimmed, $options: "i" } },
