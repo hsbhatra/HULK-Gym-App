@@ -10,7 +10,7 @@ import cron from "node-cron";
 import Subscription from "../models/subscription.model.js";
 import Installment  from "../models/installment.model.js";
 import { SUBSCRIPTION_STATUS, INSTALLMENT_STATUS, REMINDER_DAYS, EMAIL_CONFIG } from "../utils/constants.js";
-import { createTransporter, FROM_ADDRESS } from "../services/email/transporter.js";
+import { sendEmail } from "../services/email/transporter.js";
 
 const formatDate = (date) =>
   new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
@@ -20,77 +20,7 @@ const formatDate = (date) =>
 // =============================================================================
 
 const sendReminderEmail = async (user, subscription, daysLeft) => {
-  const transporter = createTransporter();
-  const isExpired   = daysLeft <= 0;
-
-  const subject = isExpired
-    ? `Your HULK Gym membership has expired`
-    : `Your membership expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`;
-
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
-          <tr><td align="center">
-            <table width="520" cellpadding="0" cellspacing="0"
-              style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-              <tr>
-                <td style="background:#0a0a0a;padding:28px 32px;">
-                  <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;letter-spacing:1px;">⚡ HULK GYM</h1>
-                </td>
-              </tr>
-              <tr>
-                <td style="padding:36px 32px;">
-                  <h2 style="margin:0 0 12px;color:#1a1a1a;font-size:20px;">
-                    ${isExpired ? "⏱️ Membership Expired" : `⚠️ Expiring in ${daysLeft} Day${daysLeft !== 1 ? "s" : ""}`}
-                  </h2>
-                  <p style="color:#666;font-size:14px;line-height:1.6;margin-bottom:24px;">
-                    Hi ${user.firstName},
-                    ${isExpired
-                      ? " your membership has expired. Renew now to continue your fitness journey."
-                      : ` your <strong>${subscription.planSnapshot.planName}</strong> membership expires on <strong>${formatDate(subscription.endDate)}</strong>. Renew now to avoid losing access.`
-                    }
-                  </p>
-                  <table width="100%" cellpadding="0" cellspacing="0"
-                    style="background:#f9f9f9;border-radius:10px;padding:20px;margin-bottom:24px;">
-                    <tr>
-                      <td style="color:#888;font-size:13px;padding:5px 0;">Plan</td>
-                      <td style="color:#1a1a1a;font-size:13px;text-align:right;font-weight:600;">${subscription.planSnapshot.planName} (${subscription.planSnapshot.durationLabel})</td>
-                    </tr>
-                    <tr>
-                      <td style="color:#888;font-size:13px;padding:5px 0;">Expiry Date</td>
-                      <td style="color:${isExpired ? "#ef4444" : "#e8a827"};font-size:13px;text-align:right;font-weight:600;">${formatDate(subscription.endDate)}</td>
-                    </tr>
-                  </table>
-                  <div style="text-align:center;">
-                    <a href="${process.env.CLIENT_URL}/#pricing"
-                      style="display:inline-block;background:#e8c44a;color:#0a0a0a;padding:14px 32px;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none;">
-                      Renew Membership →
-                    </a>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td style="background:#f9f9f9;padding:20px 32px;border-top:1px solid #eee;">
-                  <p style="margin:0;color:#aaa;font-size:12px;text-align:center;">
-                    © ${new Date().getFullYear()} HULK Gym. All rights reserved.
-                  </p>
-                </td>
-              </tr>
-            </table>
-          </td></tr>
-        </table>
-      </body>
-    </html>
-  `;
-
-  await transporter.sendMail({
-    from   : `"${EMAIL_CONFIG.FROM_NAME}" <${FROM_ADDRESS}>`,
-    to     : user.email,
-    subject,
-    html,
-  });
+  await sendEmail({ to: user.email, subject, html });
 };
 
 // =============================================================================

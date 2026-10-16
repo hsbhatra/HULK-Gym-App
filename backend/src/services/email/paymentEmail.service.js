@@ -2,12 +2,8 @@
 // src/services/email/paymentEmail.service.js
 // =============================================================================
 
-import nodemailer from "nodemailer";
-import { 
-  EMAIL_CONFIG,
-  GYM_CONFIG,
-} from "../../utils/constants.js";
-import { createTransporter, FROM_ADDRESS } from "./transporter.js";
+import { GYM_CONFIG, EMAIL_CONFIG } from "../../utils/constants.js";
+import { sendEmail } from "./transporter.js";
 
 const formatCurrency = (paise) => `₹${(paise / 100).toLocaleString("en-IN")}`;
 
@@ -25,8 +21,6 @@ const formatDate = (date) =>
 // =============================================================================
 
 export const sendPaymentReceipt = async (user, subscription, payment) => {
-  const transporter = createTransporter();
-
   const html = `
     <!DOCTYPE html>
     <html>
@@ -54,7 +48,7 @@ export const sendPaymentReceipt = async (user, subscription, payment) => {
                         ✅
                       </div>
                       <h2 style="margin:16px 0 4px; color:#1a1a1a; font-size:20px;">Payment Successful</h2>
-                      <p style="margin:0; color:#888; font-size:13px;">Thank you for joining HULK Gym, ${user.firstName}!</p>
+                      <p style="margin:0; color:#888; font-size:13px;">Thank you for joining ${GYM_CONFIG.NAME}, ${user.firstName}!</p>
                     </div>
 
                     <table width="100%" cellpadding="0" cellspacing="0"
@@ -107,9 +101,8 @@ export const sendPaymentReceipt = async (user, subscription, payment) => {
     </html>
   `;
 
-  await transporter.sendMail({
-    from: `"${EMAIL_CONFIG.FROM_NAME}" <${FROM_ADDRESS}>`,
-    to: user.email,
+  await sendEmail({
+    to     : user.email,
     subject: `Payment Receipt — ${payment.receiptNumber}`,
     html,
   });
@@ -127,8 +120,6 @@ export const sendOfflinePaymentReceipt = async (
   payment,
   isPartial,
 ) => {
-  const transporter = createTransporter();
-
   const statusText = isPartial
     ? `Partial payment received. Balance: <strong style="color:#e8a827;">${formatCurrency(payment.amountDue - payment.amountPaid)}</strong>`
     : "Payment received in full.";
@@ -147,7 +138,7 @@ export const sendOfflinePaymentReceipt = async (
                 <tr>
                   <td style="background:#0a0a0a; padding:28px 32px;">
                     <h1 style="margin:0; color:#ffffff; font-size:20px; font-weight:700; letter-spacing:1px;">
-                      ${GYM_CONFIG.NAME}
+                      💪 ${GYM_CONFIG.NAME.toUpperCase()}
                     </h1>
                   </td>
                 </tr>
@@ -177,15 +168,11 @@ export const sendOfflinePaymentReceipt = async (
                         <td style="padding:12px 0 0; border-top:1px solid #eee; color:#1a1a1a; font-size:14px; font-weight:700;">Amount Paid</td>
                         <td style="padding:12px 0 0; border-top:1px solid #eee; color:#e8a827; font-size:16px; text-align:right; font-weight:800;">${formatCurrency(payment.amountPaid)}</td>
                       </tr>
-                      ${
-                        isPartial
-                          ? `
+                      ${isPartial ? `
                       <tr>
                         <td style="padding:4px 0; color:#888; font-size:13px;">Balance Due</td>
                         <td style="padding:4px 0; color:#ef4444; font-size:13px; text-align:right; font-weight:600;">${formatCurrency(payment.amountDue - payment.amountPaid)}</td>
-                      </tr>`
-                          : ""
-                      }
+                      </tr>` : ""}
                     </table>
                   </td>
                 </tr>
@@ -206,9 +193,8 @@ export const sendOfflinePaymentReceipt = async (
     </html>
   `;
 
-  await transporter.sendMail({
-    from: `"${EMAIL_CONFIG.FROM_NAME}" <${FROM_ADDRESS}>`,
-    to: user.email,
+  await sendEmail({
+    to     : user.email,
     subject: `Membership Activated — ${payment.receiptNumber}`,
     html,
   });
