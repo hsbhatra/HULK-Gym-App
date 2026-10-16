@@ -1,16 +1,8 @@
-import nodemailer from "nodemailer";
 import { EMAIL_CONFIG, OTP_CONFIG, GYM_CONFIG } from "../../utils/constants.js";
-import { createTransporter, FROM_ADDRESS } from "../email/transporter.js";
+import { sendEmail } from "../email/transporter.js";
 
 const sendOtpEmail = async (to, subject, htmlBody) => {
-  const transporter = createTransporter();
-
-  await transporter.sendMail({
-    from: `"${EMAIL_CONFIG.FROM_NAME}" <${FROM_ADDRESS}>`,
-    to,
-    subject,
-    html: htmlBody,
-  });
+  await sendEmail({ to, subject, html: htmlBody });
 };
 
 const buildOtpEmailHtml = (otp, headingText, bodyText) => {
@@ -112,3 +104,4 @@ export const sendForgotPasswordOtp = async (email, otp) => {
 
   await sendOtpEmail(email, EMAIL_CONFIG.SUBJECTS.FORGOT_PASSWORD_OTP, html);
 };
+
