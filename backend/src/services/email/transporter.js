@@ -1,49 +1,51 @@
 // =============================================================================
 // src/services/email/transporter.js
 // =============================================================================
+// Unified email sender.
+// - Production/Testing (Render): uses Brevo HTTP API (no SMTP port needed)
+// - Local dev with SKIP_EMAIL=true: prints OTP to terminal, no email sent
+// - Local dev without SKIP_EMAIL: uses Gmail SMTP
+// =============================================================================
 
 import * as Brevo from "@getbrevo/brevo";
-
-// Brevo API client — used when BREVO_API_KEY is set (production/testing)
-const getBrevoClient = () => {
-  const apiInstance = new Brevo.TransactionalEmailsApi();
-  apiInstance.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
-  return apiInstance;
-};
+import nodemailer from "nodemailer";
+import { GYM_CONFIG } from "../../utils/constants.js";
 
 // =============================================================================
-// sendEmail — unified send function
-// Works with Brevo API (production) or logs to console (dev with SKIP_EMAIL)
+// sendEmail — the one function all email services call
 // =============================================================================
 
-export const sendEmail = async ({ to, subject, html, fromName, fromEmail }) => {
+export const sendEmail = async ({ to, subject, html }) => {
 
-  // Dev shortcut — print to terminal instead of sending
+  // ── Dev shortcut ──────────────────────────────────────────────────────────
+  // Set SKIP_EMAIL=true in local .env to skip sending and print OTP to terminal
   if (process.env.SKIP_EMAIL === "true") {
     console.log(`\n[DEV EMAIL] To: ${to} | Subject: ${subject}\n`);
     return;
   }
 
-  const name  = fromName  || process.env.GYM_NAME    || "Hulk Gym";
-  const email = fromEmail || process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+  const fromName  = GYM_CONFIG.NAME;
+  const fromEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
 
-  // Use Brevo HTTP API (no SMTP port needed)
+  // ── Brevo HTTP API (production & testing on Render) ───────────────────────
+  // Uses HTTPS port 443 — never blocked by any hosting provider
   if (process.env.BREVO_API_KEY) {
-    const apiInstance  = getBrevoClient();
-    const sendSmtpEmail = new Brevo.SendSmtpEmail();
+    const apiInstance = new Brevo.TransactionalEmailsApi();
+    apiInstance.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
 
-    sendSmtpEmail.sender    = { name, email };
-    sendSmtpEmail.to        = [{ email: to }];
-    sendSmtpEmail.subject   = subject;
-    sendSmtpEmail.htmlContent = html;
+    const email = new Brevo.SendSmtpEmail();
+    email.sender      = { name: fromName, email: fromEmail };
+    email.to          = [{ email: to }];
+    email.subject     = subject;
+    email.htmlContent = html;
 
-    await apiInstance.sendTransacEmail(sendSmtpEmail);
+    await apiInstance.sendTransacEmail(email);
+    console.log(`[EMAIL] Sent via Brevo to ${to}`);
     return;
   }
 
-  // Fallback: Nodemailer + Gmail for local dev
-  const nodemailer = await import("nodemailer");
-  const transporter = nodemailer.default.createTransport({
+  // ── Gmail SMTP fallback (local dev without SKIP_EMAIL) ────────────────────
+  const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
       user: process.env.EMAIL_USER,
@@ -51,14 +53,18 @@ export const sendEmail = async ({ to, subject, html, fromName, fromEmail }) => {
     },
   });
 
-  await transporter.sendMail({ from: `"${name}" <${email}>`, to, subject, html });
+  await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to,
+    subject,
+    html,
+  });
+
+  console.log(`[EMAIL] Sent via Gmail to ${to}`);
 };
 
-// Keep FROM_ADDRESS export for any file still referencing it
-export const FROM_ADDRESS = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
-
-// Legacy createTransporter — kept so existing imports don't break immediately
-// TODO: migrate all callers to sendEmail()
+// ── Legacy exports — kept so nothing breaks if any old file still imports them
+export const FROM_ADDRESS     = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
 export const createTransporter = () => {
-  throw new Error("createTransporter() is deprecated. Use sendEmail() from transporter.js instead.");
+  throw new Error("createTransporter() is removed. Import sendEmail from transporter.js instead.");
 };
