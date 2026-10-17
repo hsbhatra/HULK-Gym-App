@@ -1,3 +1,7 @@
+// =============================================================================
+// src/services/auth/email.service.js
+// =============================================================================
+
 import { EMAIL_CONFIG, OTP_CONFIG, GYM_CONFIG } from "../../utils/constants.js";
 import { sendEmail } from "../email/transporter.js";
 

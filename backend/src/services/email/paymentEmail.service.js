@@ -2,7 +2,7 @@
 // src/services/email/paymentEmail.service.js
 // =============================================================================
 
-import { GYM_CONFIG, EMAIL_CONFIG } from "../../utils/constants.js";
+import { GYM_CONFIG } from "../../utils/constants.js";
 import { sendEmail } from "./transporter.js";
 
 const formatCurrency = (paise) => `₹${(paise / 100).toLocaleString("en-IN")}`;
