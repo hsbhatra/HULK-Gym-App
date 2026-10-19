@@ -17,11 +17,11 @@ import {
 
 const router = Router();
 
-import { runReminderJob } from "../jobs/subscriptionReminder.job.js";
-router.post("/test-cron", async (req, res) => {
-  await runReminderJob();
-  res.json({ success: true });
-});
+// import { runReminderJob } from "../jobs/subscriptionReminder.job.js";
+// router.post("/test-cron", async (req, res) => {
+//   await runReminderJob();
+//   res.json({ success: true });
+// });
 
 // All admin routes require authentication + admin role
 router.use(authenticate, authorize("admin"));

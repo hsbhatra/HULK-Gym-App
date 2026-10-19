@@ -51,7 +51,7 @@ export const updateProfile = async (userId, updateData) => {
   const user = await User.findByIdAndUpdate(
     userId,
     { $set: fieldsToUpdate },
-    { new: true, runValidators: true }
+    { returnDocument: "after", runValidators: true }
   );
 
   if (!user) throw ApiError.notFound("User not found.");

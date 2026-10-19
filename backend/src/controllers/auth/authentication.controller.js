@@ -85,7 +85,7 @@ export const register = asyncHandler(async (req, res) => {
       passwordHash: password,
       expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
 
   const rawOtp = await generateAndSaveOtp(

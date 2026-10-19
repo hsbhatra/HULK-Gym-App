@@ -52,7 +52,7 @@ export const updatePlan = async (planId, updateData) => {
   const plan = await MembershipPlan.findByIdAndUpdate(
     planId,
     { $set: updateData },
-    { new: true, runValidators: true }
+    { returnDocument: "after", runValidators: true }
   );
 
   if (!plan) {
@@ -79,7 +79,7 @@ export const updatePlanStatus = async (planId, newStatus) => {
   const plan = await MembershipPlan.findByIdAndUpdate(
     planId,
     { $set: { status: newStatus } },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   if (!plan) {
@@ -107,7 +107,7 @@ export const archivePlan = async (planId) => {
   const plan = await MembershipPlan.findByIdAndUpdate(
     planId,
     { $set: { status: PLAN_STATUS.ARCHIVED } },
-    { new: true }
+    { returnDocument: "after" }
   );
 
   if (!plan) {
