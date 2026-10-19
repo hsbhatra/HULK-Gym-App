@@ -17,14 +17,15 @@ import {
   resetPassword,
   changePassword,
 } from "../../controllers/auth/password.controller.js";
+import { authLimiter, otpLimiter } from "../../middleware/rateLimiter.middleware.js";
 
 const router = Router();
 
-router.post("/forgot-password", validateForgotPassword, forgotPassword);
-router.post("/verify-forgot-otp", validateVerifyOtp, verifyForgotPasswordOtp);
-router.post("/resend-forgot-otp", validateResendOtp, resendForgotPasswordOtp);
-router.post("/reset-password", validateResetPassword, resetPassword);
+router.post("/forgot-password", authLimiter, validateForgotPassword, forgotPassword);
+router.post("/verify-forgot-otp", otpLimiter, validateVerifyOtp, verifyForgotPasswordOtp);
+router.post("/resend-forgot-otp", otpLimiter, validateResendOtp, resendForgotPasswordOtp);
+router.post("/reset-password", authLimiter, validateResetPassword, resetPassword);
 
-router.post("/change-password", authenticate, sessionGuard, validateChangePassword, changePassword);
+router.post("/change-password", authLimiter, authenticate, sessionGuard, validateChangePassword, changePassword);
 
 export default router;
