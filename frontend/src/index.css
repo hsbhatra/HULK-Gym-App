@@ -762,3 +762,13 @@ html {
   }
 }
 
+/* =============================================================================
+   ADMIN DASHBOARD — Responsive
+============================================================================= */
+
+@media (max-width: 767px) {
+  .dashboard-charts,
+  .dashboard-tables {
+    grid-template-columns: 1fr !important;
+  }
+}

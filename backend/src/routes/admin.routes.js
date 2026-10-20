@@ -26,6 +26,7 @@ const router = Router();
 
 // All admin routes require authentication + admin role
 router.use(authenticate, authorize("admin"));
+
 // Dashboard
 router.get("/dashboard", getDashboardStats);
 
