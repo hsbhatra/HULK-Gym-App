@@ -376,3 +376,136 @@ export const cancelSubscription = asyncHandler(async (req, res) => {
     subscription,
   }).send(res);
 });
+
+// =============================================================================
+// getDashboardStats
+// GET /api/v1/admin/dashboard
+// =============================================================================
+// Single endpoint returns all data needed for the admin dashboard.
+// One call — no waterfall requests from the frontend.
+// =============================================================================
+
+export const getDashboardStats = asyncHandler(async (req, res) => {
+  const now       = new Date();
+  const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  // Start of current and last month
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfLastMonth   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+  // ── KPIs ──────────────────────────────────────────────────────────────────
+
+  const [
+    activeMembers,
+    gracePeriodMembers,
+    revenueThisMonth,
+    revenueLastMonth,
+    newMembersThisMonth,
+    newMembersLastMonth,
+    expiringSoonCount,
+    totalMembers,
+  ] = await Promise.all([
+    Subscription.countDocuments({ status: SUBSCRIPTION_STATUS.ACTIVE }),
+    Subscription.countDocuments({ status: SUBSCRIPTION_STATUS.GRACE }),
+
+    Payment.aggregate([
+      { $match: { status: PAYMENT_STATUS.COMPLETED, paidAt: { $gte: startOfThisMonth } } },
+      { $group: { _id: null, total: { $sum: "$amountPaid" } } },
+    ]).then((r) => r[0]?.total || 0),
+
+    Payment.aggregate([
+      { $match: { status: PAYMENT_STATUS.COMPLETED, paidAt: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
+      { $group: { _id: null, total: { $sum: "$amountPaid" } } },
+    ]).then((r) => r[0]?.total || 0),
+
+    User.countDocuments({ createdAt: { $gte: startOfThisMonth }, role: "member" }),
+    User.countDocuments({ createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth }, role: "member" }),
+
+    Subscription.countDocuments({
+      status : SUBSCRIPTION_STATUS.ACTIVE,
+      endDate: { $gte: now, $lte: sevenDays },
+    }),
+
+    User.countDocuments({ role: "member" }),
+  ]);
+
+  // ── Revenue last 6 months ──────────────────────────────────────────────────
+
+  const revenueChart = await Payment.aggregate([
+    {
+      $match: {
+        status : PAYMENT_STATUS.COMPLETED,
+        paidAt : { $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1) },
+      },
+    },
+    {
+      $group: {
+        _id    : { year: { $year: "$paidAt" }, month: { $month: "$paidAt" } },
+        revenue: { $sum: "$amountPaid" },
+      },
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+  ]).then((rows) =>
+    rows.map((r) => ({
+      month  : new Date(r._id.year, r._id.month - 1).toLocaleString("en-IN", { month: "short", year: "numeric" }),
+      revenue: r.revenue,
+    }))
+  );
+
+  // ── Plan distribution (active subscriptions) ──────────────────────────────
+
+  const planDistribution = await Subscription.aggregate([
+    { $match: { status: { $in: [SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.GRACE] } } },
+    { $group: { _id: "$planSnapshot.planName", count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+  ]).then((rows) => rows.map((r) => ({ plan: r._id, count: r.count })));
+
+  // ── Expiring soon (within 7 days) ─────────────────────────────────────────
+
+  const expiringSoon = await Subscription.find({
+    status : SUBSCRIPTION_STATUS.ACTIVE,
+    endDate: { $gte: now, $lte: sevenDays },
+  })
+    .sort({ endDate: 1 })
+    .limit(10)
+    .populate("userId", "firstName lastName email phoneNumber userId");
+
+  // ── Pending / overdue installments ────────────────────────────────────────
+
+  const pendingInstallments = await Installment.find({
+    status: { $in: [INSTALLMENT_STATUS.PENDING, INSTALLMENT_STATUS.OVERDUE] },
+  })
+    .sort({ dueDate: 1 })
+    .limit(10)
+    .populate("userId", "firstName lastName email userId");
+
+  // ── Revenue trend (month-over-month % change) ─────────────────────────────
+
+  const revenueTrend = revenueLastMonth > 0
+    ? Math.round(((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100)
+    : revenueThisMonth > 0 ? 100 : 0;
+
+  const memberTrend = newMembersLastMonth > 0
+    ? Math.round(((newMembersThisMonth - newMembersLastMonth) / newMembersLastMonth) * 100)
+    : newMembersThisMonth > 0 ? 100 : 0;
+
+  return new ApiResponse(HTTP_STATUS.OK, "Dashboard stats retrieved.", {
+    kpis: {
+      activeMembers,
+      gracePeriodMembers,
+      totalMembers,
+      revenueThisMonth,
+      revenueLastMonth,
+      revenueTrend,       // % change vs last month
+      newMembersThisMonth,
+      newMembersLastMonth,
+      memberTrend,        // % change vs last month
+      expiringThisWeek: expiringSoonCount,
+    },
+    revenueChart,
+    planDistribution,
+    expiringSoon,
+    pendingInstallments,
+  }).send(res);
+});
