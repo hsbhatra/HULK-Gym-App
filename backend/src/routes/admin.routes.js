@@ -13,6 +13,7 @@ import {
   markInstallmentPaid,
   getAllSubscriptions,
   cancelSubscription,
+  getDashboardStats,
 } from "../controllers/admin.controller.js";
 
 const router = Router();
@@ -25,6 +26,8 @@ const router = Router();
 
 // All admin routes require authentication + admin role
 router.use(authenticate, authorize("admin"));
+// Dashboard
+router.get("/dashboard", getDashboardStats);
 
 // Members
 router.get("/members", searchMembers);
