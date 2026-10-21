@@ -61,9 +61,11 @@ export default function ProfilePage() {
     try {
       await logoutUser();
     } catch {}
-    storeLogout();
+    // Leave /profile BEFORE clearing auth, otherwise ProtectedRoute sees a
+    // logged-out user first and redirects to /login?redirect=/profile.
+    navigate("/", { replace: true });
+    storeLogout({ manual: true });
     toast.success("Logged out successfully.");
-    navigate("/");
   };
 
   const navItems = [

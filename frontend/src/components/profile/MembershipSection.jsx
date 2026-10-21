@@ -8,7 +8,29 @@ import toast from "react-hot-toast";
 import {
   getMyActiveSubscription,
   getMySubscriptions,
+  getMyReceipts,
 } from "../../services/subscriptionService.js";
+import ReceiptsList from "../ui/ReceiptsList.jsx";
+
+function PaymentsSection({ receipts }) {
+  if (!receipts.length) return null;
+  return (
+    <div style={{ marginTop: "32px" }}>
+      <h3
+        style={{
+          fontSize: "13px", fontWeight: "700", color: "rgba(255,255,255,0.4)",
+          letterSpacing: "1px", textTransform: "uppercase", marginBottom: "14px",
+        }}
+      >
+        Payments &amp; Receipts
+      </h3>
+      <ReceiptsList receipts={receipts} />
+      <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: "10px" }}>
+        A receipt for each payment was emailed to you.
+      </p>
+    </div>
+  );
+}
 
 // Add this above the MembershipSection component:
 function SubscriptionHistory({ history, formatDate }) {
@@ -83,9 +105,14 @@ export default function MembershipSection() {
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
+  const [receipts, setReceipts] = useState([]);
+
   useEffect(() => {
     fetchSubscription();
     fetchHistory();
+    getMyReceipts()
+      .then((res) => setReceipts(res.data.data.receipts || []))
+      .catch(() => {}); // non-critical
   }, []);
 
   const fetchHistory = async () => {
@@ -200,6 +227,7 @@ export default function MembershipSection() {
           </button>
         </div>
 
+        <PaymentsSection receipts={receipts} />
         {history.length > 0 && <SubscriptionHistory history={history} formatDate={formatDate} />}
       </div>
     );
@@ -488,6 +516,14 @@ export default function MembershipSection() {
               {subscription.paymentMode}
             </p>
           </div>
+          {payment?.receiptNumber && (
+            <div>
+              <span style={labelStyle}>Receipt No.</span>
+              <p style={{ fontSize: "14px", fontWeight: "600" }}>
+                {payment.receiptNumber}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Progress bar */}
@@ -667,6 +703,8 @@ export default function MembershipSection() {
           ))}
         </div>
       </div>
+
+      <PaymentsSection receipts={receipts} />
 
       {/* Subscription History */}
       {history.length > 0 && <SubscriptionHistory history={history} formatDate={formatDate} />}

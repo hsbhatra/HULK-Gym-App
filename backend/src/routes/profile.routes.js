@@ -4,6 +4,7 @@
 
 import { Router } from "express";
 import authenticate from "../middleware/auth/authenticate.middleware.js";
+import sessionGuard from "../middleware/auth/sessionGuard.middleware.js";
 import { uploadProfilePictureMiddleware } from "../middleware/upload/upload.middleware.js";
 import { validateUpdateProfile } from "../middleware/validation/auth.validation.js";
 
@@ -18,7 +19,7 @@ import {
 const router = Router();
 
 // All profile routes require authentication
-router.use(authenticate);
+router.use(authenticate, sessionGuard);
 
 router.get   ("/",        getMyProfile);
 router.patch ("/",        validateUpdateProfile, updateMyProfile);

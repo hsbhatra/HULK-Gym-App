@@ -15,3 +15,6 @@ export const getMySubscriptions = () =>
 
 export const getMyActiveSubscription = () =>
   api.get("/subscriptions/my/active");
+
+export const getMyReceipts = () =>
+  api.get("/subscriptions/my/receipts");

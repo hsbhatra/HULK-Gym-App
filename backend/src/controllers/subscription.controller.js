@@ -12,6 +12,7 @@ import {
   verifyAndActivateSubscription,
   getMySubscriptionHistory,
   getMyActiveSubscription,
+  getMyReceipts,
 } from "../services/subscription.service.js";
 
 // =============================================================================
@@ -56,18 +57,26 @@ export const verify = asyncHandler(async (req, res) => {
     throw ApiError.badRequest("Missing payment verification details.");
   }
 
-  const { subscription, payment } = await verifyAndActivateSubscription(
+  const { subscription, payment, duplicate } = await verifyAndActivateSubscription(
     razorpayOrderId,
     razorpayPaymentId,
     razorpaySignature,
   );
 
+  // Only the member who owns the order may see its result
+  if (String(payment.userId) !== String(req.user.userId)) {
+    throw ApiError.forbidden("This payment does not belong to you.");
+  }
+
   return new ApiResponse(
     HTTP_STATUS.OK,
-    "Payment verified. Membership activated!",
+    duplicate
+      ? "Payment received, but you already have an active membership. This payment will be refunded."
+      : "Payment verified. Membership activated!",
     {
       subscription,
       receiptNumber: payment.receiptNumber,
+      duplicate: !!duplicate,
     },
   ).send(res);
 });
@@ -104,4 +113,14 @@ export const getMyActive = asyncHandler(async (req, res) => {
         }
       : { subscription: null, payment: null, installments: [] },
   ).send(res);
+});
+
+// =============================================================================
+// getMyReceiptsList
+// GET /api/v1/subscriptions/my/receipts
+// =============================================================================
+
+export const getMyReceiptsList = asyncHandler(async (req, res) => {
+  const receipts = await getMyReceipts(req.user.userId);
+  return new ApiResponse(HTTP_STATUS.OK, "Receipts retrieved.", { receipts }).send(res);
 });

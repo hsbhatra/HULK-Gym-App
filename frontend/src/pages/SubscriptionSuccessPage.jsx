@@ -13,6 +13,7 @@ export default function SubscriptionSuccessPage() {
 
   const planName = searchParams.get("plan") || "Membership";
   const duration = searchParams.get("duration") || "Monthly";
+  const receiptNo = searchParams.get("receipt");
 
   return (
     <div
@@ -102,6 +103,11 @@ export default function SubscriptionSuccessPage() {
             </strong>{" "}
             membership is now active. A receipt has been sent to your email.
           </p>
+          {receiptNo && /^[A-Za-z0-9-]+$/.test(receiptNo) && (
+            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.45)", marginTop: "-16px", marginBottom: "24px" }}>
+              Receipt No. <strong style={{ color: "#fff" }}>{receiptNo}</strong>
+            </p>
+          )}
         </motion.div>
 
         {/* Divider */}

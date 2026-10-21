@@ -18,7 +18,9 @@ import Subscription from "../models/subscription.model.js";
 import Payment from "../models/payment.model.js";
 import Installment from "../models/installment.model.js";
 import MembershipPlan from "../models/membershipPlan.model.js";
-import { sendOfflinePaymentReceipt } from "../services/email/paymentEmail.service.js";
+import Receipt, { RECEIPT_TYPE } from "../models/receipt.model.js";
+import { issueReceipt } from "../services/receipt.service.js";
+import { sendComplimentaryEmail } from "../services/email/receiptEmail.service.js";
 
 // =============================================================================
 // searchMembers
@@ -26,56 +28,62 @@ import { sendOfflinePaymentReceipt } from "../services/email/paymentEmail.servic
 // =============================================================================
 
 export const searchMembers = asyncHandler(async (req, res) => {
-  const { q = "", page = 1, limit = 10 } = req.query;
-  const skip = (Number(page) - 1) * Number(limit);
-  const trimmed = q.trim() || "gym"; // default shows all members
+  const { q = "" } = req.query;
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+  const skip = (page - 1) * limit;
+  const trimmed = String(q).trim();
 
-  const orConditions = [
-    { firstName: { $regex: trimmed, $options: "i" } },
-    { lastName: { $regex: trimmed, $options: "i" } },
-    { email: { $regex: trimmed, $options: "i" } },
-    { phoneNumber: { $regex: trimmed, $options: "i" } },
-    { userId: { $regex: trimmed, $options: "i" } },
-  ];
+  // User input goes into $regex — escape it, or "(" / "*" / "+91…" throw a
+  // 500 and "." matches everyone.
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const rx = (s) => ({ $regex: esc(s), $options: "i" });
 
-  const parts = trimmed.split(/\s+/);
-  if (parts.length >= 2) {
-    for (let i = 1; i < parts.length; i++) {
-      const firstPart = parts.slice(0, i).join(" ");
-      const lastPart = parts.slice(i).join(" ");
-      orConditions.push(
-        {
-          $and: [
-            { firstName: { $regex: firstPart, $options: "i" } },
-            { lastName: { $regex: lastPart, $options: "i" } },
-          ],
-        },
-        {
-          $and: [
-            { firstName: { $regex: lastPart, $options: "i" } },
-            { lastName: { $regex: firstPart, $options: "i" } },
-          ],
-        },
-      );
+  let filter = {}; // empty search → list everyone
+  if (trimmed) {
+    const orConditions = [
+      { firstName: rx(trimmed) },
+      { lastName: rx(trimmed) },
+      { email: rx(trimmed) },
+      { userId: rx(trimmed) },
+    ];
+
+    // Phone: accept "+91 98765-43210", "098765 43210", etc.
+    if (/^[+\d\s-]+$/.test(trimmed)) {
+      const digits = trimmed.replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "");
+      if (digits) orConditions.push({ phoneNumber: rx(digits) });
     }
+
+    const parts = trimmed.split(/\s+/);
+    if (parts.length >= 2) {
+      for (let i = 1; i < parts.length; i++) {
+        const firstPart = parts.slice(0, i).join(" ");
+        const lastPart = parts.slice(i).join(" ");
+        orConditions.push(
+          { $and: [{ firstName: rx(firstPart) }, { lastName: rx(lastPart) }] },
+          { $and: [{ firstName: rx(lastPart) }, { lastName: rx(firstPart) }] },
+        );
+      }
+    }
+    filter = { $or: orConditions };
   }
 
   const [members, total] = await Promise.all([
-    User.find({ $or: orConditions })
+    User.find(filter)
       .select(
         "firstName lastName email phoneNumber userId role isActive profilePicture",
       )
       .skip(skip)
-      .limit(Number(limit))
+      .limit(limit)
       .sort({ createdAt: 1 }),
-    User.countDocuments({ $or: orConditions }),
+    User.countDocuments(filter),
   ]);
 
   return new ApiResponse(HTTP_STATUS.OK, "Members retrieved.", {
     members,
     total,
-    page: Number(page),
-    limit: Number(limit),
+    page,
+    limit,
     pages: Math.ceil(total / Number(limit)),
   }).send(res);
 });
@@ -96,13 +104,20 @@ export const getMemberProfile = asyncHandler(async (req, res) => {
   );
 
   // Get subscription history
-  const subscriptionHistory = await Subscription.find({ userId: req.params.id })
+  // Abandoned online checkouts (never paid) are noise in the history
+  const subscriptionHistory = await Subscription.find({
+    userId: req.params.id,
+    status: { $ne: SUBSCRIPTION_STATUS.PENDING },
+  })
     .sort({ createdAt: -1 })
     .limit(10)
     .populate("planId", "name slug");
 
   // Get payment history
-  const paymentHistory = await Payment.find({ userId: req.params.id })
+  const paymentHistory = await Payment.find({
+    userId: req.params.id,
+    status: { $ne: PAYMENT_STATUS.PENDING },
+  })
     .sort({ createdAt: -1 })
     .limit(10);
 
@@ -112,12 +127,17 @@ export const getMemberProfile = asyncHandler(async (req, res) => {
     paymentId: { $in: paymentIds },
   }).sort({ installmentNumber: 1 });
 
+  const receipts = await Receipt.find({ userId: req.params.id })
+    .sort({ paidAt: -1 })
+    .limit(50);
+
   return new ApiResponse(HTTP_STATUS.OK, "Member profile retrieved.", {
     user,
     activeSubscription,
     subscriptionHistory,
     paymentHistory,
     installments,
+    receipts,
   }).send(res);
 });
 
@@ -178,8 +198,42 @@ export const recordOfflinePayment = asyncHandler(async (req, res) => {
     ? 0
     : Math.round(Number(amountPaid) * 100); // ₹ → paise
 
+  if (!isComplimentary) {
+    if (!Number.isFinite(totalAmountPaid) || totalAmountPaid < 0) {
+      throw ApiError.badRequest("Enter a valid amount received.");
+    }
+    if (totalAmountPaid > totalAmountDue) {
+      throw ApiError.badRequest(
+        `Amount received (₹${totalAmountPaid / 100}) is more than the plan price (₹${totalAmountDue / 100}).`,
+      );
+    }
+  }
+
   const isPartial = !isComplimentary && totalAmountPaid < totalAmountDue;
   const isFull = isComplimentary || totalAmountPaid >= totalAmountDue;
+
+  // Validate the installment plan up front — previously this ran AFTER the
+  // subscription + payment were saved, so a bad schedule left an active
+  // membership with no installments behind.
+  const wantsInstallments =
+    Array.isArray(installments) && installments.length > 0 && isPartial;
+  if (wantsInstallments) {
+    const remainingBalance = totalAmountDue - totalAmountPaid;
+    let installmentSum = 0;
+    for (const inst of installments) {
+      const amt = Math.round(Number(inst.amountDue) * 100);
+      if (!amt || amt <= 0) throw ApiError.badRequest("Every installment needs an amount above ₹0.");
+      if (!inst.dueDate || isNaN(new Date(inst.dueDate))) {
+        throw ApiError.badRequest("Every installment needs a valid due date.");
+      }
+      installmentSum += amt;
+    }
+    if (Math.abs(installmentSum - remainingBalance) > 1) {
+      throw ApiError.badRequest(
+        `Installment total (₹${installmentSum / 100}) must equal the remaining balance (₹${remainingBalance / 100}).`,
+      );
+    }
+  }
 
   const finalPaymentMode = isComplimentary
     ? PAYMENT_MODE.COMPLIMENTARY
@@ -208,16 +262,14 @@ export const recordOfflinePayment = asyncHandler(async (req, res) => {
     notes,
   });
 
-  // ── Create Payment Record ──────────────────────────────────────────────────
-  const receiptNumber = await Payment.generateReceiptNumber();
-
+  // ── Create Payment Record (receipt number is issued below, per payment) ───
   const payment = await Payment.create({
     userId,
     subscriptionId: subscription._id,
     planId,
-    receiptNumber,
     amountDue: totalAmountDue,
     amountPaid: totalAmountPaid,
+    downPayment: totalAmountPaid,
     currency: "INR",
     status: isFull ? PAYMENT_STATUS.COMPLETED : PAYMENT_STATUS.PARTIAL,
     paymentMode: finalPaymentMode,
@@ -226,43 +278,49 @@ export const recordOfflinePayment = asyncHandler(async (req, res) => {
     notes,
   });
 
-  // ── Create Installments (only for partial payments) ────────────────────────
-  // Block installments if full payment was received — no point tracking them
+  // ── Create Installments (validated above) ──────────────────────────────────
   let createdInstallments = [];
-  if (
-    installments &&
-    installments.length > 0 &&
-    !isComplimentary &&
-    isPartial
-  ) {
+  if (wantsInstallments) {
     const installmentDocs = installments.map((inst, i) => ({
       paymentId: payment._id,
       subscriptionId: subscription._id,
       userId,
       installmentNumber: i + 1,
-      amountDue: Math.round(Number(inst.amountDue) * 100), // ₹ → paise
-      amountPaid: i === 0 ? totalAmountPaid : 0, // first installment = amount already paid
+      amountDue: Math.round(Number(inst.amountDue) * 100),
+      amountPaid: 0,
       dueDate: new Date(inst.dueDate),
-      status: i === 0 ? INSTALLMENT_STATUS.PAID : INSTALLMENT_STATUS.PENDING,
-      paymentMode: i === 0 ? finalPaymentMode : null,
+      status: INSTALLMENT_STATUS.PENDING,
+      paymentMode: null,
       recordedBy: req.user.userId,
-      paidAt: i === 0 ? new Date() : null,
+      paidAt: null,
     }));
-
     createdInstallments = await Installment.insertMany(installmentDocs);
   }
 
-  // ── Send Email ─────────────────────────────────────────────────────────────
-  try {
-    await sendOfflinePaymentReceipt(user, subscription, payment, isPartial);
-  } catch (err) {
-    console.error("Failed to send offline payment receipt:", err.message);
+  // ── Receipt + email (money received) / welcome email (complimentary) ──────
+  let receipt = null;
+  if (totalAmountPaid > 0) {
+    receipt = await issueReceipt({
+      payment,
+      subscription,
+      amount: totalAmountPaid,
+      type: RECEIPT_TYPE.OFFLINE,
+      paymentMode: finalPaymentMode,
+      recordedBy: req.user.userId,
+      note: isPartial ? "Down payment" : null,
+    });
+  } else if (isComplimentary) {
+    try {
+      await sendComplimentaryEmail(user, subscription);
+    } catch (err) {
+      console.error("Complimentary email failed:", err.message);
+    }
   }
 
   return new ApiResponse(
     HTTP_STATUS.CREATED,
     `Membership activated. ${isPartial ? `Partial payment recorded. Balance due: ₹${((totalAmountDue - totalAmountPaid) / 100).toFixed(2)}` : "Full payment received."}`,
-    { subscription, payment, installments: createdInstallments },
+    { subscription, payment, installments: createdInstallments, receipt },
   ).send(res);
 });
 
@@ -280,39 +338,81 @@ export const markInstallmentPaid = asyncHandler(async (req, res) => {
   if (installment.status === INSTALLMENT_STATUS.PAID) {
     throw ApiError.conflict("This installment is already marked as paid.");
   }
+  if (installment.status === INSTALLMENT_STATUS.WAIVED) {
+    throw ApiError.conflict("This installment was waived (membership cancelled).");
+  }
 
   const paidAmount = Math.round(Number(amountPaid) * 100); // ₹ → paise
+  if (!paidAmount || paidAmount <= 0) {
+    throw ApiError.badRequest("Enter a valid amount.");
+  }
 
-  installment.amountPaid = paidAmount;
-  installment.status =
-    paidAmount >= installment.amountDue
-      ? INSTALLMENT_STATUS.PAID
-      : INSTALLMENT_STATUS.PENDING;
-  installment.paymentMode = paymentMode || PAYMENT_MODE.CASH;
-  installment.recordedBy = req.user.userId;
-  installment.paidAt = new Date();
-  if (notes) installment.notes = notes;
-  await installment.save();
+  const remaining = installment.amountDue - (installment.amountPaid || 0);
+  if (paidAmount > remaining) {
+    throw ApiError.badRequest(
+      `Amount exceeds this installment's remaining ₹${remaining / 100}.`,
+    );
+  }
+
+  // Accumulate — a second partial payment must not overwrite the first.
+  // Conditional on the amount we just read: a double click / two admins at
+  // once can't record the same money twice (or issue two receipts).
+  const prevPaid = installment.amountPaid || 0;
+  const newPaid = prevPaid + paidAmount;
+  const updated = await Installment.findOneAndUpdate(
+    {
+      _id: installment._id,
+      amountPaid: installment.amountPaid,
+      status: { $nin: [INSTALLMENT_STATUS.PAID, INSTALLMENT_STATUS.WAIVED] },
+    },
+    {
+      $set: {
+        amountPaid: newPaid,
+        status: newPaid >= installment.amountDue ? INSTALLMENT_STATUS.PAID : INSTALLMENT_STATUS.PENDING,
+        paymentMode: paymentMode || PAYMENT_MODE.CASH,
+        recordedBy: req.user.userId,
+        paidAt: new Date(),
+        ...(notes && { notes }),
+      },
+    },
+    { returnDocument: "after" },
+  );
+  if (!updated) {
+    throw ApiError.conflict("This installment was just updated by someone else. Please refresh.");
+  }
 
   // Update running total on the parent Payment record
   const allInstallments = await Installment.find({
     paymentId: installment.paymentId,
   });
-  const totalPaid = allInstallments.reduce(
+  const installmentsPaid = allInstallments.reduce(
     (sum, i) => sum + (i.amountPaid || 0),
     0,
   );
 
   const payment = await Payment.findById(installment.paymentId);
-  payment.amountPaid = totalPaid;
+  payment.amountPaid = (payment.downPayment || 0) + installmentsPaid;
   payment.status =
-    totalPaid >= payment.amountDue
+    payment.amountPaid >= payment.amountDue
       ? PAYMENT_STATUS.COMPLETED
       : PAYMENT_STATUS.PARTIAL;
   await payment.save();
 
+  const subscription = await Subscription.findById(payment.subscriptionId);
+  const receipt = await issueReceipt({
+    payment,
+    subscription,
+    amount: paidAmount,
+    type: RECEIPT_TYPE.INSTALLMENT,
+    paymentMode: paymentMode || PAYMENT_MODE.CASH,
+    installment: updated,
+    recordedBy: req.user.userId,
+    note: `Installment #${updated.installmentNumber}${updated.status === INSTALLMENT_STATUS.PAID ? "" : " (part payment)"}`,
+  });
+
   return new ApiResponse(HTTP_STATUS.OK, "Installment marked as paid.", {
-    installment,
+    installment: updated,
+    receiptNumber: receipt?.receiptNumber,
     payment: {
       amountPaid: payment.amountPaid,
       amountDue: payment.amountDue,
@@ -372,6 +472,16 @@ export const cancelSubscription = asyncHandler(async (req, res) => {
   subscription.cancelReason = reason || "Cancelled by admin";
   await subscription.save();
 
+  // Unpaid installments of a cancelled membership are no longer owed —
+  // otherwise they sit in "Pending Installments" (and reminders) forever.
+  await Installment.updateMany(
+    {
+      subscriptionId: subscription._id,
+      status: { $in: [INSTALLMENT_STATUS.PENDING, INSTALLMENT_STATUS.OVERDUE] },
+    },
+    { $set: { status: INSTALLMENT_STATUS.WAIVED } },
+  );
+
   return new ApiResponse(HTTP_STATUS.OK, "Subscription cancelled.", {
     subscription,
   }).send(res);
@@ -386,13 +496,20 @@ export const cancelSubscription = asyncHandler(async (req, res) => {
 // =============================================================================
 
 export const getDashboardStats = asyncHandler(async (req, res) => {
-  const now       = new Date();
+  const now = new Date();
   const sevenDays = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   // Start of current and last month
   const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const endOfLastMonth   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+  const endOfLastMonth = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    0,
+    23,
+    59,
+    59,
+  );
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
 
@@ -410,20 +527,36 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     Subscription.countDocuments({ status: SUBSCRIPTION_STATUS.GRACE }),
 
     Payment.aggregate([
-      { $match: { status: PAYMENT_STATUS.COMPLETED, paidAt: { $gte: startOfThisMonth } } },
+      {
+        $match: {
+          status: { $in: [PAYMENT_STATUS.COMPLETED, PAYMENT_STATUS.PARTIAL] },
+          paidAt: { $gte: startOfThisMonth },
+        },
+      },
       { $group: { _id: null, total: { $sum: "$amountPaid" } } },
     ]).then((r) => r[0]?.total || 0),
 
     Payment.aggregate([
-      { $match: { status: PAYMENT_STATUS.COMPLETED, paidAt: { $gte: startOfLastMonth, $lte: endOfLastMonth } } },
+      {
+        $match: {
+          status: { $in: [PAYMENT_STATUS.COMPLETED, PAYMENT_STATUS.PARTIAL] },
+          paidAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
+        },
+      },
       { $group: { _id: null, total: { $sum: "$amountPaid" } } },
     ]).then((r) => r[0]?.total || 0),
 
-    User.countDocuments({ createdAt: { $gte: startOfThisMonth }, role: "member" }),
-    User.countDocuments({ createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth }, role: "member" }),
+    User.countDocuments({
+      createdAt: { $gte: startOfThisMonth },
+      role: "member",
+    }),
+    User.countDocuments({
+      createdAt: { $gte: startOfLastMonth, $lte: endOfLastMonth },
+      role: "member",
+    }),
 
     Subscription.countDocuments({
-      status : SUBSCRIPTION_STATUS.ACTIVE,
+      status: SUBSCRIPTION_STATUS.ACTIVE,
       endDate: { $gte: now, $lte: sevenDays },
     }),
 
@@ -435,28 +568,37 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   const revenueChart = await Payment.aggregate([
     {
       $match: {
-        status : PAYMENT_STATUS.COMPLETED,
-        paidAt : { $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1) },
+        status: { $in: [PAYMENT_STATUS.COMPLETED, PAYMENT_STATUS.PARTIAL] },
+        paidAt: { $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1) },
       },
     },
     {
       $group: {
-        _id    : { year: { $year: "$paidAt" }, month: { $month: "$paidAt" } },
+        _id: { year: { $year: "$paidAt" }, month: { $month: "$paidAt" } },
         revenue: { $sum: "$amountPaid" },
       },
     },
     { $sort: { "_id.year": 1, "_id.month": 1 } },
   ]).then((rows) =>
     rows.map((r) => ({
-      month  : new Date(r._id.year, r._id.month - 1).toLocaleString("en-IN", { month: "short", year: "numeric" }),
+      month: new Date(r._id.year, r._id.month - 1).toLocaleString("en-IN", {
+        month: "short",
+        year: "numeric",
+      }),
       revenue: r.revenue,
-    }))
+    })),
   );
 
   // ── Plan distribution (active subscriptions) ──────────────────────────────
 
   const planDistribution = await Subscription.aggregate([
-    { $match: { status: { $in: [SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.GRACE] } } },
+    {
+      $match: {
+        status: {
+          $in: [SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.GRACE],
+        },
+      },
+    },
     { $group: { _id: "$planSnapshot.planName", count: { $sum: 1 } } },
     { $sort: { count: -1 } },
   ]).then((rows) => rows.map((r) => ({ plan: r._id, count: r.count })));
@@ -464,7 +606,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   // ── Expiring soon (within 7 days) ─────────────────────────────────────────
 
   const expiringSoon = await Subscription.find({
-    status : SUBSCRIPTION_STATUS.ACTIVE,
+    status: SUBSCRIPTION_STATUS.ACTIVE,
     endDate: { $gte: now, $lte: sevenDays },
   })
     .sort({ endDate: 1 })
@@ -472,6 +614,12 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     .populate("userId", "firstName lastName email phoneNumber userId");
 
   // ── Pending / overdue installments ────────────────────────────────────────
+
+  // Online payments that arrived while the member already had a plan
+  const refundsDue = await Payment.find({ status: PAYMENT_STATUS.REFUND_DUE })
+    .sort({ paidAt: -1 })
+    .limit(20)
+    .populate("userId", "firstName lastName email userId");
 
   const pendingInstallments = await Installment.find({
     status: { $in: [INSTALLMENT_STATUS.PENDING, INSTALLMENT_STATUS.OVERDUE] },
@@ -482,13 +630,20 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
   // ── Revenue trend (month-over-month % change) ─────────────────────────────
 
-  const revenueTrend = revenueLastMonth > 0
-    ? Math.round(((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100)
-    : revenueThisMonth > 0 ? 100 : 0;
+  const revenueTrend =
+    revenueLastMonth > 0
+      ? Math.round(
+          ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100,
+        )
+      : null; // no baseline → frontend hides the badge
 
-  const memberTrend = newMembersLastMonth > 0
-    ? Math.round(((newMembersThisMonth - newMembersLastMonth) / newMembersLastMonth) * 100)
-    : newMembersThisMonth > 0 ? 100 : 0;
+  const memberTrend =
+    newMembersLastMonth > 0
+      ? Math.round(
+          ((newMembersThisMonth - newMembersLastMonth) / newMembersLastMonth) *
+            100,
+        )
+      : null;
 
   return new ApiResponse(HTTP_STATUS.OK, "Dashboard stats retrieved.", {
     kpis: {
@@ -497,15 +652,107 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       totalMembers,
       revenueThisMonth,
       revenueLastMonth,
-      revenueTrend,       // % change vs last month
+      revenueTrend, // % change vs last month
       newMembersThisMonth,
       newMembersLastMonth,
-      memberTrend,        // % change vs last month
+      memberTrend, // % change vs last month
       expiringThisWeek: expiringSoonCount,
     },
     revenueChart,
     planDistribution,
     expiringSoon,
     pendingInstallments,
+    refundsDue,
   }).send(res);
+});
+
+// =============================================================================
+// collectOutstandingBalance
+// POST /api/v1/admin/subscriptions/:id/collect
+// =============================================================================
+// Records an additional payment against an EXISTING active subscription.
+// Used when a member pays part of their outstanding installment balance.
+// Does NOT create a new subscription.
+// =============================================================================
+
+export const collectOutstandingBalance = asyncHandler(async (req, res) => {
+  const { amountPaid, paymentMode, notes } = req.body;
+
+  const subscription = await Subscription.findById(req.params.id);
+  if (!subscription) throw ApiError.notFound("Subscription not found.");
+  if (subscription.status === SUBSCRIPTION_STATUS.CANCELLED) {
+    throw ApiError.conflict("Cannot collect payment on a cancelled membership.");
+  }
+
+  const payment = await Payment.findOne({ subscriptionId: subscription._id });
+  if (!payment) throw ApiError.notFound("Payment record not found.");
+
+  const paidInPaise = Math.round(Number(amountPaid) * 100);
+  if (!paidInPaise || paidInPaise <= 0) {
+    throw ApiError.badRequest("Enter a valid amount.");
+  }
+
+  if (payment.amountPaid + paidInPaise > payment.amountDue) {
+    throw ApiError.badRequest(
+      `Payment of ₹${amountPaid} exceeds the outstanding balance of ₹${(payment.amountDue - payment.amountPaid) / 100}.`,
+    );
+  }
+
+  // If an installment schedule exists, allocate the money to pending
+  // installments (earliest first). payment.amountPaid is always derived as
+  // downPayment + Σ installment.amountPaid — bumping it directly would be
+  // wiped out the next time markInstallmentPaid recomputes the total.
+  const pending = await Installment.find({
+    paymentId: payment._id,
+    status: { $in: [INSTALLMENT_STATUS.PENDING, INSTALLMENT_STATUS.OVERDUE] },
+  }).sort({ installmentNumber: 1 });
+
+  let newAmountPaid;
+  const appliedTo = [];
+  if (pending.length > 0) {
+    let left = paidInPaise;
+    for (const inst of pending) {
+      if (left <= 0) break;
+      const due = inst.amountDue - (inst.amountPaid || 0);
+      const apply = Math.min(due, left);
+      inst.amountPaid = (inst.amountPaid || 0) + apply;
+      inst.paymentMode = paymentMode || PAYMENT_MODE.CASH;
+      inst.recordedBy = req.user.userId;
+      inst.paidAt = new Date();
+      if (inst.amountPaid >= inst.amountDue) inst.status = INSTALLMENT_STATUS.PAID;
+      await inst.save();
+      appliedTo.push(`#${inst.installmentNumber}`);
+      left -= apply;
+    }
+    const all = await Installment.find({ paymentId: payment._id });
+    newAmountPaid =
+      (payment.downPayment || 0) +
+      all.reduce((sum, i) => sum + (i.amountPaid || 0), 0);
+  } else {
+    newAmountPaid = payment.amountPaid + paidInPaise;
+  }
+
+  payment.amountPaid = newAmountPaid;
+  payment.status =
+    newAmountPaid >= payment.amountDue
+      ? PAYMENT_STATUS.COMPLETED
+      : PAYMENT_STATUS.PARTIAL;
+  if (notes) payment.notes = notes;
+  await payment.save();
+
+  const receipt = await issueReceipt({
+    payment,
+    subscription,
+    amount: paidInPaise,
+    type: RECEIPT_TYPE.BALANCE,
+    paymentMode: paymentMode || PAYMENT_MODE.CASH,
+    recordedBy: req.user.userId,
+    note: appliedTo.length ? `Applied to installment ${appliedTo.join(", ")}` : "Balance payment",
+  });
+
+  return new ApiResponse(
+    HTTP_STATUS.OK,
+    `Payment of ₹${amountPaid} recorded (receipt ${receipt?.receiptNumber}). ${newAmountPaid >= payment.amountDue ? "Balance fully cleared." : `Balance remaining: ₹${(payment.amountDue - newAmountPaid) / 100}`}`,
+    { payment, receipt },
+  ).send(res);
 });

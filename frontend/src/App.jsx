@@ -2,7 +2,7 @@
 // src/App.jsx
 // =============================================================================
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { useAuthStore } from "./store/authStore.js";
 import { useAuthInit } from "./hooks/useAuthInit.js";
@@ -20,8 +20,6 @@ import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage.jsx";
 import ForgotOtpPage from "./pages/auth/ForgotOtpPage.jsx";
 import ResetPasswordPage from "./pages/auth/ResetPasswordPage.jsx";
 import ProfilePage from "./pages/profile/ProfilePage.jsx";
-import SessionsPage from "./pages/profile/SessionsPage.jsx";
-import ChangePasswordPage from "./pages/profile/ChangePasswordPage.jsx";
 import { AnimatePresence } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
@@ -128,19 +126,11 @@ function AppContent() {
           />
           <Route
             path="/profile/sessions"
-            element={
-              <ProtectedRoute>
-                <SessionsPage />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/profile" replace />}
           />
           <Route
             path="/profile/change-password"
-            element={
-              <ProtectedRoute>
-                <ChangePasswordPage />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/profile" replace />}
           />
           <Route path="/plans/:slug" element={<PlanDetailPage />} />
           <Route

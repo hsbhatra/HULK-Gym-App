@@ -14,6 +14,7 @@ import { getPlanBySlug } from "../services/planService.js";
 import {
   initiateSubscription,
   verifySubscription,
+  getMyActiveSubscription,
 } from "../services/subscriptionService.js";
 import { scaleIn } from "../utils/animations.js";
 
@@ -43,13 +44,32 @@ export default function PlanDetailPage() {
     fetchPlan();
   }, [slug]);
 
+  // Members who already hold an active plan can't buy another (backend
+  // rejects it). Tell them up front instead of after they click Pay.
+  const [activeSub, setActiveSub] = useState(null);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    getMyActiveSubscription()
+      .then((res) => setActiveSub(res.data.data?.subscription || null))
+      .catch(() => {});
+  }, [isAuthenticated]);
+
   const fetchPlan = async () => {
     try {
       const res = await getPlanBySlug(slug);
-      setPlan(res.data.data.plan);
+      const fetched = res.data.data.plan;
+      setPlan(fetched);
+      // A stale/edited link (?duration=999) must not leave the page with no
+      // tier selected — fall back to monthly, else the first available tier.
+      const tiers = fetched?.pricingTiers || [];
+      if (tiers.length && !tiers.some((t) => t.durationDays === selectedDuration)) {
+        const fallback = tiers.find((t) => t.durationDays === 30) || tiers[0];
+        setSelectedDuration(fallback.durationDays);
+      }
     } catch {
-      toast.error("Plan not found.");
-      navigate("/");
+      // Fixed id → toast is shown once even if the effect runs twice
+      toast.error("Plan not found.", { id: "plan-not-found" });
+      navigate("/#pricing", { replace: true });
     } finally {
       setLoading(false);
     }
@@ -75,7 +95,9 @@ export default function PlanDetailPage() {
   const handlePayNow = async () => {
     if (!isAuthenticated) {
       toast.error("Please login to purchase a membership.");
-      navigate(`/login?redirect=/plans/${slug}?duration=${selectedDuration}`);
+      navigate(
+        `/login?redirect=${encodeURIComponent(`/plans/${slug}?duration=${selectedDuration}`)}`,
+      );
       return;
     }
 
@@ -105,6 +127,9 @@ export default function PlanDetailPage() {
         prefill: {
           name: `${user.firstName} ${user.lastName}`,
           email: user.email,
+          // Without this Razorpay reuses whatever number was last used in
+          // this browser (e.g. another member's) for the payment.
+          ...(user.phoneNumber && { contact: `+91${user.phoneNumber}` }),
         },
         theme: { color: "#e8c44a" },
         modal: {
@@ -118,19 +143,32 @@ export default function PlanDetailPage() {
         handler: async (response) => {
           try {
             // Verify payment on our backend
-            await verifySubscription({
+            const vr = await verifySubscription({
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature,
             });
+            const result = vr.data.data || {};
 
-            // Navigate to success page
+            // Paid again while already having an active plan → refund
+            if (result.duplicate) {
+              toast.error(vr.data.message, { duration: 8000 });
+              navigate("/profile");
+              return;
+            }
+
             navigate(
-              `/subscription/success?plan=${encodeURIComponent(orderData.planName)}&duration=${encodeURIComponent(orderData.durationLabel)}&receipt=${encodeURIComponent(orderData.paymentId)}`,
+              `/subscription/success?plan=${encodeURIComponent(orderData.planName)}&duration=${encodeURIComponent(orderData.durationLabel)}${result.receiptNumber ? `&receipt=${encodeURIComponent(result.receiptNumber)}` : ""}`,
             );
           } catch (err) {
+            // Money may already be deducted — reassure instead of alarming.
+            // Clicking Pay again is safe: the server checks Razorpay first and
+            // activates the earlier payment rather than charging twice.
             toast.error(
-              err.response?.data?.message || "Payment verification failed.",
+              err.response?.status === 401 && /Signature/i.test(err.response?.data?.message || "")
+                ? "Payment could not be verified. If money was deducted, contact the gym with your transaction ID."
+                : "We couldn't confirm your payment yet. If money was deducted, do NOT pay again — just click Pay once more and we'll find it, or check My Profile in a minute.",
+              { duration: 10000 },
             );
             setPaying(false);
           }
@@ -145,7 +183,16 @@ export default function PlanDetailPage() {
       rzp.open();
     } catch (err) {
       const msg = err.response?.data?.message || "Failed to initiate payment.";
-      toast.error(msg);
+      if (err.response?.status === 409) {
+        // Already active (or an earlier payment was just recovered) —
+        // refresh so the page shows the membership and disables Pay.
+        toast.success(msg, { duration: 6000 });
+        getMyActiveSubscription()
+          .then((r) => setActiveSub(r.data.data?.subscription || null))
+          .catch(() => {});
+      } else {
+        toast.error(msg);
+      }
       setPaying(false);
     }
   };
@@ -476,10 +523,43 @@ export default function PlanDetailPage() {
                 </p>
               </div>
 
+              {activeSub && (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    marginBottom: "12px",
+                    background: "rgba(34,197,94,0.08)",
+                    border: "1px solid rgba(34,197,94,0.2)",
+                    fontSize: "13px",
+                    color: "rgba(255,255,255,0.7)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  You already have an active{" "}
+                  <strong style={{ color: "#22c55e" }}>
+                    {activeSub.planSnapshot?.planName}
+                  </strong>{" "}
+                  membership until{" "}
+                  {new Date(activeSub.endDate).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                  . You can purchase a new plan after it expires.{" "}
+                  <span
+                    onClick={() => navigate("/profile")}
+                    style={{ color: "#e8c44a", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    View my membership
+                  </span>
+                </div>
+              )}
+
               {/* Pay button */}
               <button
                 onClick={handlePayNow}
-                disabled={paying || !razorpayReady}
+                disabled={paying || !razorpayReady || !!activeSub || !tier}
                 className="btn-gold"
                 style={{
                   fontSize: "15px",

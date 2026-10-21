@@ -3,103 +3,109 @@
 // =============================================================================
 
 import mongoose from "mongoose";
-import {
-  PAYMENT_STATUS,
-  PAYMENT_MODE,
-  RECEIPT_PREFIX,
-} from "../utils/constants.js";
+import { PAYMENT_STATUS, PAYMENT_MODE } from "../utils/constants.js";
 
 const paymentSchema = new mongoose.Schema(
   {
     userId: {
-      type    : mongoose.Schema.Types.ObjectId,
-      ref     : "User",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: [true, "userId is required"],
-      index   : true,
+      index: true,
     },
 
     subscriptionId: {
-      type    : mongoose.Schema.Types.ObjectId,
-      ref     : "Subscription",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subscription",
       required: [true, "subscriptionId is required"],
     },
 
     planId: {
-      type    : mongoose.Schema.Types.ObjectId,
-      ref     : "MembershipPlan",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "MembershipPlan",
       required: [true, "planId is required"],
     },
 
     // Auto-generated receipt number e.g. "ATM-2026-00001"
+    // First receipt issued for this membership. Set only when money is
+    // actually received (see services/receipt.service.js) — pending
+    // checkouts have none, hence sparse. Every individual payment also gets
+    // its own Receipt document.
     receiptNumber: {
-      type  : String,
+      type: String,
       unique: true,
-      // Generated in the payment service before saving
+      sparse: true,
     },
 
     // Total amount the member should pay (full plan price in paise)
     amountDue: {
-      type    : Number,
+      type: Number,
       required: [true, "amountDue is required"],
-      min     : [0, "Amount cannot be negative"],
+      min: [0, "Amount cannot be negative"],
     },
 
     // Amount actually received so far (in paise)
     // For full payments: amountPaid === amountDue
     // For partial: amountPaid < amountDue
     amountPaid: {
-      type   : Number,
+      type: Number,
       default: 0,
-      min    : [0, "Amount cannot be negative"],
+      min: [0, "Amount cannot be negative"],
+    },
+
+    // Amount paid at the time of subscription creation (for installment plans)
+    downPayment: {
+      type: Number,
+      default: 0,
     },
 
     currency: {
-      type   : String,
+      type: String,
       default: "INR",
     },
 
     status: {
-      type   : String,
-      enum   : Object.values(PAYMENT_STATUS),
+      type: String,
+      enum: Object.values(PAYMENT_STATUS),
       default: PAYMENT_STATUS.PENDING,
-      index  : true,
+      index: true,
     },
 
     paymentMode: {
-      type    : String,
-      enum    : Object.values(PAYMENT_MODE),
+      type: String,
+      enum: Object.values(PAYMENT_MODE),
       required: [true, "paymentMode is required"],
     },
 
     // ── Online Payment Fields (Razorpay) ──────────────────────────────────────
     // Only populated for online payments
     razorpay: {
-      orderId  : { type: String, default: null },  // order_XXXXXXXXXX
-      paymentId: { type: String, default: null },  // pay_XXXXXXXXXX
-      signature: { type: String, default: null },  // HMAC signature
-      method   : { type: String, default: null },  // "upi", "card", "netbanking"
+      orderId: { type: String, default: null }, // order_XXXXXXXXXX
+      paymentId: { type: String, default: null }, // pay_XXXXXXXXXX
+      signature: { type: String, default: null }, // HMAC signature
+      method: { type: String, default: null }, // "upi", "card", "netbanking"
     },
 
     // ── Offline Payment Fields ────────────────────────────────────────────────
     // Only populated for cash/offline payments recorded by admin
     recordedBy: {
-      type   : mongoose.Schema.Types.ObjectId,
-      ref    : "User",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       default: null,
       // The admin who recorded this payment
     },
 
     paidAt: {
-      type   : Date,
+      type: Date,
       default: null,
       // For online: set when Razorpay webhook confirms payment
       // For offline: set by admin when recording payment
     },
 
     notes: {
-      type   : String,
+      type: String,
       default: null,
-      trim   : true,
+      trim: true,
     },
   },
   {
@@ -112,7 +118,7 @@ const paymentSchema = new mongoose.Schema(
         return ret;
       },
     },
-  }
+  },
 );
 
 // =============================================================================
@@ -121,34 +127,6 @@ const paymentSchema = new mongoose.Schema(
 
 paymentSchema.index({ userId: 1, createdAt: -1 });
 paymentSchema.index({ "razorpay.orderId": 1 });
-
-// =============================================================================
-// Static Method: generateReceiptNumber()
-// =============================================================================
-// Generates sequential receipt numbers: ATM-2026-00001, ATM-2026-00002 etc.
-// Resets sequence each year.
-// =============================================================================
-
-paymentSchema.statics.generateReceiptNumber = async function () {
-  const year = new Date().getFullYear();
-  const prefix = `${RECEIPT_PREFIX}-${year}-`;
-
-  // Find the last receipt number for this year
-  const lastPayment = await this.findOne(
-    { receiptNumber: { $regex: `^${prefix}` } },
-    { receiptNumber: 1 },
-    { sort: { createdAt: -1 } }
-  );
-
-  let nextNumber = 1;
-  if (lastPayment && lastPayment.receiptNumber) {
-    const lastNumber = parseInt(lastPayment.receiptNumber.split("-").pop(), 10);
-    nextNumber = lastNumber + 1;
-  }
-
-  // Pad to 5 digits: 00001, 00002 etc.
-  return `${prefix}${String(nextNumber).padStart(5, "0")}`;
-};
 
 const Payment = mongoose.model("Payment", paymentSchema);
 

@@ -9,7 +9,7 @@ const validate = (schema) => (req, res, next) => {
 
   if (error) {
     const messages = error.details.map((d) => d.message);
-    return next(ApiError.badRequest("Validation failed", messages));
+    return next(ApiError.badRequest(messages[0] || "Validation failed", messages));
   }
 
   next();

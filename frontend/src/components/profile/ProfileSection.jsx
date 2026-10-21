@@ -15,23 +15,55 @@ export default function ProfileSection({ user, onUpdate }) {
   const fileInputRef = useRef(null);
   const setStoreUser = useAuthStore((s) => s.setUser);
 
-  const [form, setForm] = useState({
-    firstName: user.firstName || "",
-    lastName: user.lastName || "",
-    height: user.height || "",
-    weight: user.weight || "",
-    dateOfBirth: user.dateOfBirth ? user.dateOfBirth.split("T")[0] : "",
-    gender: user.gender || "",
-    bio: user.bio || "",
+  const formFromUser = (u) => ({
+    firstName: u.firstName || "",
+    lastName: u.lastName || "",
+    height: u.height || "",
+    weight: u.weight || "",
+    dateOfBirth: u.dateOfBirth ? u.dateOfBirth.split("T")[0] : "",
+    gender: u.gender || "",
+    bio: u.bio || "",
   });
+  const [form, setForm] = useState(() => formFromUser(user));
+  const today = new Date().toISOString().split("T")[0];
+
+  // Discard unsaved edits — otherwise the cancelled values stay on screen
+  // and look like they were saved.
+  const handleCancel = () => {
+    setForm(formFromUser(user));
+    setEditing(false);
+  };
+
+  // Catch obvious mistakes before hitting the API
+  const validateForm = (f) => {
+    const nameRe = /^[A-Za-z][A-Za-z .'-]*$/;
+    for (const [key, label] of [["firstName", "First name"], ["lastName", "Last name"]]) {
+      const v = f[key].trim();
+      if (v.length < 2) return `${label} must be at least 2 characters`;
+      if (!nameRe.test(v)) return `${label} can only contain letters`;
+    }
+    if (f.height !== "" && (Number(f.height) < 50 || Number(f.height) > 300))
+      return "Height must be between 50 and 300 cm";
+    if (f.weight !== "" && (Number(f.weight) < 20 || Number(f.weight) > 500))
+      return "Weight must be between 20 and 500 kg";
+    if (f.dateOfBirth && f.dateOfBirth > today)
+      return "Date of birth cannot be in the future";
+    return null;
+  };
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSave = async () => {
+    const problem = validateForm(form);
+    if (problem) return toast.error(problem);
     setSaving(true);
     try {
-      const payload = { ...form };
+      const payload = {
+        ...form,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+      };
       if (!payload.height) delete payload.height;
       if (!payload.weight) delete payload.weight;
       if (!payload.dateOfBirth) delete payload.dateOfBirth;
@@ -308,7 +340,7 @@ export default function ProfileSection({ user, onUpdate }) {
             ) : (
               <div style={{ display: "flex", gap: "8px" }}>
                 <button
-                  onClick={() => setEditing(false)}
+                  onClick={handleCancel}
                   style={{
                     padding: "7px 14px",
                     borderRadius: "8px",
@@ -451,6 +483,8 @@ export default function ProfileSection({ user, onUpdate }) {
               <input
                 type="number"
                 name="height"
+                min={50}
+                max={300}
                 value={form.height}
                 onChange={handleChange}
                 disabled={!editing}
@@ -472,6 +506,8 @@ export default function ProfileSection({ user, onUpdate }) {
               <input
                 type="number"
                 name="weight"
+                min={20}
+                max={500}
                 value={form.weight}
                 onChange={handleChange}
                 disabled={!editing}
@@ -493,6 +529,7 @@ export default function ProfileSection({ user, onUpdate }) {
               <input
                 type="date"
                 name="dateOfBirth"
+                max={today}
                 value={form.dateOfBirth}
                 onChange={handleChange}
                 disabled={!editing}

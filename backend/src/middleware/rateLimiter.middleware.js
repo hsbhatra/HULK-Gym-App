@@ -23,7 +23,7 @@ export const authLimiter = rateLimit({
 // 3 requests per 10 minutes per IP
 export const otpLimiter = rateLimit({
   windowMs       : 10 * 60 * 1000, // 10 minutes
-  max            : 3,
+  max            : 5,
   message        : {
     success   : false,
     statusCode: 429,

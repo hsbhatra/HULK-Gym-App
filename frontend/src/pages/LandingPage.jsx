@@ -51,6 +51,20 @@ const SectionLabel = ({ text }) => (
 export default function LandingPage() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const authUser = useAuthStore((s) => s.user);
+  const isAdmin = authUser?.role === "admin";
+
+  // Logged-in visitors must not be sent to /register or /login —
+  // PublicRoute bounces them straight back here, so the click looks broken.
+  const scrollToPricing = () =>
+    document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+  const handlePrimaryCta = () =>
+    isAuthenticated ? scrollToPricing() : navigate("/register");
+  const handleSecondaryCta = () =>
+    navigate(isAuthenticated ? (isAdmin ? "/admin" : "/profile") : "/login");
+  const secondaryCtaLabel = isAuthenticated
+    ? isAdmin ? "Admin Dashboard" : "My Profile"
+    : null;
 
   const [plans, setPlans] = useState([]);
   const [plansLoading, setPlansLoading] = useState(true);
@@ -251,11 +265,15 @@ export default function LandingPage() {
         className="hero-section"
         style={{
           position: "relative",
-          height: "100vh",
+          // minHeight (not height): on short laptop screens the hero content is
+          // taller than 100vh and used to overflow under the Programs section,
+          // making the hero buttons unclickable.
+          minHeight: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          paddingTop: "350px",
+          paddingTop: "110px",
+          paddingBottom: "60px",
         }}
       >
         <div
@@ -363,7 +381,7 @@ export default function LandingPage() {
 
           <motion.div variants={heroItem} className="hero-cta">
             <button
-              onClick={() => navigate("/register")}
+              onClick={handlePrimaryCta}
               className="btn-gold"
               style={{
                 width: "auto",
@@ -372,14 +390,14 @@ export default function LandingPage() {
                 letterSpacing: "0.5px",
               }}
             >
-              Start Free Today →
+              {isAuthenticated ? "View Membership Plans →" : "Start Free Today →"}
             </button>
             <button
-              onClick={() => navigate("/login")}
+              onClick={handleSecondaryCta}
               className="btn-ghost"
               style={{ padding: "15px 36px", fontSize: "15px" }}
             >
-              Member Login
+              {secondaryCtaLabel || "Member Login"}
             </button>
           </motion.div>
 
@@ -474,9 +492,9 @@ export default function LandingPage() {
               paddingTop: "250px",
             }}
           >
-            <motion.p variants={labelReveal}>
+            <motion.div variants={labelReveal}>
               <SectionLabel text="Training Programs" />
-            </motion.p>
+            </motion.div>
             <motion.h2
               // scrollFadeUp
               variants={scrollFadeUp}
@@ -841,7 +859,7 @@ export default function LandingPage() {
                 maintained to perfection so your workout is never compromised.
               </p>
               <button
-                onClick={() => navigate("/register")}
+                onClick={handlePrimaryCta}
                 className="btn-gold"
                 style={{
                   width: "auto",
@@ -1098,6 +1116,26 @@ export default function LandingPage() {
                       >
                         / {pricing.label.toLowerCase()}
                       </span>
+                      {(() => {
+                        // Per-month equivalent + savings vs paying monthly
+                        if (selectedDuration === 30) return null;
+                        const months = selectedDuration === 365 ? 12 : selectedDuration / 30;
+                        const monthly = getPriceForDuration(plan, 30);
+                        const perMonth = Math.round(pricing.price / 100 / months);
+                        const savings = monthly
+                          ? Math.round((monthly.price * months - pricing.price) / 100)
+                          : 0;
+                        return (
+                          <div style={{ marginTop: "8px", fontSize: "13px", color: "rgba(255,255,255,0.45)" }}>
+                            ≈ ₹{perMonth.toLocaleString("en-IN")}/month
+                            {savings > 0 && (
+                              <span style={{ marginLeft: "8px", color: "#22c55e", fontWeight: "600" }}>
+                                Save ₹{savings.toLocaleString("en-IN")}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <div
@@ -1366,7 +1404,7 @@ export default function LandingPage() {
                 }}
               >
                 <button
-                  onClick={() => navigate("/register")}
+                  onClick={handlePrimaryCta}
                   className="btn-gold"
                   style={{
                     width: "auto",
@@ -1374,14 +1412,14 @@ export default function LandingPage() {
                     fontSize: "15px",
                   }}
                 >
-                  Create Free Account
+                  {isAuthenticated ? "Choose Your Plan" : "Create Free Account"}
                 </button>
                 <button
-                  onClick={() => navigate("/login")}
+                  onClick={handleSecondaryCta}
                   className="btn-ghost"
                   style={{ padding: "15px 32px", fontSize: "15px" }}
                 >
-                  Already a member?
+                  {secondaryCtaLabel || "Already a member?"}
                 </button>
               </div>
             </div>

@@ -93,7 +93,7 @@ export default function AdminPlansPage() {
         />
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px", gap: "12px", flexWrap: "wrap" }}>
         <div>
           <h1 style={{ fontSize: "22px", fontWeight: "700", marginBottom: "4px" }}>Membership Plans</h1>
           <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}>
@@ -144,7 +144,7 @@ export default function AdminPlansPage() {
               </div>
 
               {/* Actions */}
-              <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 {plan.status !== "archived" && (
                   <button onClick={() => handleToggleStatus(plan)}
                     style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: "12px", cursor: "pointer" }}>
@@ -159,6 +159,12 @@ export default function AdminPlansPage() {
                   <button onClick={() => setConfirmArchive(plan)}
                     style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)", background: "transparent", color: "#ef4444", fontSize: "12px", cursor: "pointer" }}>
                     Archive
+                  </button>
+                )}
+                {plan.status === "archived" && (
+                  <button onClick={() => handleToggleStatus({ ...plan, status: "inactive" })}
+                    style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(34,197,94,0.25)", background: "rgba(34,197,94,0.08)", color: "#22c55e", fontSize: "12px", cursor: "pointer" }}>
+                    Restore
                   </button>
                 )}
               </div>

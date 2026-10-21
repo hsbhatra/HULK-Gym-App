@@ -1,20 +1,39 @@
-// =============================================================================
-// src/components/layout/ProtectedRoute.jsx
-// =============================================================================
-
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore.js";
 
-// Wraps pages that require login
-// If not authenticated → redirect to /login
-export const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-};
+export function ProtectedRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const manualLogout    = useAuthStore((s) => s.manualLogout);
+  const location        = useLocation();
 
-// Wraps pages that should NOT be accessible when logged in
-// (login, register) — if already authenticated → redirect to home
-export const PublicRoute = ({ children }) => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  return !isAuthenticated ? children : <Navigate to="/" replace />;
-};
+  if (!isAuthenticated) {
+    if (manualLogout) return null;
+    return (
+      <Navigate
+        to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`}
+        replace
+      />
+    );
+  }
+
+  return children;
+}
+
+// Same-app paths only ("/x") — never "//host" or "https://…"
+const safePath = (p) => (p && p.startsWith("/") && !p.startsWith("//") ? p : null);
+
+export function PublicRoute({ children }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user            = useAuthStore((s) => s.user);
+  const [searchParams]  = useSearchParams();
+
+  if (isAuthenticated) {
+    // This fires the moment login succeeds, so it must honour ?redirect=
+    // (otherwise it races the page's own navigate() and wins with "/").
+    const target =
+      safePath(searchParams.get("redirect")) ||
+      (user?.role === "admin" ? "/admin" : "/");
+    return <Navigate to={target} replace />;
+  }
+  return children;
+}

@@ -38,7 +38,7 @@ export default function SessionsSection({ onLogout }) {
     setConfirm(null);
     try {
       await logoutUser();
-      storeLogout();
+      storeLogout({ manual: true });
       toast.success("Session ended. Please log in again.");
       navigate("/login");
     } catch {
@@ -52,7 +52,7 @@ export default function SessionsSection({ onLogout }) {
     setConfirm(null);
     try {
       await logoutAllDevices();
-      storeLogout();
+      storeLogout({ manual: true });
       toast.success("Logged out from all devices.");
       navigate("/login");
     } catch {

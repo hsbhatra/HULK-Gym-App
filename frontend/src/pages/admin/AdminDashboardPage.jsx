@@ -18,6 +18,14 @@ import toast from "react-hot-toast";
 const formatCurrency = (paise) =>
   `₹${(paise / 100).toLocaleString("en-IN")}`;
 
+// Chart values are in paise → show compact rupees: ₹500, ₹12k, ₹1.5L
+const formatAxisRupees = (paise) => {
+  const r = paise / 100;
+  if (r >= 100000) return `₹${+(r / 100000).toFixed(1)}L`;
+  if (r >= 1000) return `₹${+(r / 1000).toFixed(1)}k`;
+  return `₹${Math.round(r)}`;
+};
+
 const formatDate = (date) =>
   new Date(date).toLocaleDateString("en-IN", {
     day: "numeric", month: "short", year: "numeric",
@@ -32,7 +40,8 @@ const DONUT_COLORS = ["#e8c44a", "#a78bfa", "#22c55e", "#f97316", "#60a5fa"];
 
 function KpiCard({ icon, label, value, sub, trend, loading }) {
   const trendPositive = trend > 0;
-  const trendNeutral  = trend === 0 || trend === undefined;
+  // null = no baseline last month → a % change would be meaningless
+  const trendNeutral  = trend == null || trend === 0;
 
   return (
     <motion.div
@@ -198,6 +207,46 @@ export default function AdminDashboardPage() {
         />
       </div>
 
+      {/* ── Refunds due (duplicate online payments) ── */}
+      {data?.refundsDue?.length > 0 && (
+        <div style={{ padding: "20px 24px", borderRadius: "16px", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.25)", marginBottom: "28px" }}>
+          <p style={{ ...sectionLabel, color: "#ef4444" }}>⚠ Refunds Due — Duplicate Payments</p>
+          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)", margin: "-6px 0 14px" }}>
+            These members paid online while already having an active plan. No extra membership was given —
+            click a payment ID to open it in Razorpay, then use "Issue refund".
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {data.refundsDue.map((p) => (
+              <div key={p._id}
+                onClick={() => navigate(`/admin/members/${p.userId?._id || ""}`)}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", padding: "10px 14px", borderRadius: "10px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(239,68,68,0.2)", cursor: "pointer" }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: "600" }}>
+                    {p.userId?.firstName} {p.userId?.lastName}
+                  </p>
+                  <p style={{ margin: 0, fontSize: "11px", color: "rgba(255,255,255,0.4)", wordBreak: "break-all" }}>
+                    {/* Direct link — Razorpay's own dashboard search is unreliable */}
+                    <a
+                      href={`https://dashboard.razorpay.com/app/payments/${p.razorpay?.paymentId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ color: "#60a5fa", textDecoration: "underline" }}
+                    >
+                      {p.razorpay?.paymentId} ↗
+                    </a>{" "}
+                    · {p.paidAt ? formatDate(p.paidAt) : ""}
+                  </p>
+                </div>
+                <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#ef4444" }}>
+                  {formatCurrency(p.amountPaid)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Charts ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "28px" }}
         className="dashboard-charts">
@@ -217,7 +266,7 @@ export default function AdminDashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="month" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false}
-                  tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
+                  tickFormatter={formatAxisRupees} />
                 <Tooltip content={<RevenueTooltip />} cursor={{ fill: "rgba(232,196,74,0.06)" }} />
                 <Bar dataKey="revenue" fill="#e8c44a" radius={[4, 4, 0, 0]} maxBarSize={48} />
               </BarChart>
@@ -318,7 +367,7 @@ export default function AdminDashboardPage() {
                 const color     = isOverdue ? "#ef4444" : "#f97316";
                 return (
                   <div key={inst._id}
-                    onClick={() => navigate("/admin/members")}
+                    onClick={() => navigate(`/admin/members/${inst.userId?._id || ""}`)}
                     style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: "10px", background: "rgba(255,255,255,0.02)", border: `1px solid ${color}22`, cursor: "pointer" }}>
                     <div>
                       <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: "600" }}>

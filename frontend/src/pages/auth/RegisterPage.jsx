@@ -170,6 +170,10 @@ export default function RegisterPage() {
                 {...register("firstName", {
                   required: "Required",
                   minLength: { value: 2, message: "Min 2 chars" },
+                  pattern: {
+                    value: /^\s*[A-Za-z][A-Za-z .'-]*\s*$/,
+                    message: "Letters only",
+                  },
                 })}
               />
               {errors.firstName && (
@@ -205,6 +209,10 @@ export default function RegisterPage() {
                 {...register("lastName", {
                   required: "Required",
                   minLength: { value: 2, message: "Min 2 chars" },
+                  pattern: {
+                    value: /^\s*[A-Za-z][A-Za-z .'-]*\s*$/,
+                    message: "Letters only",
+                  },
                 })}
               />
               {errors.lastName && (

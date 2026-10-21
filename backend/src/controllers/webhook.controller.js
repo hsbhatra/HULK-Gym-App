@@ -5,8 +5,7 @@
 import crypto from "crypto";
 import asyncHandler from "../utils/asyncHandler.js";
 import Payment from "../models/payment.model.js";
-import Subscription from "../models/subscription.model.js";
-import { sendPaymentReceipt } from "../services/email/paymentEmail.service.js";
+import { completeOnlinePayment } from "../services/subscription.service.js";
 import { SUBSCRIPTION_STATUS, PAYMENT_STATUS } from "../utils/constants.js";
 
 // =============================================================================
@@ -25,6 +24,10 @@ import { SUBSCRIPTION_STATUS, PAYMENT_STATUS } from "../utils/constants.js";
 export const razorpayWebhook = asyncHandler(async (req, res) => {
   const webhookSignature = req.headers["x-razorpay-signature"];
   const webhookSecret    = process.env.RAZORPAY_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error("RAZORPAY_WEBHOOK_SECRET is not set — webhook ignored. Add it to .env and restart.");
+    return res.status(500).json({ success: false, message: "Webhook not configured" });
+  }
 
   // Verify this request genuinely came from Razorpay
   const expectedSignature = crypto
@@ -32,7 +35,11 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
     .update(req.body) // raw buffer, not parsed JSON
     .digest("hex");
 
-  if (expectedSignature !== webhookSignature) {
+  const sigOk =
+    typeof webhookSignature === "string" &&
+    webhookSignature.length === expectedSignature.length &&
+    crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(webhookSignature));
+  if (!sigOk) {
     console.error("Webhook signature mismatch — possible spoofed request");
     return res.status(400).json({ success: false, message: "Invalid signature" });
   }
@@ -44,38 +51,20 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
   // ── payment.captured / order.paid — activate the subscription ──────────────
   if (event.event === "payment.captured" || event.event === "order.paid") {
     const paymentEntity = event.payload.payment.entity;
-    const orderId        = paymentEntity.order_id;
-    const paymentId       = paymentEntity.id;
-
-    const payment = await Payment.findOne({ "razorpay.orderId": orderId });
-
-    // Idempotent — skip if already processed (avoids double-processing when
-    // both the frontend verify call AND this webhook fire close together)
-    if (payment && payment.status !== PAYMENT_STATUS.COMPLETED) {
-      payment.status              = PAYMENT_STATUS.COMPLETED;
-      payment.amountPaid          = payment.amountDue;
-      payment.razorpay.paymentId  = paymentId;
-      payment.razorpay.method     = paymentEntity.method;
-      payment.paidAt              = new Date();
-      await payment.save();
-
-      const subscription = await Subscription.findById(payment.subscriptionId).populate("userId");
-
-      if (subscription && subscription.status !== SUBSCRIPTION_STATUS.ACTIVE) {
-        subscription.status      = SUBSCRIPTION_STATUS.ACTIVE;
-        subscription.activatedAt = new Date();
-        await subscription.save();
-
-        try {
-          await sendPaymentReceipt(subscription.userId, subscription, payment);
-        } catch (err) {
-          console.error("Webhook email send failed:", err.message);
-        }
-      }
+    try {
+      // Same code path as frontend verify — atomic, idempotent, issues the
+      // receipt + email once, and flags duplicates as REFUND_DUE.
+      await completeOnlinePayment({
+        orderId          : paymentEntity.order_id,
+        razorpayPaymentId: paymentEntity.id,
+        method           : paymentEntity.method,
+      });
+    } catch (err) {
+      // Unknown order (e.g. created by another app on the same account)
+      console.error("Webhook completion skipped:", err.message);
     }
   }
 
-  // ── payment.failed — mark as failed ─────────────────────────────────────────
   if (event.event === "payment.failed") {
     const paymentEntity = event.payload.payment.entity;
     const orderId = paymentEntity.order_id;
