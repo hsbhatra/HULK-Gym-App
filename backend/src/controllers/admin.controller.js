@@ -50,7 +50,10 @@ export const searchMembers = asyncHandler(async (req, res) => {
 
     // Phone: accept "+91 98765-43210", "098765 43210", etc.
     if (/^[+\d\s-]+$/.test(trimmed)) {
-      const digits = trimmed.replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "");
+      let digits = trimmed.replace(/\D/g, "");
+      // Strip country code / trunk 0 even for partial numbers ("+91 70…")
+      if (/^\s*\+\s*91/.test(trimmed)) digits = digits.replace(/^91/, "");
+      else digits = digits.replace(/^(91|0)(?=\d{10}$)/, "");
       if (digits) orConditions.push({ phoneNumber: rx(digits) });
     }
 
