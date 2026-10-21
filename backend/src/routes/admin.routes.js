@@ -4,6 +4,7 @@
 
 import { Router } from "express";
 import authenticate from "../middleware/auth/authenticate.middleware.js";
+import sessionGuard from "../middleware/auth/sessionGuard.middleware.js";
 import authorize from "../middleware/auth/authorize.middleware.js";
 
 import {
@@ -14,6 +15,7 @@ import {
   getAllSubscriptions,
   cancelSubscription,
   getDashboardStats,
+  collectOutstandingBalance,
 } from "../controllers/admin.controller.js";
 
 const router = Router();
@@ -24,8 +26,8 @@ const router = Router();
 //   res.json({ success: true });
 // });
 
-// All admin routes require authentication + admin role
-router.use(authenticate, authorize("admin"));
+// All admin routes require authentication + session guard + admin role
+router.use(authenticate, sessionGuard, authorize("admin"));
 
 // Dashboard
 router.get("/dashboard", getDashboardStats);
@@ -38,6 +40,7 @@ router.get("/members/:id", getMemberProfile);
 router.get("/subscriptions", getAllSubscriptions);
 router.post("/subscriptions/offline", recordOfflinePayment);
 router.patch("/subscriptions/:id/cancel", cancelSubscription);
+router.post("/subscriptions/:id/collect", collectOutstandingBalance);
 
 // Installments
 router.patch("/installments/:id", markInstallmentPaid);

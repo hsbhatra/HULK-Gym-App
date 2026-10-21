@@ -124,6 +124,9 @@ export const PAYMENT_STATUS = {
   COMPLETED: "completed",
   PARTIAL: "partial",
   FAILED: "failed",
+  // Paid online while the member already had an active plan — money was
+  // captured but no membership was given; admin must refund it.
+  REFUND_DUE: "refund_due",
 };
 
 export const PAYMENT_MODE = {

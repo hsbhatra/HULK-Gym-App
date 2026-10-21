@@ -2,11 +2,10 @@
 // src/pages/auth/LoginPage.jsx
 // =============================================================================
 
-import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import * as THREE from "three";
 import { useAuthStore } from "../../store/authStore.js";
 import { loginUser } from "../../services/authService.js";
 import ParticleBackground from "../../components/three/ParticleBackground.jsx";
@@ -22,6 +21,7 @@ export default function LoginPage() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [searchParams] = useSearchParams();
 
   const {
     register,
@@ -36,7 +36,15 @@ export default function LoginPage() {
       const { user, accessToken } = res.data.data;
       setAuth(user, accessToken);
       toast.success(`Welcome back, ${user.firstName}! 💪`);
-      navigate("/");
+      // Only allow same-app paths ("/x"), never "//host" or "https://…"
+      const redirect = searchParams.get("redirect");
+      const safeRedirect =
+        redirect && redirect.startsWith("/") && !redirect.startsWith("//")
+          ? redirect
+          : null;
+      navigate(safeRedirect || (user.role === "admin" ? "/admin" : "/"), {
+        replace: true,
+      });
     } catch (err) {
       const msg =
         err.response?.data?.message || "Login failed. Please try again.";

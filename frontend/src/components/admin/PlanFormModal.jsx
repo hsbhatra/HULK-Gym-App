@@ -61,9 +61,7 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
   };
 
   const handleTierPriceChange = (index, value) => {
-    const updated = [...tiers];
-    updated[index].price = value;
-    setTiers(updated);
+    setTiers(tiers.map((t, i) => (i === index ? { ...t, price: value } : t)));
   };
 
   const handleFeatureChange = (index, value) => {
@@ -103,6 +101,10 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
           durationDays: t.durationDays,
           label       : t.label,
           price       : Math.round(parseFloat(t.price) * 100), // ₹ → paise
+          // Keep any existing offer — rebuilding tiers without these fields
+          // silently deleted offers every time a plan was edited.
+          ...(t.offerPrice != null && { offerPrice: t.offerPrice }),
+          ...(t.offerValidUntil != null && { offerValidUntil: t.offerValidUntil }),
         })),
         features: features.filter((f) => f.trim()),
       };
@@ -187,6 +189,24 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
                     onChange={(e) => handleTierPriceChange(i, e.target.value)}
                     placeholder="0" />
                   {errors[`tier_${i}`] && <p style={{ fontSize: "11px", color: "#ef4444", marginTop: "4px" }}>{errors[`tier_${i}`]}</p>}
+                  {(() => {
+                    // Warn (don't block) when a longer plan costs more than
+                    // paying monthly for the same period
+                    const monthly = parseFloat(tiers.find((x) => x.durationDays === 30)?.price);
+                    const price = parseFloat(t.price);
+                    if (t.durationDays === 30 || !monthly || !price) return null;
+                    const months = t.durationDays === 365 ? 12 : t.durationDays / 30;
+                    const asMonthly = monthly * months;
+                    return price >= asMonthly ? (
+                      <p style={{ fontSize: "11px", color: "#f97316", marginTop: "4px" }}>
+                        ⚠ Not cheaper than monthly (₹{asMonthly.toLocaleString("en-IN")})
+                      </p>
+                    ) : (
+                      <p style={{ fontSize: "11px", color: "#22c55e", marginTop: "4px" }}>
+                        Saves ₹{Math.round(asMonthly - price).toLocaleString("en-IN")} vs monthly
+                      </p>
+                    );
+                  })()}
                 </div>
               ))}
             </div>

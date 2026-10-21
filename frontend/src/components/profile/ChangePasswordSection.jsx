@@ -61,7 +61,7 @@ export default function ChangePasswordSection() {
         confirmNewPassword: formData.confirmNewPassword,
       });
       toast.success("Password changed! Please log in again.");
-      storeLogout();
+      storeLogout({ manual: true });
       navigate("/login");
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to change password.");

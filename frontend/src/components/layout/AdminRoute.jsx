@@ -9,15 +9,24 @@
 // logged in, they just don't have permission).
 // =============================================================================
 
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore.js";
 
 export default function AdminRoute({ children }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user             = useAuthStore((s) => s.user);
 
+  const manualLogout     = useAuthStore((s) => s.manualLogout);
+  const location         = useLocation();
+
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    if (manualLogout) return null;
+    return (
+      <Navigate
+        to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`}
+        replace
+      />
+    );
   }
 
   if (user?.role !== "admin") {

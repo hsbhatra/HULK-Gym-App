@@ -29,6 +29,6 @@ router.get("/refresh-token", refreshToken);
 
 router.post("/logout", authenticate, sessionGuard, logout);
 router.post("/logout-all", authenticate, sessionGuard, logoutAllDevices);
-router.get("/sessions", authenticate, getSessions);
+router.get("/sessions", authenticate, sessionGuard, getSessions);
 
 export default router;

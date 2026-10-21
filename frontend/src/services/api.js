@@ -76,7 +76,13 @@ api.interceptors.response.use(
 
     // Only handle 401 errors that haven't been retried yet
     // _retry flag prevents infinite retry loops
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // A 401 from login/register/OTP/password endpoints means "wrong
+    // credentials", not "session expired" — let the page show the error
+    // instead of attempting a refresh and hard-reloading /login.
+    const url = originalRequest?.url || "";
+    const isAuthEndpoint = /\/auth\/(login|register|verify|resend|forgot|reset|refresh)/.test(url);
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       // If a refresh is already in progress, queue this request
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
@@ -118,7 +124,11 @@ api.interceptors.response.use(
         // Log the user out completely
         processQueue(refreshError, null);
         useAuthStore.getState().logout();
-        window.location.href = "/login";
+        // Keep the user's place so they return to it after logging in
+        const here = window.location.pathname + window.location.search;
+        if (!window.location.pathname.startsWith("/login")) {
+          window.location.href = `/login?redirect=${encodeURIComponent(here)}`;
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

@@ -100,6 +100,12 @@ export default function Navbar({
               <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}>
                 Hi, <span style={{ color: "#e8c44a", fontWeight: "600" }}>{user?.firstName}</span>
               </span>
+              {user?.role === "admin" && (
+                <button onClick={() => navigate("/admin")} className="btn-ghost"
+                  style={{ padding: "9px 20px", fontSize: "13px" }}>
+                  Dashboard
+                </button>
+              )}
               <button onClick={() => navigate("/profile")} className="btn-gold"
                 style={{ width: "auto", padding: "9px 20px", fontSize: "13px" }}>
                 My Profile
@@ -180,10 +186,18 @@ export default function Navbar({
           {/* Auth buttons on mobile */}
           <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
             {isAuthenticated ? (
-              <button onClick={() => { navigate("/profile"); setMenuOpen(false); }}
-                className="btn-gold" style={{ width: "100%", padding: "12px", fontSize: "14px" }}>
-                My Profile
-              </button>
+              <>
+                {user?.role === "admin" && (
+                  <button onClick={() => { navigate("/admin"); setMenuOpen(false); }}
+                    className="btn-ghost" style={{ flex: 1, padding: "12px", fontSize: "14px" }}>
+                    Dashboard
+                  </button>
+                )}
+                <button onClick={() => { navigate("/profile"); setMenuOpen(false); }}
+                  className="btn-gold" style={{ flex: 1, padding: "12px", fontSize: "14px" }}>
+                  My Profile
+                </button>
+              </>
             ) : (
               <>
                 <button onClick={() => { navigate("/login"); setMenuOpen(false); }}

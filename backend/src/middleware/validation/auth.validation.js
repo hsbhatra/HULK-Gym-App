@@ -5,26 +5,33 @@ const validate = (schema) => (req, res, next) => {
   const { error } = schema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true,
+    errors: { wrap: { label: false } }, // firstName, not "firstName"
   });
 
   if (error) {
     const messages = error.details.map((d) => d.message);
-    return next(ApiError.badRequest("Validation failed", messages));
+    // Surface the first real reason as the message — the frontend toasts
+    // `message`, and a bare "Validation failed" tells the user nothing.
+    return next(ApiError.badRequest(messages[0] || "Validation failed", messages));
   }
 
   next();
 };
 
 const registerSchema = Joi.object({
-  firstName: Joi.string().min(2).max(50).trim().required()
+  firstName: Joi.string().min(2).max(50).trim().pattern(/^[A-Za-z][A-Za-z .'-]*$/).required()
     .messages({
+      "string.pattern.base": "First name can only contain letters",
+      "string.empty": "First name cannot be empty",
       "string.min": "First name must be at least 2 characters",
       "string.max": "First name cannot exceed 50 characters",
       "any.required": "First name is required",
     }),
 
-  lastName: Joi.string().min(2).max(50).trim().required()
+  lastName: Joi.string().min(2).max(50).trim().pattern(/^[A-Za-z][A-Za-z .'-]*$/).required()
     .messages({
+      "string.pattern.base": "Last name can only contain letters",
+      "string.empty": "Last name cannot be empty",
       "string.min": "Last name must be at least 2 characters",
       "string.max": "Last name cannot exceed 50 characters",
       "any.required": "Last name is required",
@@ -93,13 +100,17 @@ const loginSchema = Joi.object({
 
 // --- Update Profile ---
 const updateProfileSchema = Joi.object({
-  firstName: Joi.string().min(2).max(50).trim()
+  firstName: Joi.string().min(2).max(50).trim().pattern(/^[A-Za-z][A-Za-z .'-]*$/)
     .messages({
+      "string.pattern.base": "First name can only contain letters",
+      "string.empty": "First name cannot be empty",
       "string.min": "First name must be at least 2 characters",
       "string.max": "First name cannot exceed 50 characters",
     }),
-  lastName: Joi.string().min(2).max(50).trim()
+  lastName: Joi.string().min(2).max(50).trim().pattern(/^[A-Za-z][A-Za-z .'-]*$/)
     .messages({
+      "string.pattern.base": "Last name can only contain letters",
+      "string.empty": "Last name cannot be empty",
       "string.min": "Last name must be at least 2 characters",
       "string.max": "Last name cannot exceed 50 characters",
     }),
@@ -107,11 +118,13 @@ const updateProfileSchema = Joi.object({
     .messages({
       "number.min": "Height must be at least 50cm",
       "number.max": "Height cannot exceed 300cm",
+      "number.base": "Height must be a number",
     }),
   weight: Joi.number().min(20).max(500)
     .messages({
       "number.min": "Weight must be at least 20kg",
       "number.max": "Weight cannot exceed 500kg",
+      "number.base": "Weight must be a number",
     }),
   dateOfBirth: Joi.date().max("now")
     .messages({

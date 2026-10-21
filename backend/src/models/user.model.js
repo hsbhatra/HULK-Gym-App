@@ -6,6 +6,7 @@ import {
   BCRYPT_CONFIG,
   GYM_CONFIG,
 } from "../utils/constants.js";
+import Counter from "./counter.model.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -156,8 +157,15 @@ userSchema.pre("save", async function () {
 // Hook 2 — Auto-generate userId for new users
 userSchema.pre("save", async function () {
   if (!this.isNew || this.userId) return;
-  const count = await mongoose.model("User").countDocuments();
-  this.userId = `${GYM_CONFIG.PREFIX}_${String(count + 1).padStart(4, "0")}`;
+
+  // Atomic counter — prevents race condition on concurrent registrations
+  const Counter = mongoose.model("Counter");
+  const counter = await Counter.findOneAndUpdate(
+    { _id: "userId" },
+    { $inc: { seq: 1 } },
+    { upsert: true, returnDocument: "after" }
+  );
+  this.userId = `${GYM_CONFIG.PREFIX}_${String(counter.seq).padStart(4, "0")}`;
 });
 
 userSchema.methods.comparePassword = async function (candidatePassword) {

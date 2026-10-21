@@ -4,8 +4,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
+import { useParams } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import api from "../../services/api.js";
+import ReceiptsList from "../../components/ui/ReceiptsList.jsx";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -16,21 +18,24 @@ const ITEMS_PER_PAGE = 10;
 function MarkInstallmentModal({ installment, onClose, onSaved }) {
   const [paymentMode, setPaymentMode] = useState("cash");
   const [saving, setSaving] = useState(false);
+  // Pay only what's left — the backend adds to any earlier partial payment
+  const remainingPaise = installment.amountDue - (installment.amountPaid || 0);
 
   const handleSubmit = async () => {
     setSaving(true);
     try {
-      await api.patch(`/admin/installments/${installment._id}`, {
-        amountPaid: installment.amountDue / 100,
+      const res = await api.patch(`/admin/installments/${installment._id}`, {
+        amountPaid: remainingPaise / 100,
         paymentMode,
       });
+      const rn = res.data.data?.receiptNumber;
       toast.success(
-        `Installment ${installment.installmentNumber} marked as paid.`,
+        `Installment ${installment.installmentNumber} marked as paid.${rn ? ` Receipt ${rn} emailed.` : ""}`,
       );
       onSaved();
       onClose();
-    } catch {
-      toast.error("Failed to mark installment as paid.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to mark installment as paid.");
     } finally {
       setSaving(false);
     }
@@ -73,7 +78,7 @@ function MarkInstallmentModal({ installment, onClose, onSaved }) {
           }}
         >
           Installment {installment.installmentNumber} — ₹
-          {(installment.amountDue / 100).toLocaleString("en-IN")}
+          {(remainingPaise / 100).toLocaleString("en-IN")}
         </p>
 
         <p
@@ -140,6 +145,71 @@ function MarkInstallmentModal({ installment, onClose, onSaved }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// =============================================================================
+// CollectBalanceForm
+// =============================================================================
+function CollectBalanceForm({ subscription, payment, onSuccess, onCancel }) {
+  const [amount, setAmount]         = useState("");
+  const [paymentMode, setPaymentMode] = useState("cash");
+  const [saving, setSaving]         = useState(false);
+  const maxBalance = (payment.amountDue - payment.amountPaid) / 100;
+  const fmt = (n) => n.toLocaleString("en-IN");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!amount || Number(amount) <= 0) return toast.error("Enter a valid amount.");
+    if (Number(amount) > maxBalance) return toast.error(`Amount exceeds balance of ₹${maxBalance}.`);
+    setSaving(true);
+    try {
+      const res = await api.post(`/admin/subscriptions/${subscription._id}/collect`, {
+        amountPaid : Number(amount),
+        paymentMode,
+      });
+      const rn = res.data.data?.receipt?.receiptNumber;
+      toast.success(`Payment recorded.${rn ? ` Receipt ${rn} emailed.` : ""}`);
+      onSuccess();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to record payment.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", padding: "10px 14px", color: "#fff", fontSize: "14px", outline: "none" };
+
+  return (
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+      <div>
+        <label style={{ fontSize: "12px", fontWeight: "600", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>
+          Amount (₹) — max ₹{fmt(maxBalance)}
+        </label>
+        <input type="number" style={inputStyle} placeholder={`Up to ₹${fmt(maxBalance)}`}
+          value={amount} onChange={(e) => setAmount(e.target.value)} max={maxBalance} />
+      </div>
+      <div>
+        <label style={{ fontSize: "12px", fontWeight: "600", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>Payment Mode</label>
+        <div style={{ display: "flex", gap: "8px" }}>
+          {["cash", "upi", "card"].map((mode) => (
+            <button key={mode} type="button" onClick={() => setPaymentMode(mode)}
+              style={{ flex: 1, padding: "9px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600",
+                border: paymentMode === mode ? "1px solid rgba(232,196,74,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                background: paymentMode === mode ? "rgba(232,196,74,0.1)" : "transparent",
+                color: paymentMode === mode ? "#e8c44a" : "rgba(255,255,255,0.5)" }}>
+              {mode === "cash" ? "💵 Cash" : mode === "upi" ? "📱 UPI" : "💳 Card"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
+        <button type="button" onClick={onCancel} className="btn-ghost" style={{ flex: 1, padding: "11px" }}>Cancel</button>
+        <button type="submit" className="btn-gold" disabled={saving} style={{ flex: 1 }}>
+          {saving ? "Recording..." : "Record Payment"}
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -213,7 +283,10 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
       }
 
       const res = await api.post("/admin/subscriptions/offline", payload);
-      toast.success(res.data.message);
+      toast.success(
+        `${res.data.message}${res.data.data?.receipt ? ` Receipt ${res.data.data.receipt.receiptNumber} emailed.` : ""}`,
+        { duration: 6000 },
+      );
       onSuccess();
       onCancel();
     } catch (err) {
@@ -623,7 +696,7 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
 
 export default function AdminMembersPage() {
   // ── Search state ────────────────────────────────────────────────────────────
-  const [query, setQuery] = useState("gym"); // default shows all members
+  const [query, setQuery] = useState("");
   const [members, setMembers] = useState([]);
   const [totalMembers, setTotalMembers] = useState(0);
   const [page, setPage] = useState(1);
@@ -640,13 +713,26 @@ export default function AdminMembersPage() {
   const [markingInstallment, setMarkingInstallment] = useState(null);
   const [cancelDialog, setCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [collectBalanceModal, setCollectBalanceModal] = useState(null);
+
+  // Escape closes whichever popup is open
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      setCollectBalanceModal(null);
+      setMarkingInstallment(null);
+      setCancelDialog(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // ── Search ──────────────────────────────────────────────────────────────────
   const searchMembers = useCallback(async (q, pageNum = 1) => {
     setSearching(true);
     try {
-      // Always send "gym" when query is empty so backend shows all members
-      const effectiveQuery = q.trim() || "gym";
+      // Empty query → backend lists all members
+      const effectiveQuery = q.trim();
       const res = await api.get(
         `/admin/members?q=${encodeURIComponent(effectiveQuery)}&page=${pageNum}&limit=${ITEMS_PER_PAGE}`,
       );
@@ -660,21 +746,27 @@ export default function AdminMembersPage() {
   }, []);
 
   useEffect(() => {
-    searchMembers("gym", 1);
+    searchMembers("", 1);
   }, []);
 
   const handleQueryChange = (value) => {
     setQuery(value);
     setPage(1);
-    searchMembers(value || "gym", 1);
+    searchMembers(value || "", 1);
   };
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
-    searchMembers(query || "gym", newPage);
+    searchMembers(query || "", newPage);
   };
 
   // ── Member detail ────────────────────────────────────────────────────────────
+  // /admin/members/:id opens that member directly (used by dashboard links)
+  const { id: routeMemberId } = useParams();
+  useEffect(() => {
+    if (routeMemberId) loadMemberDetail({ _id: routeMemberId });
+  }, [routeMemberId]);
+
   const loadMemberDetail = async (member) => {
     setSelectedMember(member);
     setLoadingDetail(true);
@@ -684,6 +776,8 @@ export default function AdminMembersPage() {
         api.get("/admin/plans"),
       ]);
       setMemberDetail(memberRes.data.data);
+      // Deep links pass only { _id } — fill in name etc. for headers/dialogs
+      setSelectedMember((prev) => ({ ...memberRes.data.data.user, ...prev, ...memberRes.data.data.user }));
       setPlans(plansRes.data.data.plans.filter((p) => p.status === "active"));
     } catch {
       toast.error("Failed to load member details.");
@@ -750,6 +844,42 @@ export default function AdminMembersPage() {
         />
       )}
 
+      {collectBalanceModal && (
+        <div
+          onClick={() => setCollectBalanceModal(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 300,
+            background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#111", border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "20px", padding: "32px", maxWidth: "400px", width: "100%",
+            }}
+          >
+            <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "6px" }}>
+              Collect Outstanding Balance
+            </h3>
+            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "20px" }}>
+              Paid ₹{(collectBalanceModal.payment.amountPaid / 100).toLocaleString("en-IN")} of ₹
+              {(collectBalanceModal.payment.amountDue / 100).toLocaleString("en-IN")}
+            </p>
+            <CollectBalanceForm
+              subscription={collectBalanceModal.subscription}
+              payment={collectBalanceModal.payment}
+              onSuccess={() => {
+                setCollectBalanceModal(null);
+                loadMemberDetail(selectedMember);
+              }}
+              onCancel={() => setCollectBalanceModal(null)}
+            />
+          </div>
+        </div>
+      )}
+
       {cancelDialog && (
         <div
           style={{
@@ -793,8 +923,8 @@ export default function AdminMembersPage() {
                 lineHeight: "1.6",
               }}
             >
-              {selectedMember?.firstName} will lose access after the grace
-              period ends.
+              {selectedMember?.firstName}'s membership ends immediately. Any
+              unpaid installments will be waived.
             </p>
             <textarea
               placeholder="Reason for cancellation (optional)"
@@ -846,8 +976,19 @@ export default function AdminMembersPage() {
         </div>
       )}
 
+      {/* Mobile: one column; when a member is open show only the detail */}
+      <style>{`
+        .members-back { display: none; }
+        @media (max-width: 900px) {
+          .members-layout { grid-template-columns: 1fr !important; }
+          .members-layout.has-selection .members-list { display: none; }
+          .members-back { display: inline-flex; }
+        }
+      `}</style>
+
       {/* Layout */}
       <div
+        className={`members-layout${selectedMember ? " has-selection" : ""}`}
         style={{
           display: "grid",
           gridTemplateColumns: selectedMember ? "340px 1fr" : "1fr",
@@ -856,7 +997,7 @@ export default function AdminMembersPage() {
         }}
       >
         {/* Left — Member List */}
-        <div style={{ minWidth: 0 }}>
+        <div className="members-list" style={{ minWidth: 0 }}>
           <h1
             style={{
               fontSize: "22px",
@@ -881,7 +1022,7 @@ export default function AdminMembersPage() {
                 outline: "none",
               }}
               placeholder="Search by name, email, phone, ID..."
-              value={query === "gym" ? "" : query}
+              value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
             />
             <span
@@ -897,7 +1038,7 @@ export default function AdminMembersPage() {
             >
               🔍
             </span>
-            {query !== "gym" && query && (
+            {query && (
               <button
                 onClick={() => handleQueryChange("")}
                 style={{
@@ -1083,6 +1224,20 @@ export default function AdminMembersPage() {
         {/* Right — Member Detail */}
         {selectedMember && (
           <div style={{ minWidth: 0 }}>
+            <button
+              className="members-back"
+              onClick={() => {
+                setSelectedMember(null);
+                setMemberDetail(null);
+              }}
+              style={{
+                marginBottom: "16px", padding: "8px 14px", borderRadius: "8px",
+                border: "1px solid rgba(255,255,255,0.1)", background: "transparent",
+                color: "rgba(255,255,255,0.6)", fontSize: "13px", cursor: "pointer",
+              }}
+            >
+              ← All members
+            </button>
             {loadingDetail ? (
               <div
                 style={{
@@ -1102,6 +1257,8 @@ export default function AdminMembersPage() {
                     justifyContent: "space-between",
                     alignItems: "flex-start",
                     marginBottom: "24px",
+                    gap: "12px",
+                    flexWrap: "wrap",
                   }}
                 >
                   <div
@@ -1146,14 +1303,24 @@ export default function AdminMembersPage() {
                   <button
                     onClick={() => setShowPaymentForm(true)}
                     className="btn-gold"
+                    // One active plan per member (backend enforces it) — say so
+                    // up front instead of after the admin fills the whole form.
+                    disabled={!!memberDetail.activeSubscription}
+                    title={
+                      memberDetail.activeSubscription
+                        ? "Member already has an active plan. Use Collect Balance, or cancel it first."
+                        : undefined
+                    }
                     style={{
                       width: "auto",
                       padding: "10px 20px",
                       fontSize: "13px",
                       flexShrink: 0,
+                      opacity: memberDetail.activeSubscription ? 0.45 : 1,
+                      cursor: memberDetail.activeSubscription ? "not-allowed" : "pointer",
                     }}
                   >
-                    + Record Payment
+                    + New Membership
                   </button>
                 </div>
 
@@ -1233,6 +1400,40 @@ export default function AdminMembersPage() {
                           >
                             Active
                           </span>
+                          
+                          {/* Show Collect Balance button only when balance exists */}
+                          {(() => {
+                            const payment = memberDetail.paymentHistory?.find(
+                              (p) =>
+                                p.subscriptionId?.toString() ===
+                                memberDetail.activeSubscription._id?.toString(),
+                            );
+                            const hasBalance =
+                              payment && payment.status === "partial";
+                            return hasBalance ? (
+                              <button
+                                onClick={() =>
+                                  setCollectBalanceModal({
+                                    subscription:
+                                      memberDetail.activeSubscription,
+                                    payment,
+                                  })
+                                }
+                                style={{
+                                  padding: "6px 12px",
+                                  borderRadius: "8px",
+                                  border: "1px solid rgba(232,196,74,0.2)",
+                                  background: "rgba(232,196,74,0.08)",
+                                  color: "#e8c44a",
+                                  fontSize: "12px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Collect Balance
+                              </button>
+                            ) : null;
+                          })()}
+                          
                           <button
                             onClick={() => setCancelDialog(true)}
                             style={{
@@ -1457,6 +1658,11 @@ export default function AdminMembersPage() {
                                               inst.amountDue / 100
                                             ).toLocaleString("en-IN")}
                                           </p>
+                                          {!isPaid && inst.amountPaid > 0 && (
+                                            <p style={{ fontSize: "11px", color: "#22c55e", margin: "2px 0" }}>
+                                              ₹{(inst.amountPaid / 100).toLocaleString("en-IN")} paid
+                                            </p>
+                                          )}
                                           <span
                                             style={{
                                               fontSize: "11px",
@@ -1592,6 +1798,25 @@ export default function AdminMembersPage() {
                       </div>
                     ) : null;
                   })()}
+
+                {/* Receipts — one per payment received */}
+                {memberDetail.receipts?.length > 0 && (
+                  <div style={{ marginBottom: "24px" }}>
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: "700",
+                        color: "rgba(255,255,255,0.4)",
+                        letterSpacing: "1px",
+                        textTransform: "uppercase",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      Payments &amp; Receipts
+                    </p>
+                    <ReceiptsList receipts={memberDetail.receipts} />
+                  </div>
+                )}
 
                 {/* Subscription History */}
                 {memberDetail.subscriptionHistory?.length > 0 && (

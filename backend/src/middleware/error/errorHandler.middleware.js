@@ -3,7 +3,7 @@ import ApiError from "../../utils/apiError.js";
 const handleMongooseErrors = (err) => {
   if (err.name === "ValidationError") {
     const errors = Object.values(err.errors).map((e) => e.message);
-    return ApiError.badRequest("Validation failed", errors);
+    return ApiError.badRequest(errors[0] || "Validation failed", errors);
   }
 
   if (err.name === "CastError") {
