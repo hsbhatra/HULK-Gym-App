@@ -8,6 +8,7 @@ import { useParams } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import api from "../../services/api.js";
 import ReceiptsList from "../../components/ui/ReceiptsList.jsx";
+import { Search, TriangleAlert } from "lucide-react";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -57,7 +58,7 @@ function MarkInstallmentModal({ installment, onClose, onSaved }) {
     >
       <div
         style={{
-          background: "#111",
+          background: "var(--iron-850)",
           border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: "20px",
           padding: "32px",
@@ -66,14 +67,14 @@ function MarkInstallmentModal({ installment, onClose, onSaved }) {
         }}
       >
         <h3
-          style={{ fontSize: "17px", fontWeight: "700", marginBottom: "6px" }}
+          style={{ fontSize: "18px", fontWeight: "700", marginBottom: "6px" }}
         >
           Mark Installment Paid
         </h3>
         <p
           style={{
-            fontSize: "13px",
-            color: "rgba(255,255,255,0.4)",
+            fontSize: "15px",
+            color: "rgba(255,255,255,0.62)",
             marginBottom: "24px",
           }}
         >
@@ -83,9 +84,9 @@ function MarkInstallmentModal({ installment, onClose, onSaved }) {
 
         <p
           style={{
-            fontSize: "12px",
+            fontSize: "14px",
             fontWeight: "600",
-            color: "rgba(255,255,255,0.4)",
+            color: "rgba(255,255,255,0.62)",
             letterSpacing: "0.5px",
             textTransform: "uppercase",
             marginBottom: "10px",
@@ -104,24 +105,24 @@ function MarkInstallmentModal({ installment, onClose, onSaved }) {
                 padding: "10px",
                 borderRadius: "8px",
                 cursor: "pointer",
-                fontSize: "13px",
+                fontSize: "15px",
                 fontWeight: "600",
                 textTransform: "capitalize",
                 border:
                   paymentMode === mode
-                    ? "1px solid rgba(232,196,74,0.4)"
+                    ? "1px solid rgba(243,212,0,0.4)"
                     : "1px solid rgba(255,255,255,0.1)",
                 background:
-                  paymentMode === mode ? "rgba(232,196,74,0.1)" : "transparent",
+                  paymentMode === mode ? "rgba(243,212,0,0.1)" : "transparent",
                 color:
-                  paymentMode === mode ? "#e8c44a" : "rgba(255,255,255,0.5)",
+                  paymentMode === mode ? "#f3d400" : "rgba(255,255,255,0.5)",
               }}
             >
               {mode === "cash"
-                ? "💵 Cash"
+                ? "Cash"
                 : mode === "upi"
-                  ? "📱 UPI"
-                  : "💳 Card"}
+                  ? "UPI"
+                  : "Card"}
             </button>
           ))}
         </div>
@@ -178,27 +179,27 @@ function CollectBalanceForm({ subscription, payment, onSuccess, onCancel }) {
     }
   };
 
-  const inputStyle = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", padding: "10px 14px", color: "#fff", fontSize: "14px", outline: "none" };
+  const inputStyle = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", padding: "10px 14px", color: "#fff", fontSize: "16px", outline: "none" };
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
       <div>
-        <label style={{ fontSize: "12px", fontWeight: "600", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>
+        <label style={{ fontSize: "14px", fontWeight: "600", color: "rgba(255,255,255,0.62)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>
           Amount (₹) — max ₹{fmt(maxBalance)}
         </label>
         <input type="number" style={inputStyle} placeholder={`Up to ₹${fmt(maxBalance)}`}
           value={amount} onChange={(e) => setAmount(e.target.value)} max={maxBalance} />
       </div>
       <div>
-        <label style={{ fontSize: "12px", fontWeight: "600", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>Payment Mode</label>
+        <label style={{ fontSize: "14px", fontWeight: "600", color: "rgba(255,255,255,0.62)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>Payment Mode</label>
         <div style={{ display: "flex", gap: "8px" }}>
           {["cash", "upi", "card"].map((mode) => (
             <button key={mode} type="button" onClick={() => setPaymentMode(mode)}
-              style={{ flex: 1, padding: "9px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600",
-                border: paymentMode === mode ? "1px solid rgba(232,196,74,0.4)" : "1px solid rgba(255,255,255,0.1)",
-                background: paymentMode === mode ? "rgba(232,196,74,0.1)" : "transparent",
-                color: paymentMode === mode ? "#e8c44a" : "rgba(255,255,255,0.5)" }}>
-              {mode === "cash" ? "💵 Cash" : mode === "upi" ? "📱 UPI" : "💳 Card"}
+              style={{ flex: 1, padding: "9px", borderRadius: "8px", cursor: "pointer", fontSize: "15px", fontWeight: "600",
+                border: paymentMode === mode ? "1px solid rgba(243,212,0,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                background: paymentMode === mode ? "rgba(243,212,0,0.1)" : "transparent",
+                color: paymentMode === mode ? "#f3d400" : "rgba(255,255,255,0.5)" }}>
+              {mode === "cash" ? "Cash" : mode === "upi" ? "UPI" : "Card"}
             </button>
           ))}
         </div>
@@ -303,13 +304,13 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
     borderRadius: "10px",
     padding: "10px 14px",
     color: "#fff",
-    fontSize: "14px",
+    fontSize: "16px",
     outline: "none",
   };
   const labelStyle = {
-    fontSize: "12px",
+    fontSize: "14px",
     fontWeight: "600",
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.62)",
     letterSpacing: "0.5px",
     textTransform: "uppercase",
     display: "block",
@@ -332,7 +333,7 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
     >
       <div
         style={{
-          background: "#111",
+          background: "var(--iron-850)",
           border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: "20px",
           padding: "32px",
@@ -351,25 +352,25 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
           }}
         >
           <div>
-            <h2 style={{ fontSize: "18px", fontWeight: "700" }}>
+            <h2 style={{ fontSize: "19px", fontWeight: "700" }}>
               Record Payment
             </h2>
             <p
               style={{
-                fontSize: "13px",
-                color: "rgba(255,255,255,0.4)",
+                fontSize: "15px",
+                color: "rgba(255,255,255,0.62)",
                 marginTop: "4px",
               }}
             >
               {member.firstName} {member.lastName} · {member.userId}
             </p>
           </div>
-          <button
+          <button aria-label="Close"
             onClick={onCancel}
             style={{
               background: "transparent",
               border: "none",
-              color: "rgba(255,255,255,0.4)",
+              color: "rgba(255,255,255,0.62)",
               fontSize: "20px",
               cursor: "pointer",
             }}
@@ -390,9 +391,9 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
               gap: "10px",
               cursor: "pointer",
               padding: "12px 16px",
-              background: "rgba(232,196,74,0.05)",
+              background: "rgba(243,212,0,0.05)",
               borderRadius: "10px",
-              border: "1px solid rgba(232,196,74,0.1)",
+              border: "1px solid rgba(243,212,0,0.1)",
             }}
           >
             <input
@@ -401,22 +402,22 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
               onChange={(e) =>
                 setForm({ ...form, isComplimentary: e.target.checked })
               }
-              style={{ width: "16px", height: "16px", accentColor: "#e8c44a" }}
+              style={{ width: "16px", height: "16px", accentColor: "#f3d400" }}
             />
             <div>
               <span
                 style={{
-                  fontSize: "14px",
+                  fontSize: "16px",
                   fontWeight: "600",
-                  color: "#e8c44a",
+                  color: "#f3d400",
                 }}
               >
                 Complimentary Membership
               </span>
               <p
                 style={{
-                  fontSize: "12px",
-                  color: "rgba(255,255,255,0.4)",
+                  fontSize: "14px",
+                  color: "rgba(255,255,255,0.62)",
                   marginTop: "2px",
                 }}
               >
@@ -460,7 +461,7 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
             </select>
             {planPrice > 0 && (
               <p
-                style={{ fontSize: "12px", color: "#e8c44a", marginTop: "6px" }}
+                style={{ fontSize: "14px", color: "#f3d400", marginTop: "6px" }}
               >
                 Plan price: ₹{planPrice.toLocaleString("en-IN")}
               </p>
@@ -494,28 +495,28 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
                         padding: "10px",
                         borderRadius: "8px",
                         cursor: "pointer",
-                        fontSize: "13px",
+                        fontSize: "15px",
                         fontWeight: "600",
                         textTransform: "capitalize",
                         border:
                           form.paymentMode === mode
-                            ? "1px solid rgba(232,196,74,0.4)"
+                            ? "1px solid rgba(243,212,0,0.4)"
                             : "1px solid rgba(255,255,255,0.1)",
                         background:
                           form.paymentMode === mode
-                            ? "rgba(232,196,74,0.1)"
+                            ? "rgba(243,212,0,0.1)"
                             : "transparent",
                         color:
                           form.paymentMode === mode
-                            ? "#e8c44a"
+                            ? "#f3d400"
                             : "rgba(255,255,255,0.5)",
                       }}
                     >
                       {mode === "cash"
-                        ? "💵 Cash"
+                        ? "Cash"
                         : mode === "upi"
-                          ? "📱 UPI"
-                          : "💳 Card"}
+                          ? "UPI"
+                          : "Card"}
                     </button>
                   ))}
                 </div>
@@ -535,12 +536,12 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
                 {form.amountPaid && Number(form.amountPaid) < planPrice && (
                   <p
                     style={{
-                      fontSize: "12px",
+                      fontSize: "14px",
                       color: "#f97316",
                       marginTop: "6px",
                     }}
                   >
-                    ⚠️ Partial — Balance: ₹
+                    Partial — Balance: ₹
                     {(planPrice - Number(form.amountPaid)).toLocaleString(
                       "en-IN",
                     )}
@@ -563,11 +564,11 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
                   style={{
                     width: "16px",
                     height: "16px",
-                    accentColor: "#e8c44a",
+                    accentColor: "#f3d400",
                   }}
                 />
                 <span
-                  style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)" }}
+                  style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)" }}
                 >
                   Create installment schedule
                 </span>
@@ -576,10 +577,10 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
               {useInstallments && (
                 <div
                   style={{
-                    background: "rgba(255,255,255,0.02)",
+                    background: "var(--iron-850)",
                     borderRadius: "12px",
                     padding: "16px",
-                    border: "1px solid rgba(255,255,255,0.05)",
+                    border: "1px solid #26262a",
                   }}
                 >
                   <p style={{ ...labelStyle, marginBottom: "12px" }}>
@@ -617,7 +618,7 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
                         }
                       />
                       {installments.length > 1 && (
-                        <button
+                        <button aria-label="Remove installment"
                           type="button"
                           onClick={() => removeInstallment(i)}
                           style={{
@@ -640,10 +641,10 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
                     style={{
                       background: "transparent",
                       border: "1px dashed rgba(255,255,255,0.15)",
-                      color: "rgba(255,255,255,0.4)",
+                      color: "rgba(255,255,255,0.62)",
                       borderRadius: "8px",
                       padding: "8px 16px",
-                      fontSize: "12px",
+                      fontSize: "14px",
                       cursor: "pointer",
                       width: "100%",
                     }}
@@ -765,6 +766,7 @@ export default function AdminMembersPage() {
   const { id: routeMemberId } = useParams();
   useEffect(() => {
     if (routeMemberId) loadMemberDetail({ _id: routeMemberId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeMemberId]);
 
   const loadMemberDetail = async (member) => {
@@ -817,10 +819,10 @@ export default function AdminMembersPage() {
       active: "#22c55e",
       grace: "#f97316",
       expired: "#ef4444",
-      cancelled: "rgba(255,255,255,0.3)",
-      pending: "#e8c44a",
+      cancelled: "#8c8c86",
+      pending: "#f3d400",
       complimentary: "#a78bfa",
-    })[status] || "rgba(255,255,255,0.3)";
+    })[status] || "#8c8c86";
 
   const totalPages = Math.ceil(totalMembers / ITEMS_PER_PAGE);
 
@@ -856,14 +858,14 @@ export default function AdminMembersPage() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#111", border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--iron-850)", border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: "20px", padding: "32px", maxWidth: "400px", width: "100%",
             }}
           >
-            <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "6px" }}>
+            <h3 style={{ fontSize: "19px", fontWeight: "700", marginBottom: "6px" }}>
               Collect Outstanding Balance
             </h3>
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "20px" }}>
+            <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.62)", marginBottom: "20px" }}>
               Paid ₹{(collectBalanceModal.payment.amountPaid / 100).toLocaleString("en-IN")} of ₹
               {(collectBalanceModal.payment.amountDue / 100).toLocaleString("en-IN")}
             </p>
@@ -896,7 +898,7 @@ export default function AdminMembersPage() {
         >
           <div
             style={{
-              background: "#111",
+              background: "var(--iron-850)",
               border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: "20px",
               padding: "36px",
@@ -905,10 +907,10 @@ export default function AdminMembersPage() {
               textAlign: "center",
             }}
           >
-            <div style={{ fontSize: "36px", marginBottom: "16px" }}>⚠️</div>
+            <div style={{ marginBottom: "16px" }}><TriangleAlert size={36} color="var(--yellow)" aria-hidden="true" /></div>
             <h3
               style={{
-                fontSize: "18px",
+                fontSize: "19px",
                 fontWeight: "700",
                 marginBottom: "12px",
               }}
@@ -917,7 +919,7 @@ export default function AdminMembersPage() {
             </h3>
             <p
               style={{
-                fontSize: "14px",
+                fontSize: "16px",
                 color: "rgba(255,255,255,0.5)",
                 marginBottom: "20px",
                 lineHeight: "1.6",
@@ -937,7 +939,7 @@ export default function AdminMembersPage() {
                 borderRadius: "10px",
                 padding: "10px 14px",
                 color: "#fff",
-                fontSize: "13px",
+                fontSize: "15px",
                 resize: "vertical",
                 marginBottom: "20px",
                 outline: "none",
@@ -965,7 +967,7 @@ export default function AdminMembersPage() {
                   background: "#ef4444",
                   color: "#fff",
                   fontWeight: "600",
-                  fontSize: "14px",
+                  fontSize: "16px",
                   cursor: "pointer",
                 }}
               >
@@ -998,13 +1000,7 @@ export default function AdminMembersPage() {
       >
         {/* Left — Member List */}
         <div className="members-list" style={{ minWidth: 0 }}>
-          <h1
-            style={{
-              fontSize: "22px",
-              fontWeight: "700",
-              marginBottom: "20px",
-            }}
-          >
+          <h1 className="page-title" style={{ marginBottom: "20px" }}>
             Members
           </h1>
 
@@ -1018,7 +1014,7 @@ export default function AdminMembersPage() {
                 borderRadius: "12px",
                 padding: "12px 40px 12px 40px",
                 color: "#fff",
-                fontSize: "14px",
+                fontSize: "16px",
                 outline: "none",
               }}
               placeholder="Search by name, email, phone, ID..."
@@ -1031,15 +1027,15 @@ export default function AdminMembersPage() {
                 left: "14px",
                 top: "50%",
                 transform: "translateY(-50%)",
-                color: "rgba(255,255,255,0.3)",
-                fontSize: "16px",
+                color: "rgba(255,255,255,0.55)",
+                fontSize: "17px",
                 pointerEvents: "none",
               }}
             >
-              🔍
+              <Search size={16} aria-hidden="true" />
             </span>
             {query && (
-              <button
+              <button aria-label="Clear search"
                 onClick={() => handleQueryChange("")}
                 style={{
                   position: "absolute",
@@ -1048,9 +1044,9 @@ export default function AdminMembersPage() {
                   transform: "translateY(-50%)",
                   background: "transparent",
                   border: "none",
-                  color: "rgba(255,255,255,0.3)",
+                  color: "rgba(255,255,255,0.55)",
                   cursor: "pointer",
-                  fontSize: "16px",
+                  fontSize: "17px",
                 }}
               >
                 ✕
@@ -1061,8 +1057,8 @@ export default function AdminMembersPage() {
           {/* Count */}
           <p
             style={{
-              fontSize: "12px",
-              color: "rgba(255,255,255,0.3)",
+              fontSize: "14px",
+              color: "rgba(255,255,255,0.55)",
               marginBottom: "12px",
             }}
           >
@@ -1076,8 +1072,8 @@ export default function AdminMembersPage() {
             {members.length === 0 && !searching ? (
               <p
                 style={{
-                  fontSize: "13px",
-                  color: "rgba(255,255,255,0.3)",
+                  fontSize: "15px",
+                  color: "rgba(255,255,255,0.55)",
                   textAlign: "center",
                   padding: "20px",
                 }}
@@ -1096,9 +1092,9 @@ export default function AdminMembersPage() {
                     transition: "all 0.15s",
                     background:
                       selectedMember?._id === m._id
-                        ? "rgba(232,196,74,0.08)"
+                        ? "rgba(243,212,0,0.08)"
                         : "rgba(255,255,255,0.02)",
-                    border: `1px solid ${selectedMember?._id === m._id ? "rgba(232,196,74,0.2)" : "rgba(255,255,255,0.05)"}`,
+                    border: `1px solid ${selectedMember?._id === m._id ? "rgba(243,212,0,0.2)" : "rgba(255,255,255,0.05)"}`,
                   }}
                 >
                   <div
@@ -1126,11 +1122,11 @@ export default function AdminMembersPage() {
                           width: "36px",
                           height: "36px",
                           borderRadius: "50%",
-                          background: "rgba(232,196,74,0.1)",
+                          background: "rgba(243,212,0,0.1)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: "#e8c44a",
+                          color: "#f3d400",
                           fontWeight: "700",
                           flexShrink: 0,
                         }}
@@ -1141,7 +1137,7 @@ export default function AdminMembersPage() {
                     <div style={{ minWidth: 0 }}>
                       <p
                         style={{
-                          fontSize: "14px",
+                          fontSize: "16px",
                           fontWeight: "600",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
@@ -1152,8 +1148,8 @@ export default function AdminMembersPage() {
                       </p>
                       <p
                         style={{
-                          fontSize: "12px",
-                          color: "rgba(255,255,255,0.4)",
+                          fontSize: "14px",
+                          color: "rgba(255,255,255,0.62)",
                         }}
                       >
                         {m.userId} · {m.phoneNumber}
@@ -1189,13 +1185,13 @@ export default function AdminMembersPage() {
                       ? "rgba(255,255,255,0.2)"
                       : "rgba(255,255,255,0.6)",
                   cursor: page === 1 ? "not-allowed" : "pointer",
-                  fontSize: "13px",
+                  fontSize: "15px",
                 }}
               >
                 ← Prev
               </button>
               <span
-                style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}
+                style={{ fontSize: "15px", color: "rgba(255,255,255,0.62)" }}
               >
                 Page {page} of {totalPages}
               </span>
@@ -1212,7 +1208,7 @@ export default function AdminMembersPage() {
                       ? "rgba(255,255,255,0.2)"
                       : "rgba(255,255,255,0.6)",
                   cursor: page === totalPages ? "not-allowed" : "pointer",
-                  fontSize: "13px",
+                  fontSize: "15px",
                 }}
               >
                 Next →
@@ -1233,7 +1229,7 @@ export default function AdminMembersPage() {
               style={{
                 marginBottom: "16px", padding: "8px 14px", borderRadius: "8px",
                 border: "1px solid rgba(255,255,255,0.1)", background: "transparent",
-                color: "rgba(255,255,255,0.6)", fontSize: "13px", cursor: "pointer",
+                color: "rgba(255,255,255,0.6)", fontSize: "15px", cursor: "pointer",
               }}
             >
               ← All members
@@ -1243,7 +1239,7 @@ export default function AdminMembersPage() {
                 style={{
                   textAlign: "center",
                   padding: "60px",
-                  color: "rgba(255,255,255,0.3)",
+                  color: "rgba(255,255,255,0.55)",
                 }}
               >
                 Loading...
@@ -1273,11 +1269,11 @@ export default function AdminMembersPage() {
                         width: "52px",
                         height: "52px",
                         borderRadius: "50%",
-                        background: "rgba(232,196,74,0.1)",
+                        background: "rgba(243,212,0,0.1)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        color: "#e8c44a",
+                        color: "#f3d400",
                         fontSize: "20px",
                         fontWeight: "700",
                         flexShrink: 0,
@@ -1286,14 +1282,14 @@ export default function AdminMembersPage() {
                       {memberDetail.user.firstName[0]}
                     </div>
                     <div>
-                      <h2 style={{ fontSize: "18px", fontWeight: "700" }}>
+                      <h2 style={{ fontSize: "19px", fontWeight: "700" }}>
                         {memberDetail.user.firstName}{" "}
                         {memberDetail.user.lastName}
                       </h2>
                       <p
                         style={{
-                          fontSize: "13px",
-                          color: "rgba(255,255,255,0.4)",
+                          fontSize: "15px",
+                          color: "rgba(255,255,255,0.62)",
                         }}
                       >
                         {memberDetail.user.userId} · {memberDetail.user.email}
@@ -1314,7 +1310,7 @@ export default function AdminMembersPage() {
                     style={{
                       width: "auto",
                       padding: "10px 20px",
-                      fontSize: "13px",
+                      fontSize: "15px",
                       flexShrink: 0,
                       opacity: memberDetail.activeSubscription ? 0.45 : 1,
                       cursor: memberDetail.activeSubscription ? "not-allowed" : "pointer",
@@ -1328,9 +1324,9 @@ export default function AdminMembersPage() {
                 <div style={{ marginBottom: "20px" }}>
                   <p
                     style={{
-                      fontSize: "12px",
+                      fontSize: "14px",
                       fontWeight: "700",
-                      color: "rgba(255,255,255,0.4)",
+                      color: "rgba(255,255,255,0.62)",
                       letterSpacing: "1px",
                       textTransform: "uppercase",
                       marginBottom: "12px",
@@ -1357,7 +1353,7 @@ export default function AdminMembersPage() {
                         }}
                       >
                         <div>
-                          <p style={{ fontSize: "16px", fontWeight: "700" }}>
+                          <p style={{ fontSize: "17px", fontWeight: "700" }}>
                             {
                               memberDetail.activeSubscription.planSnapshot
                                 .planName
@@ -1365,8 +1361,8 @@ export default function AdminMembersPage() {
                           </p>
                           <p
                             style={{
-                              fontSize: "13px",
-                              color: "rgba(255,255,255,0.4)",
+                              fontSize: "15px",
+                              color: "rgba(255,255,255,0.62)",
                             }}
                           >
                             {
@@ -1388,7 +1384,7 @@ export default function AdminMembersPage() {
                         >
                           <span
                             style={{
-                              fontSize: "11px",
+                              fontSize: "13px",
                               padding: "3px 10px",
                               borderRadius: "100px",
                               background: "rgba(34,197,94,0.1)",
@@ -1422,10 +1418,10 @@ export default function AdminMembersPage() {
                                 style={{
                                   padding: "6px 12px",
                                   borderRadius: "8px",
-                                  border: "1px solid rgba(232,196,74,0.2)",
-                                  background: "rgba(232,196,74,0.08)",
-                                  color: "#e8c44a",
-                                  fontSize: "12px",
+                                  border: "1px solid rgba(243,212,0,0.2)",
+                                  background: "rgba(243,212,0,0.08)",
+                                  color: "#f3d400",
+                                  fontSize: "14px",
                                   cursor: "pointer",
                                 }}
                               >
@@ -1442,7 +1438,7 @@ export default function AdminMembersPage() {
                               border: "1px solid rgba(239,68,68,0.2)",
                               background: "transparent",
                               color: "#ef4444",
-                              fontSize: "12px",
+                              fontSize: "14px",
                               cursor: "pointer",
                             }}
                           >
@@ -1481,17 +1477,17 @@ export default function AdminMembersPage() {
                               <div>
                                 <p
                                   style={{
-                                    fontSize: "11px",
-                                    color: "rgba(255,255,255,0.35)",
+                                    fontSize: "13px",
+                                    color: "rgba(255,255,255,0.6)",
                                   }}
                                 >
                                   AMOUNT PAID
                                 </p>
                                 <p
                                   style={{
-                                    fontSize: "14px",
+                                    fontSize: "16px",
                                     fontWeight: "700",
-                                    color: "#e8c44a",
+                                    color: "#f3d400",
                                   }}
                                 >
                                   {payment?.paymentMode === "complimentary"
@@ -1505,15 +1501,15 @@ export default function AdminMembersPage() {
                                 <div>
                                   <p
                                     style={{
-                                      fontSize: "11px",
-                                      color: "rgba(255,255,255,0.35)",
+                                      fontSize: "13px",
+                                      color: "rgba(255,255,255,0.6)",
                                     }}
                                   >
                                     BALANCE DUE
                                   </p>
                                   <p
                                     style={{
-                                      fontSize: "14px",
+                                      fontSize: "16px",
                                       fontWeight: "700",
                                       color: "#ef4444",
                                     }}
@@ -1529,15 +1525,15 @@ export default function AdminMembersPage() {
                               <div>
                                 <p
                                   style={{
-                                    fontSize: "11px",
-                                    color: "rgba(255,255,255,0.35)",
+                                    fontSize: "13px",
+                                    color: "rgba(255,255,255,0.6)",
                                   }}
                                 >
                                   PAYMENT MODE
                                 </p>
                                 <p
                                   style={{
-                                    fontSize: "14px",
+                                    fontSize: "16px",
                                     fontWeight: "700",
                                     textTransform: "capitalize",
                                   }}
@@ -1551,15 +1547,15 @@ export default function AdminMembersPage() {
                             {subInstallments.length > 0 && (
                               <div
                                 style={{
-                                  borderTop: "1px solid rgba(255,255,255,0.06)",
+                                  borderTop: "1px solid #26262a",
                                   paddingTop: "14px",
                                 }}
                               >
                                 <p
                                   style={{
-                                    fontSize: "11px",
+                                    fontSize: "13px",
                                     fontWeight: "700",
-                                    color: "rgba(255,255,255,0.35)",
+                                    color: "rgba(255,255,255,0.6)",
                                     letterSpacing: "1px",
                                     textTransform: "uppercase",
                                     marginBottom: "10px",
@@ -1596,7 +1592,7 @@ export default function AdminMembersPage() {
                                       >
                                         <span
                                           style={{
-                                            fontSize: "14px",
+                                            fontSize: "16px",
                                             color,
                                             marginTop: "1px",
                                           }}
@@ -1606,7 +1602,7 @@ export default function AdminMembersPage() {
                                         <div>
                                           <p
                                             style={{
-                                              fontSize: "13px",
+                                              fontSize: "15px",
                                               fontWeight: "600",
                                             }}
                                           >
@@ -1614,8 +1610,8 @@ export default function AdminMembersPage() {
                                           </p>
                                           <p
                                             style={{
-                                              fontSize: "12px",
-                                              color: "rgba(255,255,255,0.35)",
+                                              fontSize: "14px",
+                                              color: "rgba(255,255,255,0.6)",
                                               marginTop: "2px",
                                             }}
                                           >
@@ -1624,7 +1620,7 @@ export default function AdminMembersPage() {
                                           {isPaid && (
                                             <p
                                               style={{
-                                                fontSize: "12px",
+                                                fontSize: "14px",
                                                 color: "rgba(34,197,94,0.7)",
                                                 marginTop: "2px",
                                               }}
@@ -1649,7 +1645,7 @@ export default function AdminMembersPage() {
                                         <div style={{ textAlign: "right" }}>
                                           <p
                                             style={{
-                                              fontSize: "13px",
+                                              fontSize: "15px",
                                               fontWeight: "600",
                                             }}
                                           >
@@ -1659,13 +1655,13 @@ export default function AdminMembersPage() {
                                             ).toLocaleString("en-IN")}
                                           </p>
                                           {!isPaid && inst.amountPaid > 0 && (
-                                            <p style={{ fontSize: "11px", color: "#22c55e", margin: "2px 0" }}>
+                                            <p style={{ fontSize: "13px", color: "#22c55e", margin: "2px 0" }}>
                                               ₹{(inst.amountPaid / 100).toLocaleString("en-IN")} paid
                                             </p>
                                           )}
                                           <span
                                             style={{
-                                              fontSize: "11px",
+                                              fontSize: "13px",
                                               padding: "2px 8px",
                                               borderRadius: "100px",
                                               background: `${color}18`,
@@ -1687,11 +1683,11 @@ export default function AdminMembersPage() {
                                               padding: "5px 10px",
                                               borderRadius: "6px",
                                               border:
-                                                "1px solid rgba(232,196,74,0.2)",
+                                                "1px solid rgba(243,212,0,0.2)",
                                               background:
-                                                "rgba(232,196,74,0.08)",
-                                              color: "#e8c44a",
-                                              fontSize: "11px",
+                                                "rgba(243,212,0,0.08)",
+                                              color: "#f3d400",
+                                              fontSize: "13px",
                                               cursor: "pointer",
                                               whiteSpace: "nowrap",
                                             }}
@@ -1714,15 +1710,15 @@ export default function AdminMembersPage() {
                       style={{
                         padding: "20px",
                         borderRadius: "14px",
-                        background: "rgba(255,255,255,0.02)",
+                        background: "var(--iron-850)",
                         border: "1px dashed rgba(255,255,255,0.1)",
                         textAlign: "center",
                       }}
                     >
                       <p
                         style={{
-                          fontSize: "13px",
-                          color: "rgba(255,255,255,0.35)",
+                          fontSize: "15px",
+                          color: "rgba(255,255,255,0.6)",
                         }}
                       >
                         No active membership
@@ -1733,10 +1729,10 @@ export default function AdminMembersPage() {
                           marginTop: "12px",
                           padding: "8px 18px",
                           borderRadius: "8px",
-                          border: "1px solid rgba(232,196,74,0.2)",
-                          background: "rgba(232,196,74,0.08)",
-                          color: "#e8c44a",
-                          fontSize: "13px",
+                          border: "1px solid rgba(243,212,0,0.2)",
+                          background: "rgba(243,212,0,0.08)",
+                          color: "#f3d400",
+                          fontSize: "15px",
                           cursor: "pointer",
                         }}
                       >
@@ -1766,9 +1762,9 @@ export default function AdminMembersPage() {
                       >
                         <p
                           style={{
-                            fontSize: "12px",
+                            fontSize: "14px",
                             fontWeight: "700",
-                            color: "rgba(255,255,255,0.4)",
+                            color: "rgba(255,255,255,0.62)",
                             letterSpacing: "1px",
                             textTransform: "uppercase",
                             marginBottom: "6px",
@@ -1778,7 +1774,7 @@ export default function AdminMembersPage() {
                         </p>
                         <p
                           style={{
-                            fontSize: "13px",
+                            fontSize: "15px",
                             color: "rgba(255,255,255,0.6)",
                           }}
                         >
@@ -1787,8 +1783,8 @@ export default function AdminMembersPage() {
                         {cancelled.cancelledAt && (
                           <p
                             style={{
-                              fontSize: "12px",
-                              color: "rgba(255,255,255,0.3)",
+                              fontSize: "14px",
+                              color: "rgba(255,255,255,0.55)",
                               marginTop: "4px",
                             }}
                           >
@@ -1804,9 +1800,9 @@ export default function AdminMembersPage() {
                   <div style={{ marginBottom: "24px" }}>
                     <p
                       style={{
-                        fontSize: "12px",
+                        fontSize: "14px",
                         fontWeight: "700",
-                        color: "rgba(255,255,255,0.4)",
+                        color: "rgba(255,255,255,0.62)",
                         letterSpacing: "1px",
                         textTransform: "uppercase",
                         marginBottom: "12px",
@@ -1823,9 +1819,9 @@ export default function AdminMembersPage() {
                   <div>
                     <p
                       style={{
-                        fontSize: "12px",
+                        fontSize: "14px",
                         fontWeight: "700",
-                        color: "rgba(255,255,255,0.4)",
+                        color: "rgba(255,255,255,0.62)",
                         letterSpacing: "1px",
                         textTransform: "uppercase",
                         marginBottom: "12px",
@@ -1849,19 +1845,19 @@ export default function AdminMembersPage() {
                             alignItems: "center",
                             padding: "14px 16px",
                             borderRadius: "10px",
-                            background: "rgba(255,255,255,0.02)",
-                            border: "1px solid rgba(255,255,255,0.05)",
+                            background: "var(--iron-850)",
+                            border: "1px solid #26262a",
                           }}
                         >
                           <div>
-                            <p style={{ fontSize: "14px", fontWeight: "600" }}>
+                            <p style={{ fontSize: "16px", fontWeight: "600" }}>
                               {sub.planSnapshot.planName} —{" "}
                               {sub.planSnapshot.durationLabel}
                             </p>
                             <p
                               style={{
-                                fontSize: "12px",
-                                color: "rgba(255,255,255,0.35)",
+                                fontSize: "14px",
+                                color: "rgba(255,255,255,0.6)",
                                 marginTop: "2px",
                               }}
                             >
@@ -1871,7 +1867,7 @@ export default function AdminMembersPage() {
                             {sub.cancelReason && (
                               <p
                                 style={{
-                                  fontSize: "12px",
+                                  fontSize: "14px",
                                   color: "rgba(239,68,68,0.7)",
                                   marginTop: "2px",
                                 }}
@@ -1882,7 +1878,7 @@ export default function AdminMembersPage() {
                           </div>
                           <span
                             style={{
-                              fontSize: "11px",
+                              fontSize: "13px",
                               padding: "3px 10px",
                               borderRadius: "100px",
                               border: `1px solid ${statusColor(sub.status)}33`,

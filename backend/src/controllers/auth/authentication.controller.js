@@ -1,7 +1,8 @@
 import asyncHandler from "../../utils/asyncHandler.js";
 import ApiResponse from "../../utils/apiResponse.js";
 import ApiError from "../../utils/apiError.js";
-import { HTTP_STATUS, OTP_CONFIG } from "../../utils/constants.js";
+import bcrypt from "bcryptjs";
+import { HTTP_STATUS, OTP_CONFIG, BCRYPT_CONFIG, LEGAL_VERSION } from "../../utils/constants.js";
 import User from "../../models/user.model.js";
 import TempRegistration from "../../models/tempRegistration.model.js";
 import {
@@ -55,8 +56,15 @@ const parseDeviceInfo = (req) => {
 };
 
 export const register = asyncHandler(async (req, res) => {
-  const { firstName, lastName, email, phoneNumber, password, confirmPassword } =
-    req.body;
+  const {
+    firstName,
+    lastName,
+    email,
+    phoneNumber,
+    password,
+    confirmPassword,
+    ageConfirmation,
+  } = req.body;
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
@@ -75,6 +83,10 @@ export const register = asyncHandler(async (req, res) => {
   validatePasswordStrength(password);
   validatePasswordMatch(password, confirmPassword);
 
+  // findOneAndUpdate skips the model's save hook, so hash here —
+  // a pending registration must never hold a plain-text password.
+  const passwordHash = await bcrypt.hash(password, BCRYPT_CONFIG.SALT_ROUNDS);
+
   await TempRegistration.findOneAndUpdate(
     { email },
     {
@@ -82,7 +94,10 @@ export const register = asyncHandler(async (req, res) => {
       lastName,
       email,
       phoneNumber,
-      passwordHash: password,
+      passwordHash,
+      termsAcceptedAt: new Date(),
+      termsVersion: LEGAL_VERSION,
+      ageConfirmation,
       expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     },
     { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
@@ -130,6 +145,11 @@ export const verifyRegistrationOtp = asyncHandler(async (req, res) => {
     phoneNumber: tempReg.phoneNumber,
     passwordHash: tempReg.passwordHash,
     isEmailVerified: true,
+    consent: {
+      termsAcceptedAt: tempReg.termsAcceptedAt,
+      termsVersion: tempReg.termsVersion,
+      ageConfirmation: tempReg.ageConfirmation,
+    },
   });
 
   await TempRegistration.deleteOne({ email });

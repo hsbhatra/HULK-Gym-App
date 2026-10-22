@@ -2,17 +2,17 @@
 // src/pages/auth/RegisterPage.jsx
 // =============================================================================
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import * as THREE from "three";
 import { registerUser } from "../../services/authService.js";
 import ParticleBackground from "../../components/three/ParticleBackground.jsx";
 import Logo from "../../components/ui/Logo.jsx";
 import PasswordStrength from "../../components/ui/PasswordStrength.jsx";
 import { motion } from "framer-motion";
 import { scaleIn } from "../../utils/animations.js";
+import { Eye, EyeOff } from "lucide-react";
 
 // =============================================================================
 // RegisterPage
@@ -47,6 +47,8 @@ export default function RegisterPage() {
         phoneNumber: data.phoneNumber,
         password: data.password,
         confirmPassword: data.confirmPassword,
+        acceptTerms: data.acceptTerms === true,
+        ageConfirmation: data.ageConfirmation,
       });
 
       // Store email temporarily so OTP page knows which email to verify
@@ -74,7 +76,7 @@ export default function RegisterPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#0a0a0a",
+        background: "var(--iron-950)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -90,7 +92,7 @@ export default function RegisterPage() {
           inset: 0,
           zIndex: 0,
           background:
-            "radial-gradient(ellipse at center, rgba(232,196,74,0.05) 0%, transparent 65%)",
+            "radial-gradient(ellipse at center, rgba(243,212,0,0.05) 0%, transparent 65%)",
           pointerEvents: "none",
         }}
       />
@@ -104,8 +106,8 @@ export default function RegisterPage() {
         style={{
           position: "relative",
           zIndex: 1,
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.07)",
+          background: "var(--iron-850)",
+          border: "1px solid #26262a",
           borderRadius: "24px",
           backdropFilter: "blur(40px)",
           WebkitBackdropFilter: "blur(40px)",
@@ -131,8 +133,8 @@ export default function RegisterPage() {
           >
             Create your account
           </h1>
-          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.4)" }}>
-            Join thousands of members already training
+          <p style={{ fontSize: "16px", color: "rgba(255,255,255,0.62)" }}>
+            Takes about a minute
           </p>
         </div>
 
@@ -152,7 +154,7 @@ export default function RegisterPage() {
             <div>
               <label
                 style={{
-                  fontSize: "13px",
+                  fontSize: "15px",
                   fontWeight: "500",
                   color: "rgba(255,255,255,0.6)",
                   display: "block",
@@ -162,7 +164,7 @@ export default function RegisterPage() {
                 First Name
               </label>
               <input
-                placeholder="Hulk"
+                placeholder="Rahul"
                 className="input-dark"
                 style={
                   errors.firstName ? { borderColor: "rgba(239,68,68,0.6)" } : {}
@@ -179,7 +181,7 @@ export default function RegisterPage() {
               {errors.firstName && (
                 <p
                   style={{
-                    fontSize: "11px",
+                    fontSize: "13px",
                     color: "#ef4444",
                     marginTop: "5px",
                   }}
@@ -191,7 +193,7 @@ export default function RegisterPage() {
             <div>
               <label
                 style={{
-                  fontSize: "13px",
+                  fontSize: "15px",
                   fontWeight: "500",
                   color: "rgba(255,255,255,0.6)",
                   display: "block",
@@ -201,7 +203,7 @@ export default function RegisterPage() {
                 Last Name
               </label>
               <input
-                placeholder="Gym"
+                placeholder="Sharma"
                 className="input-dark"
                 style={
                   errors.lastName ? { borderColor: "rgba(239,68,68,0.6)" } : {}
@@ -218,7 +220,7 @@ export default function RegisterPage() {
               {errors.lastName && (
                 <p
                   style={{
-                    fontSize: "11px",
+                    fontSize: "13px",
                     color: "#ef4444",
                     marginTop: "5px",
                   }}
@@ -233,7 +235,7 @@ export default function RegisterPage() {
           <div>
             <label
               style={{
-                fontSize: "13px",
+                fontSize: "15px",
                 fontWeight: "500",
                 color: "rgba(255,255,255,0.6)",
                 display: "block",
@@ -257,7 +259,7 @@ export default function RegisterPage() {
             />
             {errors.email && (
               <p
-                style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px" }}
+                style={{ fontSize: "14px", color: "#ef4444", marginTop: "6px" }}
               >
                 {errors.email.message}
               </p>
@@ -268,7 +270,7 @@ export default function RegisterPage() {
           <div>
             <label
               style={{
-                fontSize: "13px",
+                fontSize: "15px",
                 fontWeight: "500",
                 color: "rgba(255,255,255,0.6)",
                 display: "block",
@@ -284,8 +286,8 @@ export default function RegisterPage() {
                   left: "14px",
                   top: "50%",
                   transform: "translateY(-50%)",
-                  fontSize: "13px",
-                  color: "rgba(255,255,255,0.3)",
+                  fontSize: "15px",
+                  color: "rgba(255,255,255,0.55)",
                   fontWeight: "500",
                 }}
               >
@@ -312,7 +314,7 @@ export default function RegisterPage() {
             </div>
             {errors.phoneNumber && (
               <p
-                style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px" }}
+                style={{ fontSize: "14px", color: "#ef4444", marginTop: "6px" }}
               >
                 {errors.phoneNumber.message}
               </p>
@@ -323,7 +325,7 @@ export default function RegisterPage() {
           <div>
             <label
               style={{
-                fontSize: "13px",
+                fontSize: "15px",
                 fontWeight: "500",
                 color: "rgba(255,255,255,0.6)",
                 display: "block",
@@ -359,22 +361,22 @@ export default function RegisterPage() {
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  color: "rgba(255,255,255,0.35)",
-                  fontSize: "14px",
+                  color: "rgba(255,255,255,0.6)",
+                  fontSize: "16px",
                   padding: "4px",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#e8c44a")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#f3d400")}
                 onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = "rgba(255,255,255,0.35)")
+                  (e.currentTarget.style.color = "#8c8c86")
                 }
               >
-                {showPassword ? "🙈" : "👁️"}
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}<span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
               </button>
             </div>
             {errors.password && (
               <p
-                style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px" }}
+                style={{ fontSize: "14px", color: "#ef4444", marginTop: "6px" }}
               >
                 {errors.password.message}
               </p>
@@ -386,7 +388,7 @@ export default function RegisterPage() {
           <div>
             <label
               style={{
-                fontSize: "13px",
+                fontSize: "15px",
                 fontWeight: "500",
                 color: "rgba(255,255,255,0.6)",
                 display: "block",
@@ -423,25 +425,71 @@ export default function RegisterPage() {
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  color: "rgba(255,255,255,0.35)",
-                  fontSize: "14px",
+                  color: "rgba(255,255,255,0.6)",
+                  fontSize: "16px",
                   padding: "4px",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#e8c44a")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#f3d400")}
                 onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = "rgba(255,255,255,0.35)")
+                  (e.currentTarget.style.color = "#8c8c86")
                 }
               >
-                {showConfirmPassword ? "🙈" : "👁️"}
+                {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}<span className="sr-only">{showConfirmPassword ? "Hide password" : "Show password"}</span>
               </button>
             </div>
             {errors.confirmPassword && (
               <p
-                style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px" }}
+                style={{ fontSize: "14px", color: "#ef4444", marginTop: "6px" }}
               >
                 {errors.confirmPassword.message}
               </p>
+            )}
+          </div>
+
+          {/* Consent — age + Terms/Privacy (stored with the account) */}
+          <fieldset className="consent-box">
+            <legend className="consent-legend">Age</legend>
+            <label className="consent-option">
+              <input
+                type="radio"
+                value="adult"
+                {...register("ageConfirmation", { required: "Please confirm your age" })}
+              />
+              <span>I am 18 or older</span>
+            </label>
+            <label className="consent-option">
+              <input
+                type="radio"
+                value="guardian"
+                {...register("ageConfirmation", { required: "Please confirm your age" })}
+              />
+              <span>I am under 18 and my parent/guardian agrees to this membership</span>
+            </label>
+            {errors.ageConfirmation && (
+              <p role="alert" style={{ fontSize: "14px", color: "#ef4444" }}>{errors.ageConfirmation.message}</p>
+            )}
+          </fieldset>
+
+          <div>
+            <label className="consent-option">
+              <input
+                type="checkbox"
+                {...register("acceptTerms", {
+                  required: "Please accept the Terms & Conditions and Privacy Policy",
+                })}
+              />
+              <span>
+                I agree to the{" "}
+                <Link to="/terms" target="_blank" rel="noopener" className="consent-link">Terms &amp; Conditions</Link>
+                {", "}
+                <Link to="/privacy" target="_blank" rel="noopener" className="consent-link">Privacy Policy</Link>
+                {" and "}
+                <Link to="/refund-policy" target="_blank" rel="noopener" className="consent-link">Refund Policy</Link>
+              </span>
+            </label>
+            {errors.acceptTerms && (
+              <p role="alert" style={{ fontSize: "14px", color: "#ef4444", marginTop: "6px" }}>{errors.acceptTerms.message}</p>
             )}
           </div>
 
@@ -485,7 +533,7 @@ export default function RegisterPage() {
               background: "rgba(255,255,255,0.07)",
             }}
           />
-          <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)" }}>
+          <span style={{ fontSize: "14px", color: "rgba(255,255,255,0.5)" }}>
             Already a member?
           </span>
           <div
@@ -506,14 +554,14 @@ export default function RegisterPage() {
             borderRadius: "10px",
             border: "1px solid rgba(255,255,255,0.08)",
             color: "rgba(255,255,255,0.6)",
-            fontSize: "14px",
+            fontSize: "16px",
             fontWeight: "500",
             textDecoration: "none",
             transition: "border-color 0.2s, color 0.2s",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#e8c44a";
-            e.currentTarget.style.color = "#e8c44a";
+            e.currentTarget.style.borderColor = "#f3d400";
+            e.currentTarget.style.color = "#f3d400";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
@@ -527,8 +575,8 @@ export default function RegisterPage() {
           <Link
             to="/"
             style={{
-              fontSize: "13px",
-              color: "rgba(255,255,255,0.3)",
+              fontSize: "15px",
+              color: "rgba(255,255,255,0.55)",
               textDecoration: "none",
               transition: "color 0.2s",
             }}
@@ -536,7 +584,7 @@ export default function RegisterPage() {
               (e.target.style.color = "rgba(255,255,255,0.6)")
             }
             onMouseLeave={(e) =>
-              (e.target.style.color = "rgba(255,255,255,0.3)")
+              (e.target.style.color = "#8c8c86")
             }
           >
             ← Back to home

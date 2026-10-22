@@ -9,7 +9,7 @@ export default function AppLoader() {
   return (
     <div style={{
       minHeight      : "100vh",
-      background     : "#0a0a0a",
+      background     : "var(--iron-950)",
       display        : "flex",
       alignItems     : "center",
       justifyContent : "center",
@@ -31,7 +31,7 @@ export default function AppLoader() {
           width          : "52px",
           height         : "52px",
           borderRadius   : "12px",
-          background     : "#e8c44a",
+          background     : "#f3d400",
           display        : "flex",
           alignItems     : "center",
           justifyContent : "center",
@@ -52,13 +52,13 @@ export default function AppLoader() {
           height      : "24px",
           borderRadius: "50%",
           border      : "2px solid rgba(255,255,255,0.08)",
-          borderTopColor: "#e8c44a",
+          borderTopColor: "#f3d400",
         }}
       />
 
       <p style={{
-        fontSize  : "13px",
-        color     : "rgba(255,255,255,0.25)",
+        fontSize  : "15px",
+        color     : "rgba(255,255,255,0.5)",
         letterSpacing: "1px",
       }}>
         HULK GYM

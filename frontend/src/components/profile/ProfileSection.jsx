@@ -6,6 +6,8 @@ import {
   deleteProfilePicture,
 } from "../../services/profileService.js";
 import toast from "react-hot-toast";
+import { Camera } from "lucide-react";
+import DeleteAccountSection from "./DeleteAccountSection.jsx";
 
 export default function ProfileSection({ user, onUpdate }) {
   const [editing, setEditing] = useState(false);
@@ -123,17 +125,17 @@ export default function ProfileSection({ user, onUpdate }) {
     border: `1px solid ${disabled ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.1)"}`,
     borderRadius: "10px",
     padding: "11px 14px",
-    color: disabled ? "rgba(255,255,255,0.35)" : "#fff",
-    fontSize: "14px",
+    color: disabled ? "#8c8c86" : "#fff",
+    fontSize: "16px",
     outline: "none",
     cursor: disabled ? "not-allowed" : "text",
     transition: "border-color 0.2s, background 0.2s",
   });
 
   const labelStyle = {
-    fontSize: "12px",
+    fontSize: "14px",
     fontWeight: "600",
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.62)",
     letterSpacing: "0.5px",
     textTransform: "uppercase",
     display: "block",
@@ -151,9 +153,9 @@ export default function ProfileSection({ user, onUpdate }) {
               width: "88px",
               height: "88px",
               borderRadius: "50%",
-              border: "2px solid rgba(232,196,74,0.3)",
+              border: "2px solid rgba(243,212,0,0.3)",
               overflow: "hidden",
-              background: "#1a1a1a",
+              background: "var(--iron-850)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -170,7 +172,7 @@ export default function ProfileSection({ user, onUpdate }) {
                 style={{
                   fontSize: "32px",
                   fontWeight: "800",
-                  color: "#e8c44a",
+                  color: "#f3d400",
                 }}
               >
                 {user.firstName?.[0]?.toUpperCase()}
@@ -202,14 +204,14 @@ export default function ProfileSection({ user, onUpdate }) {
           >
             <span
               style={{
-                fontSize: "18px",
+                fontSize: "19px",
                 opacity: 0,
                 transition: "opacity 0.2s",
               }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = 0)}
             >
-              📷
+              <Camera size={16} aria-hidden="true" />
             </span>
           </button>
           <input
@@ -230,8 +232,8 @@ export default function ProfileSection({ user, onUpdate }) {
           </h2>
           <p
             style={{
-              fontSize: "13px",
-              color: "#e8c44a",
+              fontSize: "15px",
+              color: "#f3d400",
               fontWeight: "600",
               marginBottom: "8px",
             }}
@@ -240,12 +242,12 @@ export default function ProfileSection({ user, onUpdate }) {
           </p>
           <span
             style={{
-              fontSize: "11px",
+              fontSize: "13px",
               padding: "3px 10px",
               borderRadius: "100px",
-              background: "rgba(232,196,74,0.1)",
-              border: "1px solid rgba(232,196,74,0.2)",
-              color: "#e8c44a",
+              background: "rgba(243,212,0,0.1)",
+              border: "1px solid rgba(243,212,0,0.2)",
+              color: "#f3d400",
               fontWeight: "600",
               textTransform: "uppercase",
               letterSpacing: "1px",
@@ -266,10 +268,10 @@ export default function ProfileSection({ user, onUpdate }) {
             style={{
               padding: "8px 16px",
               borderRadius: "8px",
-              border: "1px solid rgba(232,196,74,0.3)",
-              background: "rgba(232,196,74,0.08)",
-              color: "#e8c44a",
-              fontSize: "12px",
+              border: "1px solid rgba(243,212,0,0.3)",
+              background: "rgba(243,212,0,0.08)",
+              color: "#f3d400",
+              fontSize: "14px",
               fontWeight: "600",
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -287,7 +289,7 @@ export default function ProfileSection({ user, onUpdate }) {
                 border: "1px solid rgba(239,68,68,0.2)",
                 background: "transparent",
                 color: "#ef4444",
-                fontSize: "12px",
+                fontSize: "14px",
                 fontWeight: "600",
                 cursor: "pointer",
               }}
@@ -312,7 +314,7 @@ export default function ProfileSection({ user, onUpdate }) {
           >
             <h3
               style={{
-                fontSize: "14px",
+                fontSize: "16px",
                 fontWeight: "700",
                 color: "rgba(255,255,255,0.6)",
                 letterSpacing: "1px",
@@ -327,10 +329,10 @@ export default function ProfileSection({ user, onUpdate }) {
                 style={{
                   padding: "7px 16px",
                   borderRadius: "8px",
-                  border: "1px solid rgba(232,196,74,0.3)",
-                  background: "rgba(232,196,74,0.08)",
-                  color: "#e8c44a",
-                  fontSize: "12px",
+                  border: "1px solid rgba(243,212,0,0.3)",
+                  background: "rgba(243,212,0,0.08)",
+                  color: "#f3d400",
+                  fontSize: "14px",
                   fontWeight: "600",
                   cursor: "pointer",
                 }}
@@ -347,7 +349,7 @@ export default function ProfileSection({ user, onUpdate }) {
                     border: "1px solid rgba(255,255,255,0.1)",
                     background: "transparent",
                     color: "rgba(255,255,255,0.5)",
-                    fontSize: "12px",
+                    fontSize: "14px",
                     cursor: "pointer",
                   }}
                 >
@@ -360,9 +362,9 @@ export default function ProfileSection({ user, onUpdate }) {
                     padding: "7px 16px",
                     borderRadius: "8px",
                     border: "none",
-                    background: "#e8c44a",
+                    background: "#f3d400",
                     color: "#0a0a0a",
-                    fontSize: "12px",
+                    fontSize: "14px",
                     fontWeight: "700",
                     cursor: "pointer",
                   }}
@@ -384,7 +386,7 @@ export default function ProfileSection({ user, onUpdate }) {
                 disabled={!editing}
                 style={inputStyle(!editing)}
                 onFocus={(e) => {
-                  if (editing) e.target.style.borderColor = "#e8c44a";
+                  if (editing) e.target.style.borderColor = "#f3d400";
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = editing
@@ -403,7 +405,7 @@ export default function ProfileSection({ user, onUpdate }) {
                 disabled={!editing}
                 style={inputStyle(!editing)}
                 onFocus={(e) => {
-                  if (editing) e.target.style.borderColor = "#e8c44a";
+                  if (editing) e.target.style.borderColor = "#f3d400";
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = editing
@@ -418,11 +420,11 @@ export default function ProfileSection({ user, onUpdate }) {
                 Email Address{" "}
                 <span
                   style={{
-                    color: "rgba(255,255,255,0.2)",
+                    color: "rgba(255,255,255,0.5)",
                     fontWeight: "400",
                     textTransform: "none",
                     letterSpacing: 0,
-                    fontSize: "11px",
+                    fontSize: "13px",
                   }}
                 >
                   (cannot be changed)
@@ -440,11 +442,11 @@ export default function ProfileSection({ user, onUpdate }) {
                 Phone Number{" "}
                 <span
                   style={{
-                    color: "rgba(255,255,255,0.2)",
+                    color: "rgba(255,255,255,0.5)",
                     fontWeight: "400",
                     textTransform: "none",
                     letterSpacing: 0,
-                    fontSize: "11px",
+                    fontSize: "13px",
                   }}
                 >
                   (cannot be changed)
@@ -466,7 +468,7 @@ export default function ProfileSection({ user, onUpdate }) {
         <div>
           <h3
             style={{
-              fontSize: "14px",
+              fontSize: "16px",
               fontWeight: "700",
               color: "rgba(255,255,255,0.6)",
               letterSpacing: "1px",
@@ -491,7 +493,7 @@ export default function ProfileSection({ user, onUpdate }) {
                 placeholder="e.g. 175"
                 style={inputStyle(!editing)}
                 onFocus={(e) => {
-                  if (editing) e.target.style.borderColor = "#e8c44a";
+                  if (editing) e.target.style.borderColor = "#f3d400";
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = editing
@@ -514,7 +516,7 @@ export default function ProfileSection({ user, onUpdate }) {
                 placeholder="e.g. 70"
                 style={inputStyle(!editing)}
                 onFocus={(e) => {
-                  if (editing) e.target.style.borderColor = "#e8c44a";
+                  if (editing) e.target.style.borderColor = "#f3d400";
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = editing
@@ -535,7 +537,7 @@ export default function ProfileSection({ user, onUpdate }) {
                 disabled={!editing}
                 style={{ ...inputStyle(!editing), colorScheme: "dark" }}
                 onFocus={(e) => {
-                  if (editing) e.target.style.borderColor = "#e8c44a";
+                  if (editing) e.target.style.borderColor = "#f3d400";
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = editing
@@ -569,11 +571,11 @@ export default function ProfileSection({ user, onUpdate }) {
               Bio{" "}
               <span
                 style={{
-                  color: "rgba(255,255,255,0.25)",
+                  color: "rgba(255,255,255,0.5)",
                   fontWeight: "400",
                   textTransform: "none",
                   letterSpacing: 0,
-                  fontSize: "11px",
+                  fontSize: "13px",
                 }}
               >
                 ({200 - (form.bio?.length || 0)} chars remaining)
@@ -594,7 +596,7 @@ export default function ProfileSection({ user, onUpdate }) {
                 lineHeight: "1.6",
               }}
               onFocus={(e) => {
-                if (editing) e.target.style.borderColor = "#e8c44a";
+                if (editing) e.target.style.borderColor = "#f3d400";
               }}
               onBlur={(e) => {
                 e.target.style.borderColor = editing
@@ -610,7 +612,7 @@ export default function ProfileSection({ user, onUpdate }) {
         <div>
           <h3
             style={{
-              fontSize: "14px",
+              fontSize: "16px",
               fontWeight: "700",
               color: "rgba(255,255,255,0.6)",
               letterSpacing: "1px",
@@ -669,6 +671,8 @@ export default function ProfileSection({ user, onUpdate }) {
           </div>
         </div>
       </div>
+
+      {user.role !== "admin" && <DeleteAccountSection />}
     </div>
   );
 }

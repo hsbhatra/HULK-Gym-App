@@ -5,7 +5,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import * as THREE from "three";
 import { useAuthStore } from "../../store/authStore.js";
 import {
   verifyRegistrationOtp,
@@ -14,6 +13,7 @@ import {
 import ParticleBackground from "../../components/three/ParticleBackground.jsx";
 import { motion } from "framer-motion";
 import { scaleIn } from "../../utils/animations.js";
+import { Mail } from "lucide-react";
 
 // =============================================================================
 // ParticleBackground
@@ -257,7 +257,7 @@ export default function VerifyOtpPage() {
         sessionStorage.removeItem("pendingEmail");
         sessionStorage.removeItem("otpPurpose");
 
-        toast.success(`Welcome to Hulk Gym, ${user.firstName}! 💪`);
+        toast.success(`Welcome to Hulk Gym, ${user.firstName}!`);
         navigate("/");
       } else {
         // Forgot password flow — OTP verified, now go to reset password
@@ -309,7 +309,7 @@ export default function VerifyOtpPage() {
   return (
     <div
       className="auth-page"
-      style={{ background: "#0a0a0a", position: "relative" }}
+      style={{ background: "var(--iron-950)", position: "relative" }}
     >
       <ParticleBackground />
 
@@ -319,7 +319,7 @@ export default function VerifyOtpPage() {
           inset: 0,
           zIndex: 0,
           background:
-            "radial-gradient(ellipse at center, rgba(232,196,74,0.05) 0%, transparent 65%)",
+            "radial-gradient(ellipse at center, rgba(243,212,0,0.05) 0%, transparent 65%)",
           pointerEvents: "none",
         }}
       />
@@ -333,8 +333,8 @@ export default function VerifyOtpPage() {
         style={{
           position: "relative",
           zIndex: 1,
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.07)",
+          background: "var(--iron-850)",
+          border: "1px solid #26262a",
           borderRadius: "24px",
           backdropFilter: "blur(40px)",
           WebkitBackdropFilter: "blur(40px)",
@@ -347,8 +347,8 @@ export default function VerifyOtpPage() {
             width: "64px",
             height: "64px",
             borderRadius: "16px",
-            background: "rgba(232,196,74,0.1)",
-            border: "1px solid rgba(232,196,74,0.2)",
+            background: "rgba(243,212,0,0.1)",
+            border: "1px solid rgba(243,212,0,0.2)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -356,7 +356,7 @@ export default function VerifyOtpPage() {
             margin: "0 auto 24px",
           }}
         >
-          ✉️
+          <Mail size={40} strokeWidth={1.75} color="var(--yellow)" aria-hidden="true" />
         </div>
 
         <h1
@@ -371,8 +371,8 @@ export default function VerifyOtpPage() {
         </h1>
         <p
           style={{
-            fontSize: "14px",
-            color: "rgba(255,255,255,0.4)",
+            fontSize: "16px",
+            color: "rgba(255,255,255,0.62)",
             marginBottom: "8px",
             lineHeight: "1.6",
           }}
@@ -381,8 +381,8 @@ export default function VerifyOtpPage() {
         </p>
         <p
           style={{
-            fontSize: "14px",
-            color: "#e8c44a",
+            fontSize: "16px",
+            color: "#f3d400",
             fontWeight: "600",
             marginBottom: "32px",
           }}
@@ -417,26 +417,26 @@ export default function VerifyOtpPage() {
                 fontSize: "22px",
                 fontWeight: "700",
                 background: digit
-                  ? "rgba(232,196,74,0.08)"
+                  ? "rgba(243,212,0,0.08)"
                   : "rgba(255,255,255,0.03)",
-                border: `1.5px solid ${digit ? "rgba(232,196,74,0.5)" : "rgba(255,255,255,0.1)"}`,
+                border: `1.5px solid ${digit ? "rgba(243,212,0,0.5)" : "rgba(255,255,255,0.1)"}`,
                 borderRadius: "12px",
                 color: "#ffffff",
                 outline: "none",
                 transition: "all 0.2s",
-                caretColor: "#e8c44a",
+                caretColor: "#f3d400",
               }}
               onFocus={(e) => {
-                e.target.style.borderColor = "#e8c44a";
-                e.target.style.background = "rgba(232,196,74,0.06)";
-                e.target.style.boxShadow = "0 0 0 3px rgba(232,196,74,0.1)";
+                e.target.style.borderColor = "#f3d400";
+                e.target.style.background = "rgba(243,212,0,0.06)";
+                e.target.style.boxShadow = "0 0 0 3px rgba(243,212,0,0.1)";
               }}
               onBlur={(e) => {
                 e.target.style.borderColor = digit
-                  ? "rgba(232,196,74,0.5)"
+                  ? "rgba(243,212,0,0.5)"
                   : "rgba(255,255,255,0.1)";
                 e.target.style.background = digit
-                  ? "rgba(232,196,74,0.08)"
+                  ? "rgba(243,212,0,0.08)"
                   : "rgba(255,255,255,0.03)";
                 e.target.style.boxShadow = "none";
               }}
@@ -477,8 +477,8 @@ export default function VerifyOtpPage() {
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
-                fontSize: "14px",
-                color: "#e8c44a",
+                fontSize: "16px",
+                color: "#f3d400",
                 fontWeight: "600",
                 textDecoration: "underline",
               }}
@@ -486,11 +486,11 @@ export default function VerifyOtpPage() {
               {resending ? "Sending..." : "Resend OTP"}
             </button>
           ) : (
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.3)" }}>
+            <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.55)" }}>
               Resend OTP in{" "}
               <span
                 style={{
-                  color: "#e8c44a",
+                  color: "#f3d400",
                   fontWeight: "600",
                   fontVariantNumeric: "tabular-nums",
                 }}
@@ -507,15 +507,15 @@ export default function VerifyOtpPage() {
           style={{
             marginTop: "24px",
             padding: "12px 16px",
-            background: "rgba(255,255,255,0.02)",
+            background: "var(--iron-850)",
             borderRadius: "10px",
-            border: "1px solid rgba(255,255,255,0.05)",
+            border: "1px solid #26262a",
           }}
         >
           <p
             style={{
-              fontSize: "12px",
-              color: "rgba(255,255,255,0.3)",
+              fontSize: "14px",
+              color: "rgba(255,255,255,0.55)",
               lineHeight: "1.6",
             }}
           >
@@ -530,8 +530,8 @@ export default function VerifyOtpPage() {
           <Link
             to={isRegistration ? "/register" : "/forgot-password"}
             style={{
-              fontSize: "13px",
-              color: "rgba(255,255,255,0.3)",
+              fontSize: "15px",
+              color: "rgba(255,255,255,0.55)",
               textDecoration: "none",
               transition: "color 0.2s",
             }}
@@ -539,7 +539,7 @@ export default function VerifyOtpPage() {
               (e.target.style.color = "rgba(255,255,255,0.6)")
             }
             onMouseLeave={(e) =>
-              (e.target.style.color = "rgba(255,255,255,0.3)")
+              (e.target.style.color = "#8c8c86")
             }
           >
             ← {isRegistration ? "Back to register" : "Back to forgot password"}

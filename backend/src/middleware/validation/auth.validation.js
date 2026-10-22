@@ -60,6 +60,18 @@ const registerSchema = Joi.object({
       "any.only": "Passwords do not match",
       "any.required": "Please confirm your password",
     }),
+
+  acceptTerms: Joi.boolean().valid(true).required()
+    .messages({
+      "any.only": "Please accept the Terms & Conditions and Privacy Policy",
+      "any.required": "Please accept the Terms & Conditions and Privacy Policy",
+    }),
+
+  ageConfirmation: Joi.string().valid("adult", "guardian").required()
+    .messages({
+      "any.only": "Please confirm your age",
+      "any.required": "Please confirm your age",
+    }),
 });
 
 const verifyOtpSchema = Joi.object({

@@ -1,75 +1,55 @@
 // =============================================================================
 // src/components/ui/Logo.jsx
 // =============================================================================
-// Single source of truth for the Hulk Gym logo.
-// Change the name/colors here and it updates everywhere in the app.
+// Single source of truth for the Hulk Gym logo (the real brand mark).
+// The mark has black parts, so on dark UI it sits on a light pill.
 // =============================================================================
 
-import { useNavigate } from "react-router-dom";
-import { GYM_NAME, GYM_INITIAL } from "../../utils/gymConfig.js";
+import { Link } from "react-router-dom";
+
+const SIZES = {
+  sm: { h: 26, padX: 10, padY: 3 },
+  md: { h: 34, padX: 14, padY: 4 },
+  lg: { h: 48, padX: 18, padY: 6 },
+};
 
 export default function Logo({
   size = "md", // "sm" | "md" | "lg"
-  clickable = true, // clicking navigates to "/"
+  clickable = true, // links to "/"
   style = {}, // extra wrapper styles
 }) {
-  const navigate = useNavigate();
+  const s = SIZES[size] || SIZES.md;
 
-  // Size scale
-  const scale =
-    {
-      sm: { box: 28, font: 14, text: 13, radius: 6, gap: 8 },
-      md: { box: 36, font: 18, text: 17, radius: 8, gap: 10 },
-      lg: { box: 48, font: 24, text: 22, radius: 10, gap: 12 },
-    }[size] || scale?.md;
+  const mark = (
+    <picture>
+      <source srcSet="/logo.webp" type="image/webp" />
+      <img
+        src="/logo.png"
+        alt="Hulk Gym"
+        width={Math.round(s.h * 1.33)}
+        height={s.h}
+        style={{ height: `${s.h}px`, width: "auto", display: "block" }}
+      />
+    </picture>
+  );
 
-  return (
-    <div
-      onClick={clickable ? () => navigate("/") : undefined}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: `${scale.gap}px`,
-        cursor: clickable ? "pointer" : "default",
-        userSelect: "none",
-        ...style,
-      }}
-    >
-      {/* Gold box with initial */}
-      <div
-        style={{
-          width: `${scale.box}px`,
-          height: `${scale.box}px`,
-          borderRadius: `${scale.radius}px`,
-          background: "#e8c44a",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontWeight: "900",
-          color: "#0a0a0a",
-          fontSize: `${scale.font}px`,
-          flexShrink: 0,
-          lineHeight: 1,
-        }}
-      >
-        {GYM_INITIAL}
-      </div>
+  const pill = {
+    display: "inline-flex",
+    alignItems: "center",
+    background: "#edede8",
+    borderRadius: "999px",
+    padding: `${s.padY}px ${s.padX}px`,
+    lineHeight: 0,
+    textDecoration: "none",
+    minHeight: 0,
+    ...style,
+  };
 
-      {/* Gym name */}
-      <span
-        style={{
-          fontWeight: "800",
-          fontSize: `${scale.text}px`,
-          letterSpacing: "1.5px",
-          lineHeight: 1,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {GYM_NAME.split(" ")[0]}
-        <span style={{ color: "#e8c44a" }}>
-          {GYM_NAME.split(" ").slice(1).join(" ")}
-        </span>
-      </span>
-    </div>
+  return clickable ? (
+    <Link to="/" aria-label="Hulk Gym — home" style={pill}>
+      {mark}
+    </Link>
+  ) : (
+    <span style={pill}>{mark}</span>
   );
 }

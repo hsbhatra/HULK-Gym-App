@@ -6,6 +6,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import ParticleBackground from "../components/three/ParticleBackground.jsx";
 import { heroContainer, heroItem } from "../utils/animations.js";
+import { CircleCheck, Dumbbell } from "lucide-react";
 
 export default function SubscriptionSuccessPage() {
   const [searchParams] = useSearchParams();
@@ -19,7 +20,7 @@ export default function SubscriptionSuccessPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#0a0a0a",
+        background: "var(--iron-950)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -50,8 +51,8 @@ export default function SubscriptionSuccessPage() {
           textAlign: "center",
           maxWidth: "520px",
           width: "100%",
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.07)",
+          background: "var(--iron-850)",
+          border: "1px solid #26262a",
           borderRadius: "24px",
           padding: "48px 36px",
           backdropFilter: "blur(40px)",
@@ -73,7 +74,7 @@ export default function SubscriptionSuccessPage() {
               margin: "0 auto 28px",
             }}
           >
-            ✅
+            <CircleCheck size={48} strokeWidth={1.75} color="var(--yellow)" aria-hidden="true" />
           </div>
         </motion.div>
 
@@ -87,24 +88,24 @@ export default function SubscriptionSuccessPage() {
               letterSpacing: "-0.5px",
             }}
           >
-            You're in! 💪
+            You're in!
           </h1>
           <p
             style={{
-              fontSize: "15px",
+              fontSize: "17px",
               color: "rgba(255,255,255,0.5)",
               lineHeight: "1.7",
               marginBottom: "28px",
             }}
           >
             Your{" "}
-            <strong style={{ color: "#e8c44a" }}>
+            <strong style={{ color: "#f3d400" }}>
               {planName} — {duration}
             </strong>{" "}
             membership is now active. A receipt has been sent to your email.
           </p>
           {receiptNo && /^[A-Za-z0-9-]+$/.test(receiptNo) && (
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.45)", marginTop: "-16px", marginBottom: "24px" }}>
+            <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.45)", marginTop: "-16px", marginBottom: "24px" }}>
               Receipt No. <strong style={{ color: "#fff" }}>{receiptNo}</strong>
             </p>
           )}
@@ -127,7 +128,7 @@ export default function SubscriptionSuccessPage() {
                 background: "rgba(255,255,255,0.06)",
               }}
             />
-            <span style={{ fontSize: "20px" }}>🏋️</span>
+            <Dumbbell size={20} color="var(--yellow)" aria-hidden="true" />
             <div
               style={{
                 flex: 1,
@@ -142,8 +143,8 @@ export default function SubscriptionSuccessPage() {
         <motion.div variants={heroItem}>
           <div
             style={{
-              background: "rgba(255,255,255,0.02)",
-              border: "1px solid rgba(255,255,255,0.05)",
+              background: "var(--iron-850)",
+              border: "1px solid #26262a",
               borderRadius: "14px",
               padding: "20px",
               marginBottom: "28px",
@@ -152,7 +153,7 @@ export default function SubscriptionSuccessPage() {
           >
             <p
               style={{
-                fontSize: "13px",
+                fontSize: "15px",
                 fontWeight: "700",
                 color: "rgba(255,255,255,0.5)",
                 letterSpacing: "1px",
@@ -172,13 +173,13 @@ export default function SubscriptionSuccessPage() {
                 style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
               >
                 <span
-                  style={{ color: "#e8c44a", fontWeight: "700", flexShrink: 0 }}
+                  style={{ color: "#f3d400", fontWeight: "700", flexShrink: 0 }}
                 >
                   {i + 1}.
                 </span>
                 <span
                   style={{
-                    fontSize: "13px",
+                    fontSize: "15px",
                     color: "rgba(255,255,255,0.5)",
                     lineHeight: "1.6",
                   }}
@@ -193,19 +194,21 @@ export default function SubscriptionSuccessPage() {
         {/* Action Buttons */}
         <motion.div
           variants={heroItem}
-          style={{ display: "flex", gap: "12px" }}
+          style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
         >
           <button
+            type="button"
             onClick={() => navigate("/profile")}
             className="btn-gold"
-            style={{ flex: 1, fontSize: "14px" }}
+            style={{ flex: "1 1 180px", fontSize: "17px", whiteSpace: "nowrap" }}
           >
-            View Profile →
+            View my membership
           </button>
           <button
+            type="button"
             onClick={() => navigate("/")}
             className="btn-ghost"
-            style={{ flex: 1, padding: "12px", fontSize: "14px" }}
+            style={{ flex: "1 1 140px", fontSize: "17px" }}
           >
             Go Home
           </button>

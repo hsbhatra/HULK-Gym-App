@@ -48,6 +48,11 @@ const tempRegistrationSchema = new mongoose.Schema(
       select: false,
     },
 
+    // Consent captured at sign-up, copied onto the user after OTP verification
+    termsAcceptedAt: { type: Date, default: null },
+    termsVersion: { type: String, default: null },
+    ageConfirmation: { type: String, enum: ["adult", "guardian", null], default: null },
+
     expiresAt: {
       type: Date,
       required: true,

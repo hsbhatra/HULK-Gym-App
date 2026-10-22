@@ -1,49 +1,179 @@
 // =============================================================================
-// src/pages/LandingPage.jsx
+// src/pages/LandingPage.jsx — "Molten Iron"
+// =============================================================================
+// Only real, verifiable content. What the gym offers is driven by
+// src/content/gymContent.js (only owner-confirmed items render) and contacts
+// by env (src/utils/gymConfig.js). Plans come live from the API.
 // =============================================================================
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import * as THREE from "three";
-import { useAuthStore } from "../store/authStore.js";
-import ParticleBackground from "../components/three/ParticleBackground.jsx";
-import Logo from "../components/ui/Logo.jsx";
-import Navbar from "../components/layout/Navbar.jsx";
-import Footer from "../components/layout/Footer.jsx";
 import { motion } from "framer-motion";
 import {
-  heroContainer,
-  heroItem,
-  staggerContainer,
-  staggerItem,
-  staggerContainerSlow,
-  cardHover,
-  scrollFadeUp,
-  scrollFadeIn,
-  labelReveal,
-  scaleIn,
-  buttonHover,
-  scrollScaleIn,
-} from "../utils/animations.js";
+  Activity, CalendarClock, Cctv, ChevronDown, Clock, Cog, CreditCard, Droplets,
+  Dumbbell, Flame, Flower2, HeartPulse, Lock, Mail, MapPin, MessageCircle, Music, Music2,
+  ParkingCircle, Phone, Receipt, Salad, Shield, Shirt, ShowerHead, Smartphone, Snowflake,
+  Swords, UserCheck, Users, Venus,
+} from "lucide-react";
+import { useAuthStore } from "../store/authStore.js";
+import ParticleBackground from "../components/three/ParticleBackground.jsx";
+import Navbar from "../components/layout/Navbar.jsx";
+import Footer from "../components/layout/Footer.jsx";
 import { getPublicPlans } from "../services/planService.js";
+import { GYM } from "../utils/gymConfig.js";
+import { FACILITIES, CLASSES, AMENITIES, FAQ, HOURS } from "../content/gymContent.js";
+import { openStatus } from "../utils/hours.js";
+import { Dumbbell as DumbbellProp, Kettlebell } from "../components/ui/GymProps.jsx";
 
-// =============================================================================
-// Reusable Section Label
-// =============================================================================
-const SectionLabel = ({ text }) => (
-  <p
-    style={{
-      fontSize: "11px",
-      letterSpacing: "3px",
-      color: "#e8c44a",
-      marginBottom: "14px",
-      fontWeight: "600",
-      textTransform: "uppercase",
-    }}
-  >
-    {text}
-  </p>
-);
+const ICONS = {
+  Activity, Cctv, Cog, Droplets, Dumbbell, Flame, Flower2, HeartPulse, Lock, Music,
+  Music2, ParkingCircle, Salad, Shield, Shirt, ShowerHead, Snowflake, Swords, UserCheck,
+  Users, Venus,
+};
+const Icon = ({ name, size = 28 }) => {
+  const C = ICONS[name] || Dumbbell;
+  return <C size={size} aria-hidden="true" />;
+};
+
+const visible = (list) => list.filter((i) => i.show);
+
+// ── Scroll parallax (transform-only, rAF-throttled, reduced-motion aware) ────
+function useScrollY() {
+  const [y, setY] = useState(0);
+  const ticking = useRef(false);
+
+  useEffect(() => {
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return;
+    const onScroll = () => {
+      if (ticking.current) return;
+      ticking.current = true;
+      requestAnimationFrame(() => {
+        ticking.current = false;
+        setY(Math.min(window.scrollY, 1600)); // only the hero needs it
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return y;
+}
+
+// Re-evaluates every minute so "Open now" flips on its own
+function useOpenStatus() {
+  const [status, setStatus] = useState(() => openStatus());
+  useEffect(() => {
+    const id = setInterval(() => setStatus(openStatus()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+  return status;
+}
+
+function StatusPill({ status }) {
+  return (
+    <span className={status.open ? "status-pill status-pill--open" : "status-pill"} role="status">
+      <span className="status-dot" aria-hidden="true" />
+      {status.text}
+    </span>
+  );
+}
+
+const shift = (y, factor) => ({ transform: `translate3d(0, ${(y * factor).toFixed(1)}px, 0)` });
+
+const reveal = {
+  initial: { opacity: 0, y: 28 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-60px" },
+  transition: { duration: 0.6, ease: [0.2, 0.7, 0.2, 1] },
+};
+
+// ── Decorative plates ────────────────────────────────────────────────────────
+function SteelPlate() {
+  return (
+    <svg viewBox="0 0 200 200" className="hg-spin" style={{ width: "100%", height: "100%", display: "block" }}>
+      <defs>
+        <radialGradient id="plateFill" cx="45%" cy="70%" r="80%">
+          <stop offset="0" stopColor="#4a2a1c" />
+          <stop offset="0.45" stopColor="#232124" />
+          <stop offset="1" stopColor="#101012" />
+        </radialGradient>
+        <path id="plateRim" d="M100,100 m-80,0 a80,80 0 1,1 160,0 a80,80 0 1,1 -160,0" />
+      </defs>
+      <circle cx="100" cy="100" r="98" fill="url(#plateFill)" />
+      <circle cx="100" cy="100" r="98" fill="none" stroke="#5a3a2a" strokeWidth="1" />
+      <circle cx="100" cy="100" r="88" fill="none" stroke="#2c2a2e" strokeWidth="6" />
+      <circle cx="100" cy="100" r="40" fill="#151517" stroke="#3b3b3f" strokeWidth="2" />
+      <circle cx="100" cy="100" r="14" fill="#0a0a0b" stroke="#f3d400" strokeWidth="1.5" />
+      <text fontFamily="Big Shoulders Display, Impact, sans-serif" fontWeight="900" fontSize="11" letterSpacing="3" fill="#f3d400">
+        <textPath href="#plateRim">HULK GYM · KOTA · 20 KG · HULK GYM · KOTA · 20 KG ·</textPath>
+      </text>
+    </svg>
+  );
+}
+
+function RedPlate() {
+  return (
+    <svg viewBox="0 0 200 200" className="hg-spin-back" style={{ width: "100%", height: "100%", display: "block" }}>
+      <circle cx="100" cy="100" r="98" fill="#e5482b" />
+      <circle cx="100" cy="100" r="86" fill="none" stroke="#b9341c" strokeWidth="5" />
+      <circle cx="100" cy="100" r="38" fill="#9e2c17" />
+      <circle cx="100" cy="100" r="14" fill="#0a0a0b" />
+      <text x="100" y="62" textAnchor="middle" fontFamily="Big Shoulders Display, Impact, sans-serif" fontWeight="900" fontSize="22" fill="#ffffff">25</text>
+    </svg>
+  );
+}
+
+// ── Static copy that describes how this app works (always accurate) ──────────
+const APP_PERKS = [
+  { icon: Smartphone, title: "Your pass, online", copy: "See your plan, start date and days left any time you log in." },
+  { icon: Receipt, title: "Receipt for every payment", copy: "Online, cash or installment — each payment emails you a numbered receipt." },
+  { icon: CreditCard, title: "Pay your way", copy: "UPI, card or net banking online, or cash at the desk." },
+  { icon: CalendarClock, title: "Installments at the desk", copy: "Split longer plans into parts; your schedule shows what's due and when." },
+];
+
+const STEPS = [
+  { n: "01", title: "Pick a plan", copy: "Choose a plan and duration and create your account." },
+  { n: "02", title: "Pay your way", copy: "Online in a minute — or at the desk, in installments if you need." },
+  { n: "03", title: "Show up & lift", copy: "Your receipt lands in your email. Your pass lives in your profile." },
+];
+
+const DURATIONS = [
+  { days: 30, label: "Monthly" },
+  { days: 90, label: "Quarterly" },
+  { days: 180, label: "Half-yearly" },
+  { days: 365, label: "Annual" },
+];
+
+const rupees = (paise) => `₹${(paise / 100).toLocaleString("en-IN")}`;
+
+// ── Small building blocks ────────────────────────────────────────────────────
+function SectionHead({ eyebrow, title, intro, id }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "32px", maxWidth: "760px" }}>
+      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+      <motion.h2 {...reveal} id={id} className="section-title">{title}</motion.h2>
+      {intro && <p className="section-subtitle">{intro}</p>}
+    </div>
+  );
+}
+
+function FeatureCard({ item, index }) {
+  return (
+    <motion.article
+      {...reveal}
+      transition={{ ...reveal.transition, delay: Math.min(index, 4) * 0.06 }}
+      className="card-iron"
+      style={{ padding: "26px", display: "flex", flexDirection: "column", gap: "12px" }}
+    >
+      <span style={{ color: "var(--yellow)" }}><Icon name={item.icon} /></span>
+      <h3 className="font-display" style={{ fontSize: "28px", textTransform: "uppercase", lineHeight: 1 }}>
+        {item.title}
+      </h3>
+      {item.copy && <p style={{ color: "var(--text-2)", fontSize: "17px", lineHeight: 1.6 }}>{item.copy}</p>}
+    </motion.article>
+  );
+}
 
 // =============================================================================
 // LandingPage
@@ -53,47 +183,55 @@ export default function LandingPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUser = useAuthStore((s) => s.user);
   const isAdmin = authUser?.role === "admin";
+  const y = useScrollY();
+  const status = useOpenStatus();
 
-  // Logged-in visitors must not be sent to /register or /login —
-  // PublicRoute bounces them straight back here, so the click looks broken.
-  const scrollToPricing = () =>
-    document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
-  const handlePrimaryCta = () =>
-    isAuthenticated ? scrollToPricing() : navigate("/register");
-  const handleSecondaryCta = () =>
-    navigate(isAuthenticated ? (isAdmin ? "/admin" : "/profile") : "/login");
-  const secondaryCtaLabel = isAuthenticated
-    ? isAdmin ? "Admin Dashboard" : "My Profile"
-    : null;
+  const facilities = visible(FACILITIES);
+  const classes = visible(CLASSES);
+  const amenities = visible(AMENITIES);
+  const faq = visible(FAQ);
+  // Floor + coaching render as one grid (the gym runs no group classes)
+  const offerings = [...facilities, ...classes];
+  const highlights = offerings.slice(0, 3).map((i) => i.title);
 
+  // ── Plans ──────────────────────────────────────────────────────────────────
   const [plans, setPlans] = useState([]);
   const [plansLoading, setPlansLoading] = useState(true);
-  const [selectedDuration, setSelectedDuration] = useState(30); // default: monthly
+  const [plansError, setPlansError] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState(30);
 
-  useEffect(() => {
-    fetchPlans();
-  }, []);
+  const loadPlans = () =>
+    getPublicPlans()
+      .then((res) => setPlans(res.data.data.plans))
+      .catch(() => setPlansError(true))
+      .finally(() => setPlansLoading(false));
 
-  const fetchPlans = async () => {
-    try {
-      const res = await getPublicPlans();
-      setPlans(res.data.data.plans);
-    } catch (err) {
-      console.error("Failed to load plans:", err);
-    } finally {
-      setPlansLoading(false);
-    }
+  const retryPlans = () => {
+    setPlansLoading(true);
+    setPlansError(false);
+    loadPlans();
   };
 
-  // Helper: get the price for the currently selected duration
+  useEffect(() => {
+    loadPlans();
+  }, []);
+
+  const availableDurations = useMemo(
+    () =>
+      DURATIONS.filter((d) =>
+        plans.some((p) => p.pricingTiers.some((t) => t.durationDays === d.days)),
+      ),
+    [plans],
+  );
+  const activeDuration = availableDurations.some((d) => d.days === selectedDuration)
+    ? selectedDuration
+    : (availableDurations[0]?.days ?? 30);
+
   const getPriceForDuration = (plan, durationDays) => {
     const tier = plan.pricingTiers.find((t) => t.durationDays === durationDays);
     if (!tier) return null;
-
-    const now = new Date();
     const hasOffer =
-      tier.offerPrice &&
-      (!tier.offerValidUntil || new Date(tier.offerValidUntil) > now);
+      tier.offerPrice && (!tier.offerValidUntil || new Date(tier.offerValidUntil) > new Date());
     return {
       price: hasOffer ? tier.offerPrice : tier.price,
       originalPrice: hasOffer ? tier.price : null,
@@ -101,1333 +239,397 @@ export default function LandingPage() {
     };
   };
 
-  const durationOptions = [
-    { days: 30, label: "Monthly" },
-    { days: 90, label: "Quarterly" },
-    { days: 180, label: "Half-Yearly" },
-    { days: 365, label: "Annual" },
-  ];
+  const scrollToPricing = () =>
+    document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
 
-  // ── Data ────────────────────────────────────────────────────────────────────
+  // Logged-in visitors must not be sent to /register or /login (PublicRoute bounces them)
+  const primaryCta = isAuthenticated
+    ? { label: "See plans", onClick: scrollToPricing }
+    : { label: "Join now", onClick: () => navigate("/register") };
+  const accountCta = isAuthenticated
+    ? { label: isAdmin ? "Admin dashboard" : "My membership", to: isAdmin ? "/admin" : "/profile" }
+    : null;
 
-  const programs = [
-    {
-      icon: "🏋️",
-      title: "Strength & Power",
-      desc: "Build raw strength with compound lifts, progressive overload, and structured periodization programs.",
-      tag: "Popular",
-    },
-    {
-      icon: "🏃",
-      title: "Cardio & Endurance",
-      desc: "Improve stamina and heart health with treadmills, bikes, rowing machines and guided cardio plans.",
-      tag: "",
-    },
-    {
-      icon: "🔥",
-      title: "HIIT Training",
-      desc: "Burn maximum calories in minimum time with high-intensity interval training sessions led by certified coaches.",
-      tag: "Intense",
-    },
-    {
-      icon: "🧘",
-      title: "Yoga & Flexibility",
-      desc: "Recover faster, move better, and reduce injury risk with dedicated yoga and mobility sessions.",
-      tag: "",
-    },
-    {
-      icon: "🥊",
-      title: "Boxing & MMA",
-      desc: "Learn real fighting techniques while getting an incredible full-body workout in our combat sports zone.",
-      tag: "New",
-    },
-    {
-      icon: "🚴",
-      title: "Spin Classes",
-      desc: "High-energy group cycling sessions with pumping music and motivating instructors. No experience needed.",
-      tag: "",
-    },
-  ];
+  const mapEmbed = GYM.mapEmbedSrc;
 
-  const trainers = [
-    {
-      name: "Arjun Mehta",
-      role: "Head Strength Coach",
-      exp: "12 years",
-      spec: ["Powerlifting", "Olympic Lifting", "Body Recomposition"],
-      initial: "A",
-    },
-    {
-      name: "Priya Sharma",
-      role: "HIIT & Cardio Specialist",
-      exp: "8 years",
-      spec: ["HIIT", "Fat Loss", "Functional Fitness"],
-      initial: "P",
-    },
-    {
-      name: "Rohan Kapoor",
-      role: "Combat Sports Coach",
-      exp: "10 years",
-      spec: ["Boxing", "MMA", "Self Defense"],
-      initial: "R",
-    },
-  ];
-
-  const transformations = [
-    { stat: "94%", label: "Members hit their goals within 90 days" },
-    { stat: "12kg", label: "Average fat loss in the first 3 months" },
-    {
-      stat: "2.4x",
-      label: "Strength increase reported by members after 6 months",
-    },
-    {
-      stat: "98%",
-      label: "Member retention rate — people stay because it works",
-    },
-  ];
-
-  const equipment = [
-    {
-      name: "Free Weights Zone",
-      desc: "Dumbbells from 1kg to 100kg, barbells, EZ bars, and full rack stations.",
-      icon: "🏋️",
-    },
-    {
-      name: "Cardio Floor",
-      desc: "50+ treadmills, bikes, ellipticals, stair climbers, and rowing machines.",
-      icon: "🏃",
-    },
-    {
-      name: "Cable & Machine Zone",
-      desc: "Full range of cable machines, plate-loaded equipment, and isolation machines.",
-      icon: "⚙️",
-    },
-    {
-      name: "Functional Training",
-      desc: "Battle ropes, kettlebells, sleds, pull-up rigs, and TRX suspension systems.",
-      icon: "🔗",
-    },
-  ];
-
-  const testimonials = [
-    {
-      name: "Vikram S.",
-      result: "Lost 18kg in 4 months",
-      text: "Hulk Gym completely changed my life. The trainers are incredibly knowledgeable and the community keeps you accountable. I've never felt stronger.",
-      rating: 5,
-    },
-    {
-      name: "Neha R.",
-      result: "Gained 6kg muscle",
-      text: "I was skeptical at first but the results speak for themselves. Coach Arjun built a program perfectly suited to my body and goals.",
-      rating: 5,
-    },
-    {
-      name: "Aditya K.",
-      result: "Running 10km now",
-      text: "Joined for weight loss but fell in love with fitness. The HIIT classes with Priya are absolutely brutal — in the best possible way.",
-      rating: 5,
-    },
-  ];
-
-  const navLinks = [
-    { label: "Programs", href: "#programs" },
-    { label: "Trainers", href: "#trainers" },
-    { label: "Pricing", href: "#pricing" },
-  ];
-
-  // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#0a0a0a",
-        overflowX: "hidden",
-        position: "relative",
-      }}
-    >
-      {/* Full page 3D background — sits behind everything */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
-        }}
-      >
-        <ParticleBackground />
-      </div>
-      {/* ══ NAVBAR ══════════════════════════════════════════════════════════════ */}
+    <div style={{ minHeight: "100vh", overflowX: "hidden", position: "relative" }}>
+      <ParticleBackground particleCount={150} />
       <Navbar transparent={true} showNavLinks={true} />
 
-      {/* ══ HERO ════════════════════════════════════════════════════════════════ */}
-      <section
-        className="hero-section"
-        style={{
-          position: "relative",
-          // minHeight (not height): on short laptop screens the hero content is
-          // taller than 100vh and used to overflow under the Programs section,
-          // making the hero buttons unclickable.
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          paddingTop: "110px",
-          paddingBottom: "60px",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 1,
-            background:
-              "radial-gradient(ellipse at 50% 40%, rgba(232,196,74,0.05) 0%, transparent 65%)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "220px",
-            zIndex: 1,
-            background: "linear-gradient(to top, #0a0a0a, transparent)",
-          }}
-        />
+      <main>
+        {/* ══ HERO ═══════════════════════════════════════════════════════════ */}
+        <section className="hero-molten" aria-labelledby="hero-title">
+          <div aria-hidden="true" className="hero-word" style={shift(y, 0.6)}>IRON</div>
+          <div aria-hidden="true" className="hero-plate-big" style={shift(y, 0.35)}>
+            <SteelPlate />
+          </div>
+          <div aria-hidden="true" className="hero-plate-small" style={shift(y, 0.22)}>
+            <RedPlate />
+          </div>
 
-        <motion.div
-          variants={heroContainer}
-          initial="initial"
-          animate="animate"
-          style={{
-            position: "relative",
-            zIndex: 2,
-            textAlign: "center",
-            padding: "0 1.5rem",
-            maxWidth: "860px",
-          }}
-        >
-          <motion.div variants={heroItem}>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                background: "rgba(232,196,74,0.08)",
-                border: "1px solid rgba(232,196,74,0.25)",
-                borderRadius: "100px",
-                padding: "7px 18px",
-                marginBottom: "36px",
-              }}
-            >
-              <span
-                style={{
-                  width: "7px",
-                  height: "7px",
-                  borderRadius: "50%",
-                  background: "#e8c44a",
-                  display: "inline-block",
-                  boxShadow: "0 0 8px #e8c44a",
-                }}
-              />
-              <span
-                style={{
-                  fontSize: "12px",
-                  color: "#e8c44a",
-                  letterSpacing: "2px",
-                  fontWeight: "600",
-                }}
-              >
-                KOTA'S PREMIER FITNESS DESTINATION
-              </span>
-            </div>
-          </motion.div>
-
-          <motion.div variants={heroItem}>
-            <h1
-              style={{
-                fontSize: "clamp(52px, 9vw, 104px)",
-                fontWeight: "900",
-                lineHeight: "0.95",
-                marginBottom: "28px",
-                letterSpacing: "-3px",
-              }}
-            >
-              WHERE
+          <div className="hero-inner" style={shift(y, 0.08)}>
+            <p className="eyebrow hg-rise">{GYM.name} · {GYM.city}</p>
+            <h1 id="hero-title" className="hero-title hg-rise" style={{ maxWidth: "780px", animationDelay: "0.1s" }}>
+              <span className="sr-only">{GYM.name}, {GYM.city} — </span>
+              Forge
               <br />
-              <span className="text-gold-gradient">LEGENDS</span>
-              <br />
-              ARE MADE
+              your <span className="text-molten">iron.</span>
             </h1>
-          </motion.div>
-
-          <motion.div variants={heroItem}>
-            <p
-              style={{
-                fontSize: "clamp(15px, 2vw, 18px)",
-                color: "rgba(255,255,255,0.45)",
-                maxWidth: "500px",
-                margin: "0 auto 44px",
-                lineHeight: "1.75",
-              }}
-            >
-              State-of-the-art equipment. Elite coaching. A community obsessed
-              with results. Your transformation starts the moment you walk
-              through our doors.
+            <p className="hg-rise hero-lead" style={{ animationDelay: "0.2s" }}>
+              A strength gym in {GYM.city}. Free weights, a functional zone and personal training on
+              request — join online in two minutes, or walk in and pay at the desk.
             </p>
-          </motion.div>
-
-          <motion.div variants={heroItem} className="hero-cta">
-            <button
-              onClick={handlePrimaryCta}
-              className="btn-gold"
-              style={{
-                width: "auto",
-                padding: "15px 36px",
-                fontSize: "15px",
-                letterSpacing: "0.5px",
-              }}
-            >
-              {isAuthenticated ? "View Membership Plans →" : "Start Free Today →"}
-            </button>
-            <button
-              onClick={handleSecondaryCta}
-              className="btn-ghost"
-              style={{ padding: "15px 36px", fontSize: "15px" }}
-            >
-              {secondaryCtaLabel || "Member Login"}
-            </button>
-          </motion.div>
-
-          {/* Stats */}
-          <div className="hero-stats">
-            {[
-              ["10,000+", "Members Transformed"],
-              ["48", "Expert Trainers"],
-              ["6", "Gym Locations"],
-              ["15+", "Years Strong"],
-            ].map(([num, label], i, arr) => (
-              <div
-                key={label}
-                className="stat-item"
-                style={{ textAlign: "center" }}
-              >
-                <div
-                  style={{
-                    fontSize: "clamp(24px, 3vw, 32px)",
-                    fontWeight: "800",
-                    color: "#e8c44a",
-                    letterSpacing: "-1px",
-                  }}
-                >
-                  {num}
-                </div>
-                <div
-                  style={{
-                    fontSize: "11px",
-                    color: "rgba(255,255,255,0.35)",
-                    letterSpacing: "1px",
-                    marginTop: "6px",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {label}
-                </div>
-              </div>
-            ))}
+            <div className="hero-cta hg-rise" style={{ justifyContent: "flex-start", animationDelay: "0.3s" }}>
+              <button type="button" className="btn-gold btn-lg" onClick={primaryCta.onClick}>
+                {primaryCta.label}
+              </button>
+              {accountCta ? (
+                <button type="button" className="btn-ghost btn-lg" onClick={() => navigate(accountCta.to)}>
+                  {accountCta.label}
+                </button>
+              ) : GYM.whatsappHref ? (
+                <a href={GYM.whatsappHref} target="_blank" rel="noopener" className="btn-ghost btn-lg">
+                  <MessageCircle size={18} aria-hidden="true" /> Ask on WhatsApp
+                </a>
+              ) : null}
+            </div>
+            <div className="hg-rise" style={{ animationDelay: "0.4s" }}>
+              <StatusPill status={status} />
+            </div>
           </div>
-        </motion.div>
+        </section>
 
-        {/* Scroll indicator */}
-        <div
-          className="scroll-indicator"
-          style={{
-            position: "absolute",
-            bottom: "32px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 2,
-            animation: "fadeSlideUp 1s ease 1s both",
-          }}
-        >
-          <div
-            style={{
-              width: "1px",
-              height: "50px",
-              background: "linear-gradient(to bottom, transparent, #e8c44a)",
-              margin: "0 auto",
-            }}
-          />
-        </div>
-      </section>
-
-      {/* ══ PROGRAMS ════════════════════════════════════════════════════════════ */}
-      <section
-        id="programs"
-        className="section-pad"
-        style={{ position: "relative" }}
-      >
-        {/* Background glow */}
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%,-50%)",
-            width: "600px",
-            height: "400px",
-            background:
-              "radial-gradient(ellipse, rgba(232,196,74,0.04) 0%, transparent 70%)",
-            pointerEvents: "none",
-          }}
-        />
-
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          <div
-            style={{
-              textAlign: "center",
-              marginBottom: "64px",
-              paddingTop: "250px",
-            }}
-          >
-            <motion.div variants={labelReveal}>
-              <SectionLabel text="Training Programs" />
-            </motion.div>
-            <motion.h2
-              // scrollFadeUp
-              variants={scrollFadeUp}
-              style={{
-                fontSize: "clamp(28px, 4vw, 46px)",
-                fontWeight: "800",
-                letterSpacing: "-1.5px",
-                marginBottom: "16px",
-              }}
-            >
-              Train with <span className="text-gold-gradient">purpose</span>
-            </motion.h2>
-            <p
-              style={{
-                color: "rgba(255,255,255,0.4)",
-                fontSize: "15px",
-                maxWidth: "480px",
-                margin: "0 auto",
-                lineHeight: "1.7",
-              }}
-            >
-              Six specialized training programs designed for every fitness level
-              — from complete beginners to seasoned athletes.
-            </p>
-          </div>
-
-          <motion.div
-            className="grid-auto"
-            variants={staggerContainer}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: "-60px" }}
-          >
-            {programs.map((p) => (
-              <motion.div
-                key={p.title}
-                variants={staggerItem}
-                whileHover={{
-                  y: -6,
-                  borderColor: "rgba(232,196,74,0.25)",
-                  transition: { duration: 0.2 },
-                }}
-                style={{
-                  padding: "28px",
-                  borderRadius: "12px",
-                  background: "rgba(255,255,255,0.02)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  position: "relative",
-                  cursor: "pointer",
-                }}
-              >
-                {p.tag && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: "16px",
-                      right: "16px",
-                      fontSize: "10px",
-                      fontWeight: "700",
-                      letterSpacing: "1px",
-                      color: "#0a0a0a",
-                      background: "#e8c44a",
-                      borderRadius: "6px",
-                      padding: "3px 10px",
-                    }}
-                  >
-                    {p.tag}
-                  </span>
-                )}
-                <div style={{ fontSize: "32px", marginBottom: "16px" }}>
-                  {p.icon}
-                </div>
-                <h3
-                  style={{
-                    fontSize: "17px",
-                    fontWeight: "700",
-                    marginBottom: "10px",
-                  }}
-                >
-                  {p.title}
-                </h3>
-                <p
-                  style={{
-                    fontSize: "13px",
-                    color: "rgba(255,255,255,0.42)",
-                    lineHeight: "1.75",
-                  }}
-                >
-                  {p.desc}
-                </p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ══ TRANSFORMATION STATS ════════════════════════════════════════════════ */}
-      <section
-        style={{
-          padding: "100px 1.5rem",
-          background:
-            "linear-gradient(135deg, rgba(232,196,74,0.05) 0%, rgba(232,196,74,0.02) 50%, transparent 100%)",
-          borderTop: "1px solid rgba(232,196,74,0.08)",
-          borderBottom: "1px solid rgba(232,196,74,0.08)",
-        }}
-      >
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "64px" }}>
-            <SectionLabel text="Real Results" />
-            <h2
-              style={{
-                fontSize: "clamp(28px, 4vw, 46px)",
-                fontWeight: "800",
-                letterSpacing: "-1.5px",
-              }}
-            >
-              Numbers that <span className="text-gold-gradient">don't lie</span>
-            </h2>
-          </div>
-
-          <motion.div
-            className="stats-grid"
-            variants={staggerContainer}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-          >
-            {transformations.map((t, i) => (
-              <motion.div
-                key={i}
-                variants={staggerItem}
-                style={{
-                  padding: "40px 32px",
-                  textAlign: "center",
-                  background:
-                    i % 2 === 0
-                      ? "rgba(255,255,255,0.02)"
-                      : "rgba(232,196,74,0.03)",
-                  border: "1px solid rgba(255,255,255,0.05)",
-                  borderRadius: "16px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "clamp(36px, 5vw, 52px)",
-                    fontWeight: "900",
-                    color: "#e8c44a",
-                    letterSpacing: "-2px",
-                    marginBottom: "12px",
-                  }}
-                >
-                  {t.stat}
-                </div>
-                <p
-                  style={{
-                    fontSize: "13px",
-                    color: "rgba(255,255,255,0.45)",
-                    lineHeight: "1.6",
-                  }}
-                >
-                  {t.label}
-                </p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ══ TRAINERS ════════════════════════════════════════════════════════════ */}
-      <section id="trainers" className="section-pad">
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "64px" }}>
-            <SectionLabel text="Meet the Team" />
-            <h2
-              style={{
-                fontSize: "clamp(28px, 4vw, 46px)",
-                fontWeight: "800",
-                letterSpacing: "-1.5px",
-                marginBottom: "16px",
-              }}
-            >
-              Trained by the <span className="text-gold-gradient">best</span>
-            </h2>
-            <p
-              style={{
-                color: "rgba(255,255,255,0.4)",
-                fontSize: "15px",
-                maxWidth: "460px",
-                margin: "0 auto",
-              }}
-            >
-              Our coaches aren't just certified — they've lived the
-              transformation themselves.
-            </p>
-          </div>
-
-          <motion.div
-            className="grid-3"
-            variants={staggerContainerSlow}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: "-60px" }}
-          >
-            {trainers.map((t) => (
-              <motion.div
-                key={t.name}
-                variants={staggerItem}
-                whileHover={{
-                  y: -6,
-                  borderColor: "rgba(232,196,74,0.2)",
-                  transition: { duration: 0.2 },
-                }}
-                style={{
-                  padding: "32px",
-                  transition: "transform 0.25s, border-color 0.25s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-6px)";
-                  e.currentTarget.style.borderColor = "rgba(232,196,74,0.2)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
-                }}
-              >
-                {/* Avatar */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "16px",
-                    marginBottom: "24px",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "64px",
-                      height: "64px",
-                      borderRadius: "16px",
-                      background: "linear-gradient(135deg, #e8c44a, #c9a832)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "26px",
-                      fontWeight: "800",
-                      color: "#0a0a0a",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {t.initial}
-                  </div>
-                  <div>
-                    <h3
-                      style={{
-                        fontWeight: "700",
-                        fontSize: "17px",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      {t.name}
-                    </h3>
-                    <p
-                      style={{
-                        fontSize: "13px",
-                        color: "#e8c44a",
-                        fontWeight: "500",
-                      }}
-                    >
-                      {t.role}
-                    </p>
-                  </div>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    marginBottom: "20px",
-                    padding: "8px 12px",
-                    background: "rgba(255,255,255,0.03)",
-                    borderRadius: "8px",
-                  }}
-                >
-                  <span
-                    style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)" }}
-                  >
-                    Experience:
-                  </span>
-                  <span
-                    style={{
-                      fontSize: "13px",
-                      fontWeight: "600",
-                      color: "#e8c44a",
-                    }}
-                  >
-                    {t.exp}
-                  </span>
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                  {t.spec.map((s) => (
-                    <span
-                      key={s}
-                      style={{
-                        fontSize: "11px",
-                        padding: "4px 12px",
-                        borderRadius: "100px",
-                        background: "rgba(232,196,74,0.08)",
-                        border: "1px solid rgba(232,196,74,0.15)",
-                        color: "rgba(255,255,255,0.6)",
-                        fontWeight: "500",
-                      }}
-                    >
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ══ EQUIPMENT ═══════════════════════════════════════════════════════════ */}
-      <section
-        style={{
-          padding: "100px 1.5rem",
-          background: "rgba(10,10,10,0.6)",
-          borderTop: "1px solid rgba(255,255,255,0.04)",
-          borderBottom: "1px solid rgba(255,255,255,0.04)",
-        }}
-      >
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div className="equipment-layout">
-            {/* Left */}
+        {/* ══ HIGHLIGHT STRIP (confirmed items only) ═════════════════════════ */}
+        {highlights.length > 0 && (
+          <section className="fact-strip" aria-label="Highlights">
             <div>
-              <SectionLabel text="World Class Facility" />
-              <h2
-                style={{
-                  fontSize: "clamp(26px, 3.5vw, 42px)",
-                  fontWeight: "800",
-                  letterSpacing: "-1.5px",
-                  marginBottom: "20px",
-                  lineHeight: "1.1",
-                }}
-              >
-                Equipment that
-                <br />
-                <span className="text-gold-gradient">
-                  matches your ambition
-                </span>
-              </h2>
-              <p
-                style={{
-                  color: "rgba(255,255,255,0.4)",
-                  fontSize: "15px",
-                  lineHeight: "1.8",
-                  marginBottom: "32px",
-                }}
-              >
-                Over ₹5 crore invested in premium gym equipment across our
-                facilities. Every machine, every weight, every station is
-                maintained to perfection so your workout is never compromised.
-              </p>
-              <button
-                onClick={handlePrimaryCta}
-                className="btn-gold"
-                style={{
-                  width: "auto",
-                  padding: "13px 28px",
-                  fontSize: "14px",
-                }}
-              >
-                Book a Free Tour →
-              </button>
+              {highlights.map((h) => <span key={h}>{h}</span>)}
+              <span>Pay online or at desk</span>
             </div>
+          </section>
+        )}
 
-            {/* Right */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "12px",
-              }}
-            >
-              {equipment.map((e) => (
-                <div
-                  key={e.name}
-                  style={{
-                    padding: "20px",
-                    borderRadius: "14px",
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                    transition: "border-color 0.2s",
-                  }}
-                  onMouseEnter={(el) =>
-                    (el.currentTarget.style.borderColor =
-                      "rgba(232,196,74,0.2)")
-                  }
-                  onMouseLeave={(el) =>
-                    (el.currentTarget.style.borderColor =
-                      "rgba(255,255,255,0.06)")
-                  }
-                >
-                  <div style={{ fontSize: "24px", marginBottom: "10px" }}>
-                    {e.icon}
-                  </div>
-                  <h4
-                    style={{
-                      fontSize: "13px",
-                      fontWeight: "700",
-                      marginBottom: "6px",
-                    }}
-                  >
-                    {e.name}
-                  </h4>
-                  <p
-                    style={{
-                      fontSize: "11px",
-                      color: "rgba(255,255,255,0.38)",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    {e.desc}
-                  </p>
-                </div>
+        {/* ══ FACILITIES ═════════════════════════════════════════════════════ */}
+        {offerings.length > 0 && (
+          <section id="facilities" className="section-dark section-block has-prop" aria-labelledby="facilities-title">
+            <div className="section-prop section-prop--hide-sm" style={{ right: "6%", top: "56px", width: "120px" }}>
+              <Kettlebell className="prop-swing" style={{ width: "100%", height: "auto", display: "block" }} />
+            </div>
+            <div className="container-wide">
+              <SectionHead
+                id="facilities-title"
+                eyebrow="Inside the gym"
+                title="The floor"
+                intro="What you can train with from day one."
+              />
+              <div className="grid-auto">
+                {offerings.map((f, i) => <FeatureCard key={f.title} item={f} index={i} />)}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ══ AMENITIES ══════════════════════════════════════════════════════ */}
+        {amenities.length > 0 && (
+          <section className="section-dark" style={{ padding: "0 24px 48px" }} aria-label="Amenities">
+            <ul className="container-wide amenity-list">
+              {amenities.map((a) => (
+                <li key={a.title}>
+                  <Icon name={a.icon} size={18} />
+                  {a.title}
+                </li>
               ))}
-            </div>
+            </ul>
+          </section>
+        )}
+
+        {/* ══ OUTLINE BAND ═══════════════════════════════════════════════════ */}
+        <section aria-hidden="true" className="section-dark band-wrap">
+          <div className="band-outline band-marquee">
+            Lift · Recover · Repeat · Lift · Recover · Repeat · Lift · Recover · Repeat ·
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ══ PRICING ═════════════════════════════════════════════════════════════ */}
-      <section id="pricing" className="section-pad">
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "48px" }}>
-            <SectionLabel text="Membership Plans" />
-            <h2 className="section-title" style={{ marginBottom: "16px" }}>
-              Invest in your{" "}
-              <span className="text-gold-gradient">best self</span>
-            </h2>
-            <p className="section-subtitle">
-              No hidden fees. Choose the duration that works for you.
-            </p>
-          </div>
-
-          {/* Duration Selector Tabs */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "8px",
-              marginBottom: "40px",
-              flexWrap: "wrap",
-            }}
-          >
-            {durationOptions.map((opt) => (
-              <button
-                key={opt.days}
-                onClick={() => setSelectedDuration(opt.days)}
-                style={{
-                  padding: "9px 20px",
-                  borderRadius: "100px",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  border:
-                    selectedDuration === opt.days
-                      ? "1px solid rgba(232,196,74,0.4)"
-                      : "1px solid rgba(255,255,255,0.1)",
-                  background:
-                    selectedDuration === opt.days
-                      ? "rgba(232,196,74,0.1)"
-                      : "transparent",
-                  color:
-                    selectedDuration === opt.days
-                      ? "#e8c44a"
-                      : "rgba(255,255,255,0.5)",
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          {plansLoading ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "60px",
-                color: "rgba(255,255,255,0.3)",
-              }}
-            >
-              Loading plans...
+        {/* ══ PRICING ════════════════════════════════════════════════════════ */}
+        <section id="pricing" className="section-dark section-block" aria-labelledby="pricing-title">
+          <div className="container-wide">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "20px", flexWrap: "wrap", marginBottom: "28px" }}>
+              <div>
+                <p className="eyebrow" style={{ marginBottom: "10px" }}>Membership</p>
+                <motion.h2 {...reveal} id="pricing-title" className="section-title">Plans</motion.h2>
+              </div>
+              <p style={{ color: "var(--text-2)", fontSize: "17px" }}>
+                The price you see is the price you pay.
+              </p>
             </div>
-          ) : plans.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "60px",
-                color: "rgba(255,255,255,0.3)",
-              }}
-            >
-              Membership plans coming soon.
-            </div>
-          ) : (
-            <motion.div
-              className="pricing-grid"
-              variants={staggerContainerSlow}
-              initial="initial"
-              whileInView="animate"
-              viewport={{ once: true }}
-            >
-              {plans.map((plan) => {
-                const pricing = getPriceForDuration(plan, selectedDuration);
-                if (!pricing) return null;
 
+            {availableDurations.length > 1 && (
+              <div role="group" aria-label="Choose duration" className="duration-tabs">
+                {availableDurations.map((opt) => {
+                  const active = activeDuration === opt.days;
+                  return (
+                    <button
+                      key={opt.days}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setSelectedDuration(opt.days)}
+                      className={active ? "tab-pill tab-pill--active" : "tab-pill"}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {plansLoading ? (
+              <div className="pricing-grid" aria-busy="true">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="card-iron skeleton" style={{ height: "380px" }} />
+                ))}
+              </div>
+            ) : plansError ? (
+              <div className="card-iron" style={{ padding: "40px", textAlign: "center", color: "var(--text-2)" }}>
+                <p style={{ marginBottom: "16px" }}>Couldn’t load plans right now.</p>
+                <button type="button" className="btn-ghost" onClick={retryPlans}>Try again</button>
+              </div>
+            ) : plans.length === 0 ? (
+              <div className="card-iron" style={{ padding: "40px", textAlign: "center", color: "var(--text-2)" }}>
+                Plans are being updated.
+                {GYM.phone && (
+                  <> Call <a href={GYM.phone.href} style={{ color: "var(--yellow)" }}>{GYM.phone.display}</a> to join today.</>
+                )}
+              </div>
+            ) : (
+              <div className="pricing-grid">
+                {plans.map((plan) => {
+                  const pricing = getPriceForDuration(plan, activeDuration);
+                  if (!pricing) return null;
+                  const featured = plan.isFeatured;
+                  const months = activeDuration === 365 ? 12 : activeDuration / 30;
+                  const monthly = getPriceForDuration(plan, 30);
+                  const savings =
+                    activeDuration !== 30 && monthly
+                      ? Math.round((monthly.price * months - pricing.price) / 100)
+                      : 0;
+
+                  return (
+                    <motion.article
+                      key={plan._id}
+                      {...reveal}
+                      className={featured ? "plan-card plan-card--featured" : "plan-card"}
+                    >
+                      <h3 className="plan-card__name">
+                        {plan.name}
+                        {featured && " · most picked"}
+                      </h3>
+                      {plan.description && <p className="plan-card__desc">{plan.description}</p>}
+                      <div>
+                        {pricing.originalPrice && (
+                          <span style={{ fontSize: "19px", textDecoration: "line-through", marginRight: "10px", opacity: 0.7 }}>
+                            {rupees(pricing.originalPrice)}
+                          </span>
+                        )}
+                        <span className="font-display" style={{ fontSize: "clamp(48px, 6vw, 60px)", lineHeight: 1 }}>
+                          {rupees(pricing.price)}
+                        </span>
+                        <span style={{ fontSize: "16px", marginLeft: "6px", opacity: 0.8 }}>
+                          / {pricing.label.toLowerCase()}
+                        </span>
+                        {activeDuration !== 30 && (
+                          <div style={{ marginTop: "6px", fontSize: "15px", opacity: 0.85 }}>
+                            ≈ ₹{Math.round(pricing.price / 100 / months).toLocaleString("en-IN")}/month
+                            {savings > 0 && <strong style={{ marginLeft: "8px" }}>Save ₹{savings.toLocaleString("en-IN")}</strong>}
+                          </div>
+                        )}
+                      </div>
+
+                      {plan.features?.length > 0 && (
+                        <ul className="plan-card__features">
+                          {plan.features.map((f) => (
+                            <li key={f}>
+                              <span aria-hidden="true" className="plan-card__tick">✓</span>
+                              <span>{f}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <button
+                        type="button"
+                        className="plan-card__cta"
+                        onClick={() => navigate(`/plans/${plan.slug}?duration=${activeDuration}`)}
+                      >
+                        Choose {plan.name}
+                      </button>
+                    </motion.article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ══ MEMBER APP PERKS ═══════════════════════════════════════════════ */}
+        <section className="section-dark section-block has-prop" aria-labelledby="perks-title">
+          <div className="section-prop section-prop--hide-sm prop-float" style={{ right: "4%", top: "70px", width: "240px", perspective: "800px" }}>
+            <DumbbellProp className="prop-spin3d" style={{ width: "100%", height: "auto", display: "block" }} />
+          </div>
+          <div className="container-wide">
+            <SectionHead
+              id="perks-title"
+              eyebrow="Membership, sorted"
+              title="No paper slips. No guesswork."
+              intro="Every member gets an online account with their pass, payments and receipts."
+            />
+            <div className="grid-4 perks-grid">
+              {APP_PERKS.map((p, i) => {
+                const PerkIcon = p.icon;
                 return (
                   <motion.div
-                    key={plan._id}
-                    variants={staggerItem}
-                    whileHover={
-                      !plan.isFeatured
-                        ? { y: -4, transition: { duration: 0.2 } }
-                        : {}
-                    }
-                    className={plan.isFeatured ? "pricing-card--featured" : ""}
-                    style={{
-                      padding: "36px 28px",
-                      borderRadius: "20px",
-                      border: plan.isFeatured
-                        ? "1px solid rgba(232,196,74,0.4)"
-                        : "1px solid rgba(255,255,255,0.06)",
-                      background: plan.isFeatured
-                        ? "linear-gradient(145deg, rgba(232,196,74,0.08), rgba(232,196,74,0.02))"
-                        : "rgba(255,255,255,0.02)",
-                      position: "relative",
-                      transform: plan.isFeatured ? "scale(1.03)" : "scale(1)",
-                    }}
+                    key={p.title}
+                    {...reveal}
+                    transition={{ ...reveal.transition, delay: i * 0.06 }}
+                    style={{ display: "flex", flexDirection: "column", gap: "10px" }}
                   >
-                    {plan.isFeatured && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "-14px",
-                          left: "50%",
-                          transform: "translateX(-50%)",
-                          background: "#e8c44a",
-                          color: "#0a0a0a",
-                          fontSize: "11px",
-                          fontWeight: "800",
-                          letterSpacing: "1px",
-                          padding: "5px 18px",
-                          borderRadius: "100px",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        Most Popular
-                      </div>
-                    )}
-
-                    <h3
-                      style={{
-                        fontSize: "15px",
-                        fontWeight: "700",
-                        color: plan.isFeatured
-                          ? "#e8c44a"
-                          : "rgba(255,255,255,0.6)",
-                        letterSpacing: "2px",
-                        textTransform: "uppercase",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      {plan.name}
-                    </h3>
-
-                    <p
-                      style={{
-                        fontSize: "13px",
-                        color: "rgba(255,255,255,0.4)",
-                        marginBottom: "20px",
-                        minHeight: "36px",
-                      }}
-                    >
-                      {plan.description}
-                    </p>
-
-                    <div style={{ marginBottom: "28px" }}>
-                      {pricing.originalPrice && (
-                        <span
-                          style={{
-                            fontSize: "16px",
-                            color: "rgba(255,255,255,0.3)",
-                            textDecoration: "line-through",
-                            marginRight: "8px",
-                          }}
-                        >
-                          ₹
-                          {(pricing.originalPrice / 100).toLocaleString(
-                            "en-IN",
-                          )}
-                        </span>
-                      )}
-                      <span
-                        style={{
-                          fontSize: "42px",
-                          fontWeight: "900",
-                          letterSpacing: "-2px",
-                        }}
-                      >
-                        ₹{(pricing.price / 100).toLocaleString("en-IN")}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "14px",
-                          color: "rgba(255,255,255,0.35)",
-                          marginLeft: "4px",
-                        }}
-                      >
-                        / {pricing.label.toLowerCase()}
-                      </span>
-                      {(() => {
-                        // Per-month equivalent + savings vs paying monthly
-                        if (selectedDuration === 30) return null;
-                        const months = selectedDuration === 365 ? 12 : selectedDuration / 30;
-                        const monthly = getPriceForDuration(plan, 30);
-                        const perMonth = Math.round(pricing.price / 100 / months);
-                        const savings = monthly
-                          ? Math.round((monthly.price * months - pricing.price) / 100)
-                          : 0;
-                        return (
-                          <div style={{ marginTop: "8px", fontSize: "13px", color: "rgba(255,255,255,0.45)" }}>
-                            ≈ ₹{perMonth.toLocaleString("en-IN")}/month
-                            {savings > 0 && (
-                              <span style={{ marginLeft: "8px", color: "#22c55e", fontWeight: "600" }}>
-                                Save ₹{savings.toLocaleString("en-IN")}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    <div
-                      style={{
-                        borderTop: "1px solid rgba(255,255,255,0.06)",
-                        paddingTop: "24px",
-                        marginBottom: "28px",
-                      }}
-                    >
-                      {plan.features.map((f) => (
-                        <div
-                          key={f}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "10px",
-                            marginBottom: "12px",
-                          }}
-                        >
-                          <span
-                            style={{
-                              color: "#e8c44a",
-                              fontSize: "14px",
-                              flexShrink: 0,
-                            }}
-                          >
-                            ✓
-                          </span>
-                          <span
-                            style={{
-                              fontSize: "13px",
-                              color: "rgba(255,255,255,0.55)",
-                            }}
-                          >
-                            {f}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={() =>
-                        navigate(
-                          `/plans/${plan.slug}?duration=${selectedDuration}`,
-                        )
-                      }
-                      style={{
-                        width: "100%",
-                        padding: "13px",
-                        borderRadius: "10px",
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                        border: "none",
-                        background: plan.isFeatured ? "#e8c44a" : "transparent",
-                        color: plan.isFeatured
-                          ? "#0a0a0a"
-                          : "rgba(255,255,255,0.6)",
-                        borderColor: plan.isFeatured
-                          ? "transparent"
-                          : "rgba(255,255,255,0.12)",
-                        borderWidth: plan.isFeatured ? 0 : "1px",
-                        borderStyle: "solid",
-                      }}
-                    >
-                      Get Started
-                    </button>
+                    <span className="perk-icon"><PerkIcon size={22} aria-hidden="true" /></span>
+                    <h3 style={{ fontSize: "18px", fontWeight: 700 }}>{p.title}</h3>
+                    <p style={{ color: "var(--text-2)", fontSize: "17px", lineHeight: 1.6 }}>{p.copy}</p>
                   </motion.div>
                 );
               })}
-            </motion.div>
-          )}
-        </div>
-      </section>
-
-      {/* ══ TESTIMONIALS ════════════════════════════════════════════════════════ */}
-      <section
-        style={{
-          padding: "100px 1.5rem",
-          background: "rgba(10,10,10,0.6)",
-          borderTop: "1px solid rgba(255,255,255,0.04)",
-        }}
-      >
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "64px" }}>
-            <SectionLabel text="Success Stories" />
-            <h2
-              style={{
-                fontSize: "clamp(28px, 4vw, 46px)",
-                fontWeight: "800",
-                letterSpacing: "-1.5px",
-              }}
-            >
-              Hear it from our{" "}
-              <span className="text-gold-gradient">members</span>
-            </h2>
+            </div>
           </div>
+        </section>
 
-          <motion.div
-            className="grid-3"
-            variants={staggerContainer}
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true, margin: "-60px" }}
-          >
-            {testimonials.map((t) => (
-              <motion.div
-                key={t.name}
-                variants={staggerItem}
-                className="auth-card"
-                style={{ padding: "32px" }}
-              >
-                {/* Stars */}
-                <div style={{ marginBottom: "20px" }}>
-                  {"★"
-                    .repeat(t.rating)
-                    .split("")
-                    .map((s, i) => (
-                      <span
-                        key={i}
-                        style={{ color: "#e8c44a", fontSize: "16px" }}
-                      >
-                        {s}
-                      </span>
-                    ))}
-                </div>
-                <p
-                  style={{
-                    fontSize: "14px",
-                    color: "rgba(255,255,255,0.55)",
-                    lineHeight: "1.8",
-                    marginBottom: "24px",
-                    fontStyle: "italic",
-                  }}
-                >
-                  "{t.text}"
-                </p>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    borderTop: "1px solid rgba(255,255,255,0.06)",
-                    paddingTop: "20px",
-                  }}
-                >
+        {/* ══ HOW JOINING WORKS ══════════════════════════════════════════════ */}
+        <section className="section-dark section-block" aria-labelledby="steps-title">
+          <div className="container-wide">
+            <SectionHead id="steps-title" title="How joining works" />
+            <ol className="grid-3" style={{ listStyle: "none" }}>
+              {STEPS.map((s) => (
+                <motion.li key={s.n} {...reveal} style={{ borderTop: "2px solid var(--yellow)", paddingTop: "18px" }}>
+                  <span className="font-display" style={{ fontSize: "44px", color: "var(--yellow)", lineHeight: 1 }}>{s.n}</span>
+                  <h3 className="font-display" style={{ fontSize: "30px", textTransform: "uppercase", margin: "8px 0" }}>{s.title}</h3>
+                  <p style={{ color: "var(--text-2)", lineHeight: 1.6 }}>{s.copy}</p>
+                </motion.li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* ══ VISIT (hours + map) ════════════════════════════════════════════ */}
+        {(GYM.address || GYM.phone || HOURS.slots.length > 0) && (
+          <section id="visit" className="section-dark section-block" aria-labelledby="visit-title">
+            <div className="container-wide visit-grid">
+              <motion.div {...reveal} className="card-iron visit-card">
+                <h2 id="visit-title" className="section-title" style={{ fontSize: "clamp(44px, 5vw, 60px)" }}>
+                  Walk <span style={{ color: "var(--yellow)" }}>in</span>
+                </h2>
+                <dl className="visit-facts">
+                  {GYM.address && (
+                    <div>
+                      <dt><MapPin size={18} aria-hidden="true" /> Address</dt>
+                      <dd>{GYM.address}</dd>
+                    </div>
+                  )}
                   <div>
-                    <p style={{ fontWeight: "700", fontSize: "14px" }}>
-                      {t.name}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "rgba(255,255,255,0.35)",
-                        marginTop: "2px",
-                      }}
-                    >
-                      Hulk Gym Member
-                    </p>
+                    <dt><Clock size={18} aria-hidden="true" /> Hours</dt>
+                    <dd className="hours-slots">
+                      <span>{HOURS.daysLabel}</span>
+                      {HOURS.slots.map((s) => <span key={s.open}>{s.label}</span>)}
+                      <span style={{ color: "var(--text-3)" }}>{HOURS.closedLabel}</span>
+                      <span style={{ marginTop: "8px" }}><StatusPill status={status} /></span>
+                    </dd>
                   </div>
-                  <span
-                    style={{
-                      fontSize: "11px",
-                      fontWeight: "700",
-                      color: "#e8c44a",
-                      background: "rgba(232,196,74,0.1)",
-                      border: "1px solid rgba(232,196,74,0.2)",
-                      borderRadius: "100px",
-                      padding: "4px 12px",
-                    }}
-                  >
-                    {t.result}
-                  </span>
+                  {GYM.phone && (
+                    <div>
+                      <dt><Phone size={18} aria-hidden="true" /> Phone</dt>
+                      <dd><a href={GYM.phone.href} style={{ color: "var(--text-1)" }}>{GYM.phone.display}</a></dd>
+                    </div>
+                  )}
+                </dl>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  {GYM.phone && (
+                    <a href={GYM.phone.href} className="btn-gold" style={{ width: "auto" }}>
+                      <Phone size={17} aria-hidden="true" /> Call the gym
+                    </a>
+                  )}
+                  {GYM.whatsappHref && (
+                    <a href={GYM.whatsappHref} target="_blank" rel="noopener" className="btn-ghost">
+                      <MessageCircle size={17} aria-hidden="true" /> WhatsApp
+                    </a>
+                  )}
+                  {GYM.mapsHref && (
+                    <a href={GYM.mapsHref} target="_blank" rel="noopener" className="btn-ghost">
+                      <MapPin size={17} aria-hidden="true" /> Directions
+                    </a>
+                  )}
+                  {GYM.emailHref && (
+                    <a href={GYM.emailHref} className="btn-ghost">
+                      <Mail size={17} aria-hidden="true" /> Email
+                    </a>
+                  )}
                 </div>
               </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
+              {mapEmbed && (
+                <div className="map-frame">
+                  <iframe
+                    title={`Map showing ${GYM.name}, ${GYM.city}`}
+                    src={mapEmbed}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+              )}
+            </div>
+          </section>
+        )}
 
-      {/* ══ FINAL CTA ═══════════════════════════════════════════════════════════ */}
-      <section style={{ padding: "100px 1.5rem 120px" }}>
-        <div
-          style={{ maxWidth: "800px", margin: "0 auto", textAlign: "center" }}
-        >
-          <motion.div
-            variants={scrollScaleIn}
-            style={{
-              padding: "70px 48px",
-              borderRadius: "28px",
-              background:
-                "linear-gradient(135deg, rgba(232,196,74,0.1), rgba(232,196,74,0.03))",
-              border: "1px solid rgba(232,196,74,0.2)",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {/* Decorative circles */}
-            <div
-              style={{
-                position: "absolute",
-                top: "-60px",
-                right: "-60px",
-                width: "200px",
-                height: "200px",
-                borderRadius: "50%",
-                border: "1px solid rgba(232,196,74,0.1)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: "-40px",
-                left: "-40px",
-                width: "140px",
-                height: "140px",
-                borderRadius: "50%",
-                border: "1px solid rgba(232,196,74,0.08)",
-              }}
-            />
-
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <p
-                style={{
-                  fontSize: "12px",
-                  color: "#e8c44a",
-                  letterSpacing: "3px",
-                  fontWeight: "600",
-                  marginBottom: "16px",
-                }}
-              >
-                START TODAY — NO EXCUSES
-              </p>
-              <h2
-                style={{
-                  fontSize: "clamp(28px, 4vw, 44px)",
-                  fontWeight: "900",
-                  letterSpacing: "-1.5px",
-                  marginBottom: "16px",
-                  lineHeight: "1.1",
-                }}
-              >
-                Your strongest self
-                <br />
-                <span className="text-gold-gradient">is waiting for you</span>
-              </h2>
-              <p
-                style={{
-                  color: "rgba(255,255,255,0.4)",
-                  fontSize: "15px",
-                  marginBottom: "36px",
-                  lineHeight: "1.7",
-                }}
-              >
-                Join 10,000+ members who chose to stop waiting and start
-                transforming. First week is completely free — no credit card
-                required.
-              </p>
-              <div
-                style={{
-                  display: "flex",
-                  gap: "12px",
-                  justifyContent: "center",
-                  flexWrap: "wrap",
-                }}
-              >
-                <button
-                  onClick={handlePrimaryCta}
-                  className="btn-gold"
-                  style={{
-                    width: "auto",
-                    padding: "15px 40px",
-                    fontSize: "15px",
-                  }}
-                >
-                  {isAuthenticated ? "Choose Your Plan" : "Create Free Account"}
-                </button>
-                <button
-                  onClick={handleSecondaryCta}
-                  className="btn-ghost"
-                  style={{ padding: "15px 32px", fontSize: "15px" }}
-                >
-                  {secondaryCtaLabel || "Already a member?"}
-                </button>
+        {/* ══ FAQ ════════════════════════════════════════════════════════════ */}
+        {faq.length > 0 && (
+          <section id="faq" className="section-dark section-block" aria-labelledby="faq-title">
+            <div className="container-wide" style={{ maxWidth: "900px" }}>
+              <SectionHead id="faq-title" eyebrow="Good to know" title="Questions" />
+              <div className="faq-list">
+                {faq.map((f) => (
+                  <details key={f.q} className="faq-item">
+                    <summary>
+                      <span>{f.q}</span>
+                      <ChevronDown size={20} aria-hidden="true" className="faq-chevron" />
+                    </summary>
+                    <p>{f.a}</p>
+                  </details>
+                ))}
               </div>
             </div>
-          </motion.div>
-        </div>
-      </section>
+          </section>
+        )}
 
-      {/* ══ FOOTER ══════════════════════════════════════════════════════════════ */}
+        {/* ══ FINAL CTA ══════════════════════════════════════════════════════ */}
+        <section className="final-cta has-prop" aria-labelledby="cta-title">
+          <div className="section-prop section-prop--hide-sm" style={{ right: "3%", bottom: "-18px", width: "200px", opacity: 0.9 }}>
+            <DumbbellProp className="prop-curl" plate="#0a0a0b" accent="#e5482b" handle="#2e2e33" style={{ width: "100%", height: "auto", display: "block" }} />
+          </div>
+          <div className="container-wide final-cta__inner">
+            <h2 id="cta-title" className="section-title" style={{ color: "var(--iron-950)" }}>
+              First rep starts today.
+            </h2>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+              <button type="button" className="btn-dark btn-lg" onClick={primaryCta.onClick}>
+                {primaryCta.label}
+              </button>
+              {GYM.whatsappHref && (
+                <a href={GYM.whatsappHref} target="_blank" rel="noopener" className="btn-outline-dark btn-lg">
+                  <MessageCircle size={18} aria-hidden="true" /> WhatsApp us
+                </a>
+              )}
+            </div>
+          </div>
+        </section>
+      </main>
+
       <Footer />
     </div>
   );

@@ -13,7 +13,7 @@ import { useAuthStore } from "../../store/authStore.js";
 
 export default function Navbar({
   transparent = false,  // true → starts transparent, becomes solid on scroll
-  showNavLinks = false, // true → shows Programs, Trainers, Pricing links (landing page only)
+  showNavLinks = false, // true → shows section links (landing page only)
 }) {
   const navigate        = useNavigate();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -41,15 +41,16 @@ export default function Navbar({
   const isSolid = !transparent || scrolled;
 
   const navLinks = [
-    { label: "Programs", href: "#programs" },
-    { label: "Trainers", href: "#trainers" },
-    { label: "Pricing",  href: "#pricing"  },
+    { label: "Facilities", href: "#facilities" },
+    { label: "Plans",      href: "#pricing"    },
+    { label: "Visit",      href: "#visit"      },
+    { label: "FAQ",        href: "#faq"        },
   ];
 
   const linkStyle = {
-    color         : "rgba(255,255,255,0.55)",
-    fontSize      : "14px",
-    fontWeight    : "500",
+    color         : "#bdbdb6",
+    fontSize      : "16px",
+    fontWeight    : "600",
     textDecoration: "none",
     transition    : "color 0.2s",
     cursor        : "pointer",
@@ -68,25 +69,23 @@ export default function Navbar({
         display       : "flex",
         alignItems    : "center",
         justifyContent: "space-between",
-        background    : isSolid ? "rgba(10,10,10,0.95)" : "rgba(10,10,10,0.6)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        borderBottom  : `1px solid ${isSolid ? "rgba(255,255,255,0.07)" : "transparent"}`,
+        background    : isSolid ? "rgba(10,10,11,0.92)" : "rgba(10,10,11,0)",
+        backdropFilter: isSolid ? "blur(16px)" : "none",
+        WebkitBackdropFilter: isSolid ? "blur(16px)" : "none",
+        borderBottom  : `1px solid ${isSolid ? "#1e1e21" : "transparent"}`,
         transition    : "background 0.3s, border-color 0.3s",
       }}>
 
         {/* Logo */}
-        <div onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <Logo size="md" clickable={true} />
-        </div>
+        <Logo size="md" clickable={true} />
 
         {/* Center nav links — desktop only, landing page only */}
         {showNavLinks && (
           <div className="nav-links-desktop" style={{ display: "flex", gap: "32px" }}>
             {navLinks.map((l) => (
               <a key={l.label} href={l.href} style={linkStyle}
-                onMouseEnter={(e) => e.target.style.color = "#e8c44a"}
-                onMouseLeave={(e) => e.target.style.color = "rgba(255,255,255,0.55)"}>
+                onMouseEnter={(e) => e.target.style.color = "#f3d400"}
+                onMouseLeave={(e) => e.target.style.color = "#bdbdb6"}>
                 {l.label}
               </a>
             ))}
@@ -97,28 +96,28 @@ export default function Navbar({
         <div className="nav-cta-desktop" style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           {isAuthenticated ? (
             <>
-              <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}>
-                Hi, <span style={{ color: "#e8c44a", fontWeight: "600" }}>{user?.firstName}</span>
+              <span style={{ fontSize: "15px", color: "#bdbdb6" }}>
+                Hi, <span style={{ color: "#f3d400", fontWeight: "600" }}>{user?.firstName}</span>
               </span>
               {user?.role === "admin" && (
                 <button onClick={() => navigate("/admin")} className="btn-ghost"
-                  style={{ padding: "9px 20px", fontSize: "13px" }}>
+                  style={{ padding: "9px 20px", fontSize: "15px" }}>
                   Dashboard
                 </button>
               )}
               <button onClick={() => navigate("/profile")} className="btn-gold"
-                style={{ width: "auto", padding: "9px 20px", fontSize: "13px" }}>
+                style={{ width: "auto", padding: "9px 20px", fontSize: "15px" }}>
                 My Profile
               </button>
             </>
           ) : (
             <>
               <button onClick={() => navigate("/login")} className="btn-ghost"
-                style={{ padding: "9px 20px", fontSize: "13px" }}>
+                style={{ padding: "9px 20px", fontSize: "15px" }}>
                 Login
               </button>
               <button onClick={() => navigate("/register")} className="btn-gold"
-                style={{ width: "auto", padding: "9px 20px", fontSize: "13px" }}>
+                style={{ width: "auto", padding: "9px 20px", fontSize: "15px" }}>
                 Join Now
               </button>
             </>
@@ -127,23 +126,27 @@ export default function Navbar({
 
         {/* Hamburger — mobile only */}
         <button
+          type="button"
           className="nav-hamburger"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
           onClick={() => setMenuOpen(!menuOpen)}
           style={{
             display        : "none",
             background     : "transparent",
-            border         : "1px solid rgba(255,255,255,0.1)",
-            borderRadius   : "8px",
-            padding        : "8px 10px",
+            border         : "1px solid #2e2e33",
+            borderRadius   : "999px",
+            width          : "44px",
+            height         : "44px",
             cursor         : "pointer",
             flexDirection  : "column",
             gap            : "5px",
             alignItems     : "center",
             justifyContent : "center",
           }}>
-          <span style={{ display: "block", width: "20px", height: "2px", background: menuOpen ? "#e8c44a" : "white", transition: "all 0.3s", transform: menuOpen ? "rotate(45deg) translate(5px, 5px)" : "none" }} />
-          <span style={{ display: "block", width: "20px", height: "2px", background: "#e8c44a", opacity: menuOpen ? 0 : 1, transition: "opacity 0.3s" }} />
-          <span style={{ display: "block", width: "20px", height: "2px", background: menuOpen ? "#e8c44a" : "white", transition: "all 0.3s", transform: menuOpen ? "rotate(-45deg) translate(5px, -5px)" : "none" }} />
+          <span style={{ display: "block", width: "20px", height: "2px", background: menuOpen ? "#f3d400" : "white", transition: "all 0.3s", transform: menuOpen ? "rotate(45deg) translate(5px, 5px)" : "none" }} />
+          <span style={{ display: "block", width: "20px", height: "2px", background: "#f3d400", opacity: menuOpen ? 0 : 1, transition: "opacity 0.3s" }} />
+          <span style={{ display: "block", width: "20px", height: "2px", background: menuOpen ? "#f3d400" : "white", transition: "all 0.3s", transform: menuOpen ? "rotate(-45deg) translate(5px, -5px)" : "none" }} />
         </button>
       </nav>
 
@@ -155,9 +158,8 @@ export default function Navbar({
           left          : 0,
           right         : 0,
           zIndex        : 99,
-          background    : "rgba(10,10,10,0.98)",
-          backdropFilter: "blur(24px)",
-          borderBottom  : "1px solid rgba(255,255,255,0.07)",
+          background    : "rgba(10,10,11,0.98)",
+          borderBottom  : "1px solid #1e1e21",
           padding       : "20px 24px",
           display       : "flex",
           flexDirection : "column",
@@ -168,17 +170,17 @@ export default function Navbar({
             <a key={l.label} href={l.href}
               onClick={() => setMenuOpen(false)}
               style={{
-                color         : "rgba(255,255,255,0.7)",
-                fontSize      : "16px",
+                color         : "#edede8",
+                fontSize      : "18px",
                 fontWeight    : "500",
                 textDecoration: "none",
                 padding       : "12px 0",
-                borderBottom  : "1px solid rgba(255,255,255,0.05)",
+                borderBottom  : "1px solid #1e1e21",
                 transition    : "color 0.2s",
                 display       : "block",
               }}
-              onMouseEnter={(e) => e.target.style.color = "#e8c44a"}
-              onMouseLeave={(e) => e.target.style.color = "rgba(255,255,255,0.7)"}>
+              onMouseEnter={(e) => e.target.style.color = "#f3d400"}
+              onMouseLeave={(e) => e.target.style.color = "#edede8"}>
               {l.label}
             </a>
           ))}
@@ -189,23 +191,23 @@ export default function Navbar({
               <>
                 {user?.role === "admin" && (
                   <button onClick={() => { navigate("/admin"); setMenuOpen(false); }}
-                    className="btn-ghost" style={{ flex: 1, padding: "12px", fontSize: "14px" }}>
+                    className="btn-ghost" style={{ flex: 1, padding: "12px", fontSize: "16px" }}>
                     Dashboard
                   </button>
                 )}
                 <button onClick={() => { navigate("/profile"); setMenuOpen(false); }}
-                  className="btn-gold" style={{ flex: 1, padding: "12px", fontSize: "14px" }}>
+                  className="btn-gold" style={{ flex: 1, padding: "12px", fontSize: "16px" }}>
                   My Profile
                 </button>
               </>
             ) : (
               <>
                 <button onClick={() => { navigate("/login"); setMenuOpen(false); }}
-                  className="btn-ghost" style={{ flex: 1, padding: "12px", fontSize: "14px" }}>
+                  className="btn-ghost" style={{ flex: 1, padding: "12px", fontSize: "16px" }}>
                   Login
                 </button>
                 <button onClick={() => { navigate("/register"); setMenuOpen(false); }}
-                  className="btn-gold" style={{ flex: 1, padding: "12px", fontSize: "14px" }}>
+                  className="btn-gold" style={{ flex: 1, padding: "12px", fontSize: "16px" }}>
                   Join Now
                 </button>
               </>

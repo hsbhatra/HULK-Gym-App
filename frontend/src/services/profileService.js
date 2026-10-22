@@ -17,3 +17,7 @@ export const updateProfilePicture = (formData) =>
 
 export const deleteProfilePicture = () =>
   api.delete("/profile/picture");
+
+// Member deletes their own account (password required)
+export const deleteMyAccount = (password) =>
+  api.post("/profile/delete", { password });

@@ -44,10 +44,10 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
   const inputStyle = {
     width: "100%", background: "rgba(255,255,255,0.04)",
     border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px",
-    padding: "11px 14px", color: "#fff", fontSize: "14px", outline: "none",
+    padding: "11px 14px", color: "#fff", fontSize: "16px", outline: "none",
   };
   const labelStyle = {
-    fontSize: "12px", fontWeight: "600", color: "rgba(255,255,255,0.4)",
+    fontSize: "14px", fontWeight: "600", color: "rgba(255,255,255,0.62)",
     letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: "8px",
   };
 
@@ -136,15 +136,15 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
       padding: "24px", overflowY: "auto",
     }}>
       <div style={{
-        background: "#111", border: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--iron-850)", border: "1px solid rgba(255,255,255,0.08)",
         borderRadius: "20px", padding: "32px", maxWidth: "560px", width: "100%",
         maxHeight: "90vh", overflowY: "auto",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "700" }}>
+          <h2 style={{ fontSize: "19px", fontWeight: "700" }}>
             {isEditMode ? "Edit Plan" : "Create New Plan"}
           </h2>
-          <button onClick={onClose} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.4)", fontSize: "20px", cursor: "pointer" }}>
+          <button aria-label="Close" onClick={onClose} style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.62)", fontSize: "20px", cursor: "pointer" }}>
             ✕
           </button>
         </div>
@@ -157,7 +157,7 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
             <input style={inputStyle} value={form.name}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="e.g. Pro" />
-            {errors.name && <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "4px" }}>{errors.name}</p>}
+            {errors.name && <p style={{ fontSize: "14px", color: "#ef4444", marginTop: "4px" }}>{errors.name}</p>}
           </div>
 
           {/* Slug */}
@@ -166,7 +166,7 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
             <input style={inputStyle} value={form.slug}
               onChange={(e) => setForm({ ...form, slug: e.target.value })}
               placeholder="e.g. pro" />
-            {errors.slug && <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "4px" }}>{errors.slug}</p>}
+            {errors.slug && <p style={{ fontSize: "14px", color: "#ef4444", marginTop: "4px" }}>{errors.slug}</p>}
           </div>
 
           {/* Description */}
@@ -175,7 +175,7 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
             <textarea style={{ ...inputStyle, resize: "vertical" }} rows={2} value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Short tagline shown on pricing card" />
-            {errors.description && <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "4px" }}>{errors.description}</p>}
+            {errors.description && <p style={{ fontSize: "14px", color: "#ef4444", marginTop: "4px" }}>{errors.description}</p>}
           </div>
 
           {/* Pricing Tiers */}
@@ -184,11 +184,11 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               {tiers.map((t, i) => (
                 <div key={t.durationDays}>
-                  <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", marginBottom: "6px" }}>{t.label} ({t.durationDays}d)</p>
+                  <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.62)", marginBottom: "6px" }}>{t.label} ({t.durationDays}d)</p>
                   <input type="number" style={inputStyle} value={t.price}
                     onChange={(e) => handleTierPriceChange(i, e.target.value)}
                     placeholder="0" />
-                  {errors[`tier_${i}`] && <p style={{ fontSize: "11px", color: "#ef4444", marginTop: "4px" }}>{errors[`tier_${i}`]}</p>}
+                  {errors[`tier_${i}`] && <p style={{ fontSize: "13px", color: "#ef4444", marginTop: "4px" }}>{errors[`tier_${i}`]}</p>}
                   {(() => {
                     // Warn (don't block) when a longer plan costs more than
                     // paying monthly for the same period
@@ -198,11 +198,11 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
                     const months = t.durationDays === 365 ? 12 : t.durationDays / 30;
                     const asMonthly = monthly * months;
                     return price >= asMonthly ? (
-                      <p style={{ fontSize: "11px", color: "#f97316", marginTop: "4px" }}>
+                      <p style={{ fontSize: "13px", color: "#f97316", marginTop: "4px" }}>
                         ⚠ Not cheaper than monthly (₹{asMonthly.toLocaleString("en-IN")})
                       </p>
                     ) : (
-                      <p style={{ fontSize: "11px", color: "#22c55e", marginTop: "4px" }}>
+                      <p style={{ fontSize: "13px", color: "#22c55e", marginTop: "4px" }}>
                         Saves ₹{Math.round(asMonthly - price).toLocaleString("en-IN")} vs monthly
                       </p>
                     );
@@ -221,7 +221,7 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
                   onChange={(e) => handleFeatureChange(i, e.target.value)}
                   placeholder="e.g. Full gym access" />
                 {features.length > 1 && (
-                  <button type="button" onClick={() => removeFeature(i)}
+                  <button aria-label="Remove feature" type="button" onClick={() => removeFeature(i)}
                     style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: "8px", padding: "0 14px", cursor: "pointer" }}>
                     ✕
                   </button>
@@ -229,18 +229,18 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
               </div>
             ))}
             <button type="button" onClick={addFeature}
-              style={{ background: "rgba(232,196,74,0.08)", border: "1px solid rgba(232,196,74,0.2)", color: "#e8c44a", borderRadius: "8px", padding: "8px 16px", fontSize: "13px", cursor: "pointer" }}>
+              style={{ background: "rgba(243,212,0,0.08)", border: "1px solid rgba(243,212,0,0.2)", color: "#f3d400", borderRadius: "8px", padding: "8px 16px", fontSize: "15px", cursor: "pointer" }}>
               + Add Feature
             </button>
-            {errors.features && <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "4px" }}>{errors.features}</p>}
+            {errors.features && <p style={{ fontSize: "14px", color: "#ef4444", marginTop: "4px" }}>{errors.features}</p>}
           </div>
 
           {/* Featured toggle */}
           <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
             <input type="checkbox" checked={form.isFeatured}
               onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
-              style={{ width: "16px", height: "16px", accentColor: "#e8c44a" }} />
-            <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)" }}>Mark as "Most Popular" (featured)</span>
+              style={{ width: "16px", height: "16px", accentColor: "#f3d400" }} />
+            <span style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)" }}>Mark as "Most Popular" (featured)</span>
           </label>
 
           {/* Actions */}

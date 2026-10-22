@@ -6,11 +6,11 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import * as THREE from "three";
 import { forgotPassword } from "../../services/authService.js";
 import ParticleBackground from "../../components/three/ParticleBackground.jsx";
 import { motion } from "framer-motion";
 import { scaleIn } from "../../utils/animations.js";
+import { CircleCheck, Lock } from "lucide-react";
 
 // =============================================================================
 // ForgotPasswordPage
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
   return (
     <div
       className="auth-page"
-      style={{ background: "#0a0a0a", position: "relative" }}
+      style={{ background: "var(--iron-950)", position: "relative" }}
     >
       <ParticleBackground />
       <div
@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
           inset: 0,
           zIndex: 0,
           background:
-            "radial-gradient(ellipse at center, rgba(232,196,74,0.05) 0%, transparent 65%)",
+            "radial-gradient(ellipse at center, rgba(243,212,0,0.05) 0%, transparent 65%)",
           pointerEvents: "none",
         }}
       />
@@ -74,8 +74,8 @@ export default function ForgotPasswordPage() {
         style={{
           position: "relative",
           zIndex: 1,
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.07)",
+          background: "var(--iron-850)",
+          border: "1px solid #26262a",
           borderRadius: "24px",
           backdropFilter: "blur(40px)",
           WebkitBackdropFilter: "blur(40px)",
@@ -88,8 +88,8 @@ export default function ForgotPasswordPage() {
             width: "64px",
             height: "64px",
             borderRadius: "16px",
-            background: "rgba(232,196,74,0.1)",
-            border: "1px solid rgba(232,196,74,0.2)",
+            background: "rgba(243,212,0,0.1)",
+            border: "1px solid rgba(243,212,0,0.2)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -97,7 +97,7 @@ export default function ForgotPasswordPage() {
             margin: "0 auto 24px",
           }}
         >
-          🔐
+          <Lock size={40} strokeWidth={1.75} color="var(--yellow)" aria-hidden="true" />
         </div>
 
         {!sent ? (
@@ -114,8 +114,8 @@ export default function ForgotPasswordPage() {
             </h1>
             <p
               style={{
-                fontSize: "14px",
-                color: "rgba(255,255,255,0.4)",
+                fontSize: "16px",
+                color: "rgba(255,255,255,0.62)",
                 marginBottom: "32px",
                 lineHeight: "1.6",
               }}
@@ -136,7 +136,7 @@ export default function ForgotPasswordPage() {
               <div>
                 <label
                   style={{
-                    fontSize: "13px",
+                    fontSize: "15px",
                     fontWeight: "500",
                     color: "rgba(255,255,255,0.6)",
                     display: "block",
@@ -163,7 +163,7 @@ export default function ForgotPasswordPage() {
                 {errors.email && (
                   <p
                     style={{
-                      fontSize: "12px",
+                      fontSize: "14px",
                       color: "#ef4444",
                       marginTop: "6px",
                     }}
@@ -212,7 +212,7 @@ export default function ForgotPasswordPage() {
                 margin: "0 auto 24px",
               }}
             >
-              ✅
+              <CircleCheck size={40} strokeWidth={1.75} color="var(--yellow)" aria-hidden="true" />
             </div>
             <h1
               style={{
@@ -225,8 +225,8 @@ export default function ForgotPasswordPage() {
             </h1>
             <p
               style={{
-                fontSize: "14px",
-                color: "rgba(255,255,255,0.4)",
+                fontSize: "16px",
+                color: "rgba(255,255,255,0.62)",
                 marginBottom: "8px",
               }}
             >
@@ -234,8 +234,8 @@ export default function ForgotPasswordPage() {
             </p>
             <p
               style={{
-                fontSize: "14px",
-                color: "#e8c44a",
+                fontSize: "16px",
+                color: "#f3d400",
                 fontWeight: "600",
                 marginBottom: "32px",
               }}
@@ -258,8 +258,8 @@ export default function ForgotPasswordPage() {
                 background: "transparent",
                 border: "none",
                 cursor: "pointer",
-                fontSize: "13px",
-                color: "rgba(255,255,255,0.3)",
+                fontSize: "15px",
+                color: "rgba(255,255,255,0.55)",
                 textDecoration: "underline",
               }}
             >
@@ -273,8 +273,8 @@ export default function ForgotPasswordPage() {
           <Link
             to="/login"
             style={{
-              fontSize: "13px",
-              color: "rgba(255,255,255,0.3)",
+              fontSize: "15px",
+              color: "rgba(255,255,255,0.55)",
               textDecoration: "none",
               transition: "color 0.2s",
             }}
@@ -282,7 +282,7 @@ export default function ForgotPasswordPage() {
               (e.target.style.color = "rgba(255,255,255,0.6)")
             }
             onMouseLeave={(e) =>
-              (e.target.style.color = "rgba(255,255,255,0.3)")
+              (e.target.style.color = "#8c8c86")
             }
           >
             ← Back to login

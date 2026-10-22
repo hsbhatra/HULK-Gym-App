@@ -1,0 +1,9 @@
+/* TEAM */
+Designer & developer: Himanshu Sharma
+Contact: [add your email / portfolio link]
+From: Kota, Rajasthan, India
+
+/* SITE */
+Client: Hulk Gym, Kota (Owner: Sanjay)
+Built with: React, Vite, Node.js, Express, MongoDB, Razorpay
+Fonts: Big Shoulders Display, Inter Tight (SIL Open Font License)

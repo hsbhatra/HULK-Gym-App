@@ -160,3 +160,28 @@ export const sendDuplicatePaymentEmail = async (user, payment, planName) => {
     html: shell(inner),
   });
 };
+
+// -----------------------------------------------------------------------------
+// sendRefundInitiatedEmail — admin refunded a duplicate online payment
+// -----------------------------------------------------------------------------
+export const sendRefundInitiatedEmail = async (user, payment) => {
+  const inner = `
+    <h2 style="margin:0 0 6px; color:#1a1a1a; font-size:20px;">Refund Initiated</h2>
+    <p style="margin:0 0 20px; color:#666; font-size:14px; line-height:1.6;">
+      Hi ${esc(user.firstName)}, we've refunded your duplicate payment of
+      <strong>${inr(payment.refund?.amount ?? payment.amountPaid)}</strong> to your original payment method.
+      Banks usually take 5–7 working days to show it in your account.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#f9f9f9; border-radius:10px; padding:18px 20px;">
+      ${row("Payment ID", esc(payment.razorpay?.paymentId || "—"))}
+      ${row("Refund ID", esc(payment.refund?.refundId || "—"))}
+      ${row("Amount", inr(payment.refund?.amount ?? payment.amountPaid), { bold: true })}
+    </table>`;
+
+  await sendEmail({
+    to: user.email,
+    subject: "Your refund has been initiated — Hulk Gym",
+    html: shell(inner),
+  });
+};

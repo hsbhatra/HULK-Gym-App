@@ -20,7 +20,11 @@ import Installment from "../models/installment.model.js";
 import MembershipPlan from "../models/membershipPlan.model.js";
 import Receipt, { RECEIPT_TYPE } from "../models/receipt.model.js";
 import { issueReceipt } from "../services/receipt.service.js";
-import { sendComplimentaryEmail } from "../services/email/receiptEmail.service.js";
+import {
+  sendComplimentaryEmail,
+  sendRefundInitiatedEmail,
+} from "../services/email/receiptEmail.service.js";
+import razorpay from "../config/razorpay.js";
 
 // =============================================================================
 // searchMembers
@@ -515,6 +519,10 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   );
 
   // ── KPIs ──────────────────────────────────────────────────────────────────
+  // Membership stats count real members only — an admin/staff account that
+  // holds a plan (e.g. for testing) must not inflate "Active Members".
+  const memberIds = await User.distinct("_id", { role: "member" });
+  const membersOnly = { userId: { $in: memberIds } };
 
   const [
     activeMembers,
@@ -526,8 +534,8 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     expiringSoonCount,
     totalMembers,
   ] = await Promise.all([
-    Subscription.countDocuments({ status: SUBSCRIPTION_STATUS.ACTIVE }),
-    Subscription.countDocuments({ status: SUBSCRIPTION_STATUS.GRACE }),
+    Subscription.countDocuments({ status: SUBSCRIPTION_STATUS.ACTIVE, ...membersOnly }),
+    Subscription.countDocuments({ status: SUBSCRIPTION_STATUS.GRACE, ...membersOnly }),
 
     Payment.aggregate([
       {
@@ -561,6 +569,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     Subscription.countDocuments({
       status: SUBSCRIPTION_STATUS.ACTIVE,
       endDate: { $gte: now, $lte: sevenDays },
+      ...membersOnly,
     }),
 
     User.countDocuments({ role: "member" }),
@@ -600,6 +609,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         status: {
           $in: [SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.GRACE],
         },
+        ...membersOnly,
       },
     },
     { $group: { _id: "$planSnapshot.planName", count: { $sum: 1 } } },
@@ -611,6 +621,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   const expiringSoon = await Subscription.find({
     status: SUBSCRIPTION_STATUS.ACTIVE,
     endDate: { $gte: now, $lte: sevenDays },
+    ...membersOnly,
   })
     .sort({ endDate: 1 })
     .limit(10)
@@ -758,4 +769,123 @@ export const collectOutstandingBalance = asyncHandler(async (req, res) => {
     `Payment of ₹${amountPaid} recorded (receipt ${receipt?.receiptNumber}). ${newAmountPaid >= payment.amountDue ? "Balance fully cleared." : `Balance remaining: ₹${(payment.amountDue - newAmountPaid) / 100}`}`,
     { payment, receipt },
   ).send(res);
+});
+
+// =============================================================================
+// getRefunds
+// GET /api/v1/admin/refunds
+// =============================================================================
+// Duplicate online payments waiting for a refund, plus the most recent
+// refunds already sent (for the admin's records).
+// =============================================================================
+export const getRefunds = asyncHandler(async (req, res) => {
+  const [due, history] = await Promise.all([
+    Payment.find({ status: PAYMENT_STATUS.REFUND_DUE })
+      .sort({ paidAt: -1 })
+      .populate("userId", "firstName lastName email phoneNumber userId")
+      .populate("planId", "name")
+      .lean(),
+    Payment.find({ status: PAYMENT_STATUS.REFUNDED })
+      .sort({ "refund.initiatedAt": -1 })
+      .limit(50)
+      .populate("userId", "firstName lastName email userId")
+      .populate("planId", "name")
+      .populate("refund.initiatedBy", "firstName lastName")
+      .lean(),
+  ]);
+
+  return new ApiResponse(HTTP_STATUS.OK, "Refunds retrieved.", { due, history }).send(res);
+});
+
+// =============================================================================
+// refundDuplicatePayment
+// POST /api/v1/admin/payments/:id/refund
+// =============================================================================
+// Refunds an online payment that was flagged REFUND_DUE (member paid while
+// already holding an active plan). Full amount, back to the original method.
+// A lock on the payment stops two admins (or a double click) refunding twice.
+// =============================================================================
+
+export const refundDuplicatePayment = asyncHandler(async (req, res) => {
+  const payment = await Payment.findOneAndUpdate(
+    {
+      _id: req.params.id,
+      status: PAYMENT_STATUS.REFUND_DUE,
+      "refund.refundId": null,
+      "refund.lockedAt": null,
+    },
+    { $set: { "refund.lockedAt": new Date() } },
+    { returnDocument: "after" },
+  );
+
+  if (!payment) {
+    const existing = await Payment.findById(req.params.id).select("status refund");
+    if (!existing) throw ApiError.notFound("Payment not found.");
+    if (existing.status === PAYMENT_STATUS.REFUNDED) {
+      throw ApiError.conflict("This payment has already been refunded.");
+    }
+    if (existing.status !== PAYMENT_STATUS.REFUND_DUE) {
+      throw ApiError.badRequest("Only duplicate payments marked 'refund due' can be refunded here.");
+    }
+    throw ApiError.conflict("A refund for this payment is already in progress. Refresh in a moment.");
+  }
+
+  const razorpayPaymentId = payment.razorpay?.paymentId;
+  const releaseLock = () =>
+    Payment.updateOne({ _id: payment._id }, { $set: { "refund.lockedAt": null } });
+
+  if (!razorpayPaymentId) {
+    await releaseLock();
+    throw ApiError.badRequest("This payment has no Razorpay payment ID to refund.");
+  }
+
+  let refund;
+  try {
+    refund = await razorpay.payments.refund(razorpayPaymentId, {
+      amount: payment.amountPaid,
+      speed: "normal",
+      notes: { reason: "Duplicate payment", paymentRecord: payment._id.toString() },
+    });
+  } catch (err) {
+    // Already refunded outside the app (e.g. from the Razorpay dashboard)?
+    const description = err?.error?.description || err?.message || "";
+    if (/fully refunded|already been refunded/i.test(description)) {
+      try {
+        const list = await razorpay.payments.fetchMultipleRefund(razorpayPaymentId);
+        refund = list?.items?.[0];
+      } catch {
+        // fall through to the error below
+      }
+    }
+    if (!refund) {
+      await releaseLock();
+      console.error("[REFUND] Razorpay refund failed:", description);
+      throw ApiError.badRequest(description ? `Razorpay: ${description}` : "Refund failed at Razorpay. Please try again.");
+    }
+  }
+
+  payment.status = PAYMENT_STATUS.REFUNDED;
+  payment.refund = {
+    refundId: refund.id,
+    amount: refund.amount,
+    status: refund.status,
+    lockedAt: null,
+    initiatedAt: new Date(),
+    initiatedBy: req.user.userId,
+  };
+  await payment.save();
+
+  // Tell the member — never block the admin on email
+  (async () => {
+    try {
+      const user = await User.findById(payment.userId).select("firstName email isActive");
+      if (user?.isActive) await sendRefundInitiatedEmail(user, payment);
+    } catch (err) {
+      console.error("[REFUND] Email failed:", err.message);
+    }
+  })();
+
+  return new ApiResponse(HTTP_STATUS.OK, "Refund initiated. The member has been emailed.", {
+    payment: { _id: payment._id, status: payment.status, refund: payment.refund },
+  }).send(res);
 });

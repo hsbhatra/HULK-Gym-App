@@ -92,6 +92,14 @@ export const EMAIL_CONFIG = {
   OTP_VALIDITY_TEXT: `${OTP_CONFIG.EXPIRY_MINUTES} minutes`,
 };
 
+// Bump when Terms/Privacy change materially — stored with each user's consent
+export const LEGAL_VERSION = "2026-10-22";
+
+export const AGE_CONFIRMATION = Object.freeze({
+  ADULT: "adult", // member is 18 or older
+  GUARDIAN: "guardian", // under 18, joining with a parent/guardian's consent
+});
+
 export const GYM_CONFIG = {
   NAME  : process.env.GYM_NAME            || "Hulk Gym",
   PREFIX: process.env.GYM_USER_ID_PREFIX  || "hulkgym",
@@ -127,6 +135,8 @@ export const PAYMENT_STATUS = {
   // Paid online while the member already had an active plan — money was
   // captured but no membership was given; admin must refund it.
   REFUND_DUE: "refund_due",
+  // Admin issued the refund through Razorpay
+  REFUNDED: "refunded",
 };
 
 export const PAYMENT_MODE = {

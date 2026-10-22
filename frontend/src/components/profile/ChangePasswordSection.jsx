@@ -4,6 +4,7 @@ import { useAuthStore } from "../../store/authStore.js";
 import { changePassword } from "../../services/authService.js";
 import ConfirmDialog from "../ui/ConfirmDialog.jsx";
 import toast from "react-hot-toast";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function ChangePasswordSection() {
   const navigate = useNavigate();
@@ -77,14 +78,14 @@ export default function ChangePasswordSection() {
     borderRadius: "10px",
     padding: "11px 44px 11px 14px",
     color: "#fff",
-    fontSize: "14px",
+    fontSize: "16px",
     outline: "none",
     transition: "border-color 0.2s",
   };
   const labelStyle = {
-    fontSize: "12px",
+    fontSize: "14px",
     fontWeight: "600",
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.62)",
     letterSpacing: "0.5px",
     textTransform: "uppercase",
     display: "block",
@@ -103,16 +104,16 @@ export default function ChangePasswordSection() {
         background: "transparent",
         border: "none",
         cursor: "pointer",
-        color: "rgba(255,255,255,0.35)",
-        fontSize: "14px",
+        color: "rgba(255,255,255,0.6)",
+        fontSize: "16px",
         padding: "4px",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.color = "#e8c44a")}
+      onMouseEnter={(e) => (e.currentTarget.style.color = "#f3d400")}
       onMouseLeave={(e) =>
-        (e.currentTarget.style.color = "rgba(255,255,255,0.35)")
+        (e.currentTarget.style.color = "#8c8c86")
       }
     >
-      {show ? "🙈" : "👁️"}
+      {show ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}<span className="sr-only">{show ? "Hide password" : "Show password"}</span>
     </button>
   );
 
@@ -126,13 +127,13 @@ export default function ChangePasswordSection() {
         />
       )}
 
-      <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "6px" }}>
+      <h2 className="page-title page-title--sm">
         Change Password
       </h2>
       <p
         style={{
-          fontSize: "13px",
-          color: "rgba(255,255,255,0.4)",
+          fontSize: "15px",
+          color: "rgba(255,255,255,0.62)",
           marginBottom: "28px",
           lineHeight: "1.6",
         }}
@@ -162,7 +163,7 @@ export default function ChangePasswordSection() {
               onChange={(e) =>
                 setForm({ ...form, currentPassword: e.target.value })
               }
-              onFocus={(e) => (e.target.style.borderColor = "#e8c44a")}
+              onFocus={(e) => (e.target.style.borderColor = "#f3d400")}
               onBlur={(e) =>
                 (e.target.style.borderColor = errors.currentPassword
                   ? "rgba(239,68,68,0.5)"
@@ -175,7 +176,7 @@ export default function ChangePasswordSection() {
             />
           </div>
           {errors.currentPassword && (
-            <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px" }}>
+            <p style={{ fontSize: "14px", color: "#ef4444", marginTop: "6px" }}>
               {errors.currentPassword}
             </p>
           )}
@@ -198,7 +199,7 @@ export default function ChangePasswordSection() {
               onChange={(e) =>
                 setForm({ ...form, newPassword: e.target.value })
               }
-              onFocus={(e) => (e.target.style.borderColor = "#e8c44a")}
+              onFocus={(e) => (e.target.style.borderColor = "#f3d400")}
               onBlur={(e) =>
                 (e.target.style.borderColor = errors.newPassword
                   ? "rgba(239,68,68,0.5)"
@@ -208,7 +209,7 @@ export default function ChangePasswordSection() {
             <EyeBtn show={showNew} toggle={() => setShowNew(!showNew)} />
           </div>
           {errors.newPassword && (
-            <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px" }}>
+            <p style={{ fontSize: "14px", color: "#ef4444", marginTop: "6px" }}>
               {errors.newPassword}
             </p>
           )}
@@ -231,7 +232,7 @@ export default function ChangePasswordSection() {
               onChange={(e) =>
                 setForm({ ...form, confirmNewPassword: e.target.value })
               }
-              onFocus={(e) => (e.target.style.borderColor = "#e8c44a")}
+              onFocus={(e) => (e.target.style.borderColor = "#f3d400")}
               onBlur={(e) =>
                 (e.target.style.borderColor = errors.confirmNewPassword
                   ? "rgba(239,68,68,0.5)"
@@ -244,7 +245,7 @@ export default function ChangePasswordSection() {
             />
           </div>
           {errors.confirmNewPassword && (
-            <p style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px" }}>
+            <p style={{ fontSize: "14px", color: "#ef4444", marginTop: "6px" }}>
               {errors.confirmNewPassword}
             </p>
           )}

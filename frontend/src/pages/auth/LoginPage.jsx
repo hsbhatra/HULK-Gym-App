@@ -12,6 +12,7 @@ import ParticleBackground from "../../components/three/ParticleBackground.jsx";
 import Logo from "../../components/ui/Logo.jsx";
 import { motion } from "framer-motion";
 import { scaleIn } from "../../utils/animations.js";
+import { Eye, EyeOff } from "lucide-react";
 
 // =============================================================================
 // LoginPage
@@ -35,7 +36,7 @@ export default function LoginPage() {
       const res = await loginUser(data);
       const { user, accessToken } = res.data.data;
       setAuth(user, accessToken);
-      toast.success(`Welcome back, ${user.firstName}! 💪`);
+      toast.success(`Welcome back, ${user.firstName}!`);
       // Only allow same-app paths ("/x"), never "//host" or "https://…"
       const redirect = searchParams.get("redirect");
       const safeRedirect =
@@ -57,7 +58,7 @@ export default function LoginPage() {
   return (
     <div
       className="auth-page"
-      style={{ background: "#0a0a0a", position: "relative" }}
+      style={{ background: "var(--iron-950)", position: "relative" }}
     >
       <ParticleBackground />
 
@@ -68,7 +69,7 @@ export default function LoginPage() {
           inset: 0,
           zIndex: 0,
           background:
-            "radial-gradient(ellipse at center, rgba(232,196,74,0.05) 0%, transparent 65%)",
+            "radial-gradient(ellipse at center, rgba(243,212,0,0.05) 0%, transparent 65%)",
           pointerEvents: "none",
         }}
       />
@@ -82,8 +83,8 @@ export default function LoginPage() {
         style={{
           position: "relative",
           zIndex: 1,
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.07)",
+          background: "var(--iron-850)",
+          border: "1px solid #26262a",
           borderRadius: "24px",
           backdropFilter: "blur(40px)",
           WebkitBackdropFilter: "blur(40px)",
@@ -109,7 +110,7 @@ export default function LoginPage() {
           >
             Welcome back
           </h1>
-          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.4)" }}>
+          <p style={{ fontSize: "16px", color: "rgba(255,255,255,0.62)" }}>
             Sign in to continue your journey
           </p>
         </div>
@@ -123,7 +124,7 @@ export default function LoginPage() {
           <div>
             <label
               style={{
-                fontSize: "13px",
+                fontSize: "15px",
                 fontWeight: "500",
                 color: "rgba(255,255,255,0.6)",
                 display: "block",
@@ -147,7 +148,7 @@ export default function LoginPage() {
             />
             {errors.email && (
               <p
-                style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px" }}
+                style={{ fontSize: "14px", color: "#ef4444", marginTop: "6px" }}
               >
                 {errors.email.message}
               </p>
@@ -166,7 +167,7 @@ export default function LoginPage() {
             >
               <label
                 style={{
-                  fontSize: "13px",
+                  fontSize: "15px",
                   fontWeight: "500",
                   color: "rgba(255,255,255,0.6)",
                 }}
@@ -176,8 +177,8 @@ export default function LoginPage() {
               <Link
                 to="/forgot-password"
                 style={{
-                  fontSize: "12px",
-                  color: "#e8c44a",
+                  fontSize: "14px",
+                  color: "#f3d400",
                   textDecoration: "none",
                   fontWeight: "500",
                 }}
@@ -213,22 +214,22 @@ export default function LoginPage() {
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  color: "rgba(255,255,255,0.35)",
-                  fontSize: "14px",
+                  color: "rgba(255,255,255,0.6)",
+                  fontSize: "16px",
                   padding: "4px",
                   transition: "color 0.2s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#e8c44a")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#f3d400")}
                 onMouseLeave={(e) =>
-                  (e.currentTarget.style.color = "rgba(255,255,255,0.35)")
+                  (e.currentTarget.style.color = "#8c8c86")
                 }
               >
-                {showPassword ? "🙈" : "👁️"}
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}<span className="sr-only">{showPassword ? "Hide password" : "Show password"}</span>
               </button>
             </div>
             {errors.password && (
               <p
-                style={{ fontSize: "12px", color: "#ef4444", marginTop: "6px" }}
+                style={{ fontSize: "14px", color: "#ef4444", marginTop: "6px" }}
               >
                 {errors.password.message}
               </p>
@@ -275,7 +276,7 @@ export default function LoginPage() {
               background: "rgba(255,255,255,0.07)",
             }}
           />
-          <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.25)" }}>
+          <span style={{ fontSize: "14px", color: "rgba(255,255,255,0.5)" }}>
             New to Hulk Gym?
           </span>
           <div
@@ -297,14 +298,14 @@ export default function LoginPage() {
             borderRadius: "10px",
             border: "1px solid rgba(255,255,255,0.08)",
             color: "rgba(255,255,255,0.6)",
-            fontSize: "14px",
+            fontSize: "16px",
             fontWeight: "500",
             textDecoration: "none",
             transition: "border-color 0.2s, color 0.2s",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#e8c44a";
-            e.currentTarget.style.color = "#e8c44a";
+            e.currentTarget.style.borderColor = "#f3d400";
+            e.currentTarget.style.color = "#f3d400";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
@@ -319,8 +320,8 @@ export default function LoginPage() {
           <Link
             to="/"
             style={{
-              fontSize: "13px",
-              color: "rgba(255,255,255,0.3)",
+              fontSize: "15px",
+              color: "rgba(255,255,255,0.55)",
               textDecoration: "none",
               transition: "color 0.2s",
             }}
@@ -328,7 +329,7 @@ export default function LoginPage() {
               (e.target.style.color = "rgba(255,255,255,0.6)")
             }
             onMouseLeave={(e) =>
-              (e.target.style.color = "rgba(255,255,255,0.3)")
+              (e.target.style.color = "#8c8c86")
             }
           >
             ← Back to home

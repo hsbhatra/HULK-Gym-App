@@ -15,6 +15,7 @@ import webhookRouter from "./routes/webhook.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import adminRouter from "./routes/admin.routes.js";
 import errorHandler from "./middleware/error/errorHandler.middleware.js";
+import ApiError from "./utils/apiError.js";
 
 const app = express();
 
@@ -30,14 +31,20 @@ app.use(helmet());
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Normalize both the allowed client URL and incoming origin by removing trailing slashes
-      const allowedOrigin = process.env.CLIENT_URL?.replace(/\/$/, "") || "http://localhost:5173";
+      // CLIENT_URL may list several origins, comma-separated
+      // (e.g. "https://hulk-gym-kota-test.netlify.app,http://localhost:5173").
+      // Trailing slashes are ignored on both sides.
+      const allowed = (process.env.CLIENT_URL || "http://localhost:5173")
+        .split(",")
+        .map((o) => o.trim().replace(/\/$/, ""))
+        .filter(Boolean);
       const normalizedOrigin = origin?.replace(/\/$/, "");
-      
-      if (!origin || normalizedOrigin === allowedOrigin) {
+
+      if (!origin || allowed.includes(normalizedOrigin)) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        // ApiError → errorHandler replies 403 (a plain Error became a 500)
+        callback(ApiError.forbidden("This origin is not allowed to access the API."));
       }
     },
     credentials: true, // required to send/receive cookies cross-origin

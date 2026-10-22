@@ -8,6 +8,7 @@ import {
 } from "../../services/authService.js";
 import ConfirmDialog from "../ui/ConfirmDialog.jsx";
 import toast from "react-hot-toast";
+import { Globe, Laptop, Monitor, Smartphone } from "lucide-react";
 
 export default function SessionsSection({ onLogout }) {
   const [sessions, setSessions] = useState([]);
@@ -61,11 +62,11 @@ export default function SessionsSection({ onLogout }) {
   };
 
   const deviceIcon = (deviceName = "") => {
-    if (/iphone|ipad|ios/i.test(deviceName)) return "📱";
-    if (/android/i.test(deviceName)) return "📱";
-    if (/mac/i.test(deviceName)) return "💻";
-    if (/windows/i.test(deviceName)) return "🖥️";
-    return "🌐";
+    if (/iphone|ipad|ios/i.test(deviceName)) return <Smartphone size={22} aria-hidden="true" />;
+    if (/android/i.test(deviceName)) return <Smartphone size={22} aria-hidden="true" />;
+    if (/mac/i.test(deviceName)) return <Laptop size={22} aria-hidden="true" />;
+    if (/windows/i.test(deviceName)) return <Monitor size={22} aria-hidden="true" />;
+    return <Globe size={22} aria-hidden="true" />;
   };
 
   const timeAgo = (date) => {
@@ -105,12 +106,10 @@ export default function SessionsSection({ onLogout }) {
         }}
       >
         <div>
-          <h2
-            style={{ fontSize: "18px", fontWeight: "700", marginBottom: "4px" }}
-          >
+          <h2 className="page-title page-title--sm">
             Active Sessions
           </h2>
-          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}>
+          <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.62)" }}>
             {sessions.length} device{sessions.length !== 1 ? "s" : ""} currently
             signed in
           </p>
@@ -123,7 +122,7 @@ export default function SessionsSection({ onLogout }) {
             border: "1px solid rgba(239,68,68,0.3)",
             background: "rgba(239,68,68,0.08)",
             color: "#ef4444",
-            fontSize: "13px",
+            fontSize: "15px",
             fontWeight: "600",
             cursor: "pointer",
             whiteSpace: "nowrap",
@@ -138,14 +137,14 @@ export default function SessionsSection({ onLogout }) {
           style={{
             textAlign: "center",
             padding: "48px",
-            color: "rgba(255,255,255,0.3)",
+            color: "rgba(255,255,255,0.55)",
           }}
         >
           <div
             className="spinner"
             style={{
               borderColor: "rgba(255,255,255,0.1)",
-              borderTopColor: "#e8c44a",
+              borderTopColor: "#f3d400",
               margin: "0 auto 12px",
             }}
           />
@@ -156,7 +155,7 @@ export default function SessionsSection({ onLogout }) {
           style={{
             textAlign: "center",
             padding: "48px",
-            color: "rgba(255,255,255,0.3)",
+            color: "rgba(255,255,255,0.55)",
           }}
         >
           No active sessions found.
@@ -169,9 +168,9 @@ export default function SessionsSection({ onLogout }) {
               className="session-card"
               style={{
                 background: s.isCurrent
-                  ? "rgba(232,196,74,0.05)"
+                  ? "rgba(243,212,0,0.05)"
                   : "rgba(255,255,255,0.02)",
-                border: `1px solid ${s.isCurrent ? "rgba(232,196,74,0.2)" : "rgba(255,255,255,0.05)"}`,
+                border: `1px solid ${s.isCurrent ? "rgba(243,212,0,0.2)" : "rgba(255,255,255,0.05)"}`,
               }}
             >
               {/* Device Icon */}
@@ -182,7 +181,7 @@ export default function SessionsSection({ onLogout }) {
                   borderRadius: "12px",
                   flexShrink: 0,
                   background: s.isCurrent
-                    ? "rgba(232,196,74,0.1)"
+                    ? "rgba(243,212,0,0.1)"
                     : "rgba(255,255,255,0.04)",
                   display: "flex",
                   alignItems: "center",
@@ -205,7 +204,7 @@ export default function SessionsSection({ onLogout }) {
                 >
                   <span
                     style={{
-                      fontSize: "14px",
+                      fontSize: "16px",
                       fontWeight: "600",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
@@ -217,11 +216,11 @@ export default function SessionsSection({ onLogout }) {
                   {s.isCurrent && (
                     <span
                       style={{
-                        fontSize: "10px",
+                        fontSize: "12px",
                         padding: "2px 8px",
                         borderRadius: "100px",
-                        background: "rgba(232,196,74,0.15)",
-                        color: "#e8c44a",
+                        background: "rgba(243,212,0,0.15)",
+                        color: "#f3d400",
                         fontWeight: "700",
                         letterSpacing: "0.5px",
                         flexShrink: 0,
@@ -234,24 +233,24 @@ export default function SessionsSection({ onLogout }) {
                 <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
                   <span
                     style={{
-                      fontSize: "12px",
-                      color: "rgba(255,255,255,0.35)",
+                      fontSize: "14px",
+                      color: "rgba(255,255,255,0.6)",
                     }}
                   >
                     {s.deviceInfo?.platform || "Unknown"}
                   </span>
                   <span
                     style={{
-                      fontSize: "12px",
-                      color: "rgba(255,255,255,0.35)",
+                      fontSize: "14px",
+                      color: "rgba(255,255,255,0.6)",
                     }}
                   >
                     {s.deviceInfo?.ipAddress || "—"}
                   </span>
                   <span
                     style={{
-                      fontSize: "12px",
-                      color: "rgba(255,255,255,0.35)",
+                      fontSize: "14px",
+                      color: "rgba(255,255,255,0.6)",
                     }}
                   >
                     Last active {timeAgo(s.lastUsedAt)}
@@ -271,7 +270,7 @@ export default function SessionsSection({ onLogout }) {
                   border: "1px solid rgba(239,68,68,0.2)",
                   background: "transparent",
                   color: "#ef4444",
-                  fontSize: "12px",
+                  fontSize: "14px",
                   fontWeight: "600",
                   cursor: "pointer",
                   transition: "background 0.2s",

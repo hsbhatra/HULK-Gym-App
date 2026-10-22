@@ -2,6 +2,8 @@
 // src/components/ui/ConfirmDialog.jsx
 // =============================================================================
 
+import { TriangleAlert } from "lucide-react";
+
 export default function ConfirmDialog({
   message,
   confirmLabel = "Yes, proceed",
@@ -26,7 +28,7 @@ export default function ConfirmDialog({
     >
       <div
         style={{
-          background: "#111111",
+          background: "var(--iron-850)",
           border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: "20px",
           padding: "36px",
@@ -37,12 +39,12 @@ export default function ConfirmDialog({
         // className="page-enter"
       >
         {/* Icon */}
-        <div style={{ fontSize: "40px", marginBottom: "16px" }}>⚠️</div>
+        <div style={{ marginBottom: "16px" }}><TriangleAlert size={40} color="var(--yellow)" aria-hidden="true" /></div>
 
         {/* Title */}
         <h3
           style={{
-            fontSize: "18px",
+            fontSize: "19px",
             fontWeight: "700",
             marginBottom: "12px",
           }}
@@ -53,7 +55,7 @@ export default function ConfirmDialog({
         {/* Message */}
         <p
           style={{
-            fontSize: "14px",
+            fontSize: "16px",
             color: "rgba(255,255,255,0.5)",
             marginBottom: "28px",
             lineHeight: "1.6",
@@ -78,18 +80,18 @@ export default function ConfirmDialog({
               padding: "12px",
               borderRadius: "10px",
               border: "none",
-              background: danger ? "#ef4444" : "#e8c44a",
+              background: danger ? "#ef4444" : "#f3d400",
               color: danger ? "#ffffff" : "#0a0a0a",
               fontWeight: "600",
-              fontSize: "14px",
+              fontSize: "16px",
               cursor: "pointer",
               transition: "background 0.2s",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = danger ? "#dc2626" : "#f0d060";
+              e.currentTarget.style.background = danger ? "#dc2626" : "#ffe45c";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = danger ? "#ef4444" : "#e8c44a";
+              e.currentTarget.style.background = danger ? "#ef4444" : "#f3d400";
             }}
           >
             {confirmLabel}

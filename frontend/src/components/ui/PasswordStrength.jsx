@@ -35,11 +35,11 @@ export default function PasswordStrength({ password }) {
       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
         {checks.map((c) => (
           <span key={c.label} style={{
-            fontSize  : "11px",
+            fontSize  : "13px",
             padding   : "2px 8px",
             borderRadius: "100px",
             background: c.pass ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.04)",
-            color     : c.pass ? "#22c55e" : "rgba(255,255,255,0.3)",
+            color     : c.pass ? "#22c55e" : "#8c8c86",
             border    : `1px solid ${c.pass ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.06)"}`,
             transition: "all 0.3s",
           }}>

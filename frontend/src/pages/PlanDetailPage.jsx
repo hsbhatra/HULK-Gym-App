@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import ParticleBackground from "../components/three/ParticleBackground.jsx";
@@ -17,6 +17,7 @@ import {
   getMyActiveSubscription,
 } from "../services/subscriptionService.js";
 import { scaleIn } from "../utils/animations.js";
+import { Info, Lock } from "lucide-react";
 
 const DURATION_OPTIONS = [
   { days: 30, label: "Monthly" },
@@ -131,7 +132,7 @@ export default function PlanDetailPage() {
           // this browser (e.g. another member's) for the payment.
           ...(user.phoneNumber && { contact: `+91${user.phoneNumber}` }),
         },
-        theme: { color: "#e8c44a" },
+        theme: { color: "#f3d400" },
         modal: {
           ondismiss: () => {
             setPaying(false);
@@ -206,9 +207,9 @@ export default function PlanDetailPage() {
     : null;
 
   const labelStyle = {
-    fontSize: "12px",
+    fontSize: "14px",
     fontWeight: "600",
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.62)",
     letterSpacing: "0.5px",
     textTransform: "uppercase",
     display: "block",
@@ -219,7 +220,7 @@ export default function PlanDetailPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#0a0a0a",
+        background: "var(--iron-950)",
         position: "relative",
       }}
     >
@@ -230,7 +231,7 @@ export default function PlanDetailPage() {
           inset: 0,
           zIndex: 0,
           background:
-            "radial-gradient(ellipse at 40% 40%, rgba(232,196,74,0.04) 0%, transparent 65%)",
+            "radial-gradient(ellipse at 40% 40%, rgba(243,212,0,0.04) 0%, transparent 65%)",
           pointerEvents: "none",
         }}
       />
@@ -253,7 +254,7 @@ export default function PlanDetailPage() {
             style={{
               textAlign: "center",
               padding: "80px",
-              color: "rgba(255,255,255,0.3)",
+              color: "rgba(255,255,255,0.55)",
             }}
           >
             Loading plan details...
@@ -270,9 +271,9 @@ export default function PlanDetailPage() {
                 <div
                   style={{
                     display: "inline-block",
-                    background: "#e8c44a",
+                    background: "#f3d400",
                     color: "#0a0a0a",
-                    fontSize: "11px",
+                    fontSize: "13px",
                     fontWeight: "800",
                     letterSpacing: "1px",
                     padding: "5px 16px",
@@ -296,7 +297,7 @@ export default function PlanDetailPage() {
               </h1>
               <p
                 style={{
-                  fontSize: "15px",
+                  fontSize: "17px",
                   color: "rgba(255,255,255,0.5)",
                   marginBottom: "28px",
                   lineHeight: "1.7",
@@ -323,21 +324,21 @@ export default function PlanDetailPage() {
                         width: "20px",
                         height: "20px",
                         borderRadius: "50%",
-                        background: "rgba(232,196,74,0.1)",
-                        border: "1px solid rgba(232,196,74,0.3)",
+                        background: "rgba(243,212,0,0.1)",
+                        border: "1px solid rgba(243,212,0,0.3)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         flexShrink: 0,
                       }}
                     >
-                      <span style={{ color: "#e8c44a", fontSize: "11px" }}>
+                      <span style={{ color: "#f3d400", fontSize: "13px" }}>
                         ✓
                       </span>
                     </div>
                     <span
                       style={{
-                        fontSize: "14px",
+                        fontSize: "16px",
                         color: "rgba(255,255,255,0.7)",
                       }}
                     >
@@ -351,19 +352,19 @@ export default function PlanDetailPage() {
               <div
                 style={{
                   padding: "14px 16px",
-                  background: "rgba(255,255,255,0.02)",
+                  background: "var(--iron-850)",
                   borderRadius: "10px",
-                  border: "1px solid rgba(255,255,255,0.05)",
+                  border: "1px solid #26262a",
                 }}
               >
                 <p
                   style={{
-                    fontSize: "12px",
-                    color: "rgba(255,255,255,0.35)",
+                    fontSize: "14px",
+                    color: "rgba(255,255,255,0.6)",
                     lineHeight: "1.6",
                   }}
                 >
-                  ℹ️ Includes a{" "}
+                  <Info size={14} aria-hidden="true" style={{ display: "inline-block", verticalAlign: "-2px", marginRight: "4px" }} />Includes a{" "}
                   <strong style={{ color: "rgba(255,255,255,0.5)" }}>
                     {plan.gracePeriodDays || 3}-day grace period
                   </strong>{" "}
@@ -378,7 +379,7 @@ export default function PlanDetailPage() {
               animate={scaleIn.animate}
               transition={{ ...scaleIn.transition, delay: 0.1 }}
               style={{
-                background: "rgba(255,255,255,0.02)",
+                background: "var(--iron-850)",
                 border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: "20px",
                 padding: "28px",
@@ -419,16 +420,16 @@ export default function PlanDetailPage() {
                         borderRadius: "10px",
                         cursor: "pointer",
                         background: isActive
-                          ? "rgba(232,196,74,0.08)"
+                          ? "rgba(243,212,0,0.08)"
                           : "rgba(255,255,255,0.02)",
-                        border: `1.5px solid ${isActive ? "rgba(232,196,74,0.4)" : "rgba(255,255,255,0.06)"}`,
+                        border: `1.5px solid ${isActive ? "rgba(243,212,0,0.4)" : "rgba(255,255,255,0.06)"}`,
                         transition: "all 0.2s",
                       }}
                     >
                       <span
                         style={{
-                          fontSize: "14px",
-                          color: isActive ? "#e8c44a" : "rgba(255,255,255,0.6)",
+                          fontSize: "16px",
+                          color: isActive ? "#f3d400" : "rgba(255,255,255,0.6)",
                           fontWeight: isActive ? "600" : "400",
                         }}
                       >
@@ -438,8 +439,8 @@ export default function PlanDetailPage() {
                         {hasOffer && (
                           <span
                             style={{
-                              fontSize: "11px",
-                              color: "rgba(255,255,255,0.3)",
+                              fontSize: "13px",
+                              color: "rgba(255,255,255,0.55)",
                               textDecoration: "line-through",
                               marginRight: "6px",
                             }}
@@ -449,9 +450,9 @@ export default function PlanDetailPage() {
                         )}
                         <span
                           style={{
-                            fontSize: "14px",
+                            fontSize: "16px",
                             fontWeight: "700",
-                            color: isActive ? "#e8c44a" : "#fff",
+                            color: isActive ? "#f3d400" : "#fff",
                           }}
                         >
                           ₹{(price / 100).toLocaleString("en-IN")}
@@ -465,7 +466,7 @@ export default function PlanDetailPage() {
               {/* Price summary */}
               <div
                 style={{
-                  borderTop: "1px solid rgba(255,255,255,0.06)",
+                  borderTop: "1px solid #26262a",
                   paddingTop: "20px",
                   marginBottom: "20px",
                 }}
@@ -478,7 +479,7 @@ export default function PlanDetailPage() {
                   }}
                 >
                   <span
-                    style={{ fontSize: "14px", color: "rgba(255,255,255,0.5)" }}
+                    style={{ fontSize: "16px", color: "rgba(255,255,255,0.5)" }}
                   >
                     Total
                   </span>
@@ -486,8 +487,8 @@ export default function PlanDetailPage() {
                     {originalPrice && (
                       <span
                         style={{
-                          fontSize: "14px",
-                          color: "rgba(255,255,255,0.3)",
+                          fontSize: "16px",
+                          color: "rgba(255,255,255,0.55)",
                           textDecoration: "line-through",
                           marginRight: "8px",
                         }}
@@ -500,7 +501,7 @@ export default function PlanDetailPage() {
                         fontSize: "28px",
                         fontWeight: "900",
                         letterSpacing: "-1px",
-                        color: "#e8c44a",
+                        color: "#f3d400",
                       }}
                     >
                       {displayPrice}
@@ -509,8 +510,8 @@ export default function PlanDetailPage() {
                 </div>
                 <p
                   style={{
-                    fontSize: "12px",
-                    color: "rgba(255,255,255,0.3)",
+                    fontSize: "14px",
+                    color: "rgba(255,255,255,0.55)",
                     marginTop: "6px",
                     textAlign: "right",
                   }}
@@ -531,7 +532,7 @@ export default function PlanDetailPage() {
                     marginBottom: "12px",
                     background: "rgba(34,197,94,0.08)",
                     border: "1px solid rgba(34,197,94,0.2)",
-                    fontSize: "13px",
+                    fontSize: "15px",
                     color: "rgba(255,255,255,0.7)",
                     lineHeight: 1.5,
                   }}
@@ -549,7 +550,7 @@ export default function PlanDetailPage() {
                   . You can purchase a new plan after it expires.{" "}
                   <span
                     onClick={() => navigate("/profile")}
-                    style={{ color: "#e8c44a", cursor: "pointer", textDecoration: "underline" }}
+                    style={{ color: "#f3d400", cursor: "pointer", textDecoration: "underline" }}
                   >
                     View my membership
                   </span>
@@ -562,7 +563,7 @@ export default function PlanDetailPage() {
                 disabled={paying || !razorpayReady || !!activeSub || !tier}
                 className="btn-gold"
                 style={{
-                  fontSize: "15px",
+                  fontSize: "17px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -581,13 +582,18 @@ export default function PlanDetailPage() {
 
               <p
                 style={{
-                  fontSize: "12px",
-                  color: "rgba(255,255,255,0.25)",
+                  fontSize: "14px",
+                  color: "rgba(255,255,255,0.5)",
                   textAlign: "center",
                   marginTop: "14px",
                 }}
               >
-                🔒 Secured by Razorpay · UPI · Cards · Net Banking
+                <Lock size={13} aria-hidden="true" style={{ display: "inline-block", verticalAlign: "-2px", marginRight: "4px" }} />Secured by Razorpay · UPI · Cards · Net Banking
+              </p>
+              <p style={{ fontSize: "14px", color: "var(--text-3)", textAlign: "center", marginTop: "8px", lineHeight: 1.6 }}>
+                By paying you agree to our{" "}
+                <Link to="/terms" style={{ color: "var(--text-2)", textDecoration: "underline" }}>Terms</Link> and{" "}
+                <Link to="/refund-policy" style={{ color: "var(--text-2)", textDecoration: "underline" }}>Refund Policy</Link>.
               </p>
             </motion.div>
           </div>

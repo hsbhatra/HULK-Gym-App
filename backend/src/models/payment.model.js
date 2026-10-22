@@ -86,6 +86,16 @@ const paymentSchema = new mongoose.Schema(
       method: { type: String, default: null }, // "upi", "card", "netbanking"
     },
 
+    // ── Refund (duplicate online payments) ────────────────────────────────────
+    refund: {
+      refundId: { type: String, default: null }, // rfnd_XXXXXXXXXX
+      amount: { type: Number, default: null }, // paise
+      status: { type: String, default: null }, // Razorpay refund status
+      lockedAt: { type: Date, default: null }, // guards against double clicks
+      initiatedAt: { type: Date, default: null },
+      initiatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    },
+
     // ── Offline Payment Fields ────────────────────────────────────────────────
     // Only populated for cash/offline payments recorded by admin
     recordedBy: {

@@ -3,8 +3,18 @@
 // =============================================================================
 
 import User from "../models/user.model.js";
+import Subscription from "../models/subscription.model.js";
+import Installment from "../models/installment.model.js";
+import Payment from "../models/payment.model.js";
+import Session from "../models/session.model.js";
 import cloudinary from "../config/cloudinary.js";
 import ApiError from "../utils/apiError.js";
+import {
+  SUBSCRIPTION_STATUS,
+  INSTALLMENT_STATUS,
+  PAYMENT_STATUS,
+  USER_ROLES,
+} from "../utils/constants.js";
 
 // =============================================================================
 // getProfile
@@ -131,4 +141,89 @@ export const deleteProfilePicture = async (userId) => {
   await user.save();
 
   return user;
+};
+
+// =============================================================================
+// deleteAccount
+// =============================================================================
+// Member-initiated account deletion (DPDP "right to erasure").
+// Personal details are erased; payment, receipt and membership records stay
+// (tax/accounting law) but no longer point to anything identifying.
+// Blocked while money is still in play: an active membership, unpaid
+// installments, or a refund the gym still owes this member.
+// =============================================================================
+export const deleteAccount = async (userId, password) => {
+  const user = await User.findById(userId).select("+passwordHash");
+  if (!user || !user.isActive) throw ApiError.notFound("Account not found.");
+  if (user.role === USER_ROLES.ADMIN) {
+    throw ApiError.forbidden("Admin accounts can't be deleted from here.");
+  }
+
+  const passwordOk = await user.comparePassword(password || "");
+  if (!passwordOk) throw ApiError.badRequest("Incorrect password.");
+
+  const [liveMembership, unpaid, refundDue] = await Promise.all([
+    Subscription.exists({
+      userId,
+      status: { $in: [SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.GRACE, SUBSCRIPTION_STATUS.COMPLIMENTARY] },
+    }),
+    Installment.exists({
+      userId,
+      status: { $in: [INSTALLMENT_STATUS.PENDING, INSTALLMENT_STATUS.OVERDUE] },
+    }),
+    Payment.exists({ userId, status: PAYMENT_STATUS.REFUND_DUE }),
+  ]);
+
+  if (liveMembership) {
+    throw ApiError.conflict(
+      "You have an active membership. Please contact the gym to end it before deleting your account.",
+    );
+  }
+  if (unpaid) {
+    throw ApiError.conflict(
+      "You have unpaid installments. Please clear them with the gym before deleting your account.",
+    );
+  }
+  if (refundDue) {
+    throw ApiError.conflict(
+      "The gym still owes you a refund. We'll process it first — please contact the gym.",
+    );
+  }
+
+  // Remove the profile photo from Cloudinary (best effort)
+  if (user.profilePicturePublicId) {
+    try {
+      await cloudinary.uploader.destroy(user.profilePicturePublicId);
+    } catch (err) {
+      console.error("[DELETE ACCOUNT] Cloudinary cleanup failed:", err.message);
+    }
+  }
+
+  const tag = user._id.toString();
+  // updateOne skips schema validators on purpose: the placeholders below are
+  // unique but don't match the email/phone formats.
+  await User.updateOne(
+    { _id: user._id },
+    {
+      $set: {
+        firstName: "Deleted",
+        lastName: "Member",
+        email: `deleted-${tag}@deleted.invalid`,
+        phoneNumber: `deleted-${tag}`,
+        passwordHash: `deleted-${tag}`, // not a bcrypt hash — can never match a login
+        isActive: false,
+        profilePicture: null,
+        profilePicturePublicId: null,
+        height: null,
+        weight: null,
+        dateOfBirth: null,
+        gender: null,
+        bio: null,
+        deletedAt: new Date(),
+      },
+    },
+  );
+
+  // Log out everywhere
+  await Session.updateMany({ userId: user._id, isActive: true }, { isActive: false });
 };

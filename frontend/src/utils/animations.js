@@ -125,7 +125,7 @@ export const scrollScaleIn = {
 export const cardHover = {
   whileHover: {
     y          : -6,
-    borderColor: "rgba(232,196,74,0.25)",
+    borderColor: "rgba(243,212,0,0.25)",
     transition : { duration: 0.2 },
   },
 };

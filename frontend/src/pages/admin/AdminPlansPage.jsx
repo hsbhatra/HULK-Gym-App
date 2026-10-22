@@ -65,7 +65,7 @@ export default function AdminPlansPage() {
     const c = colors[status] || colors.archived;
     return (
       <span style={{
-        fontSize: "11px", padding: "3px 10px", borderRadius: "100px",
+        fontSize: "13px", padding: "3px 10px", borderRadius: "100px",
         background: c.bg, border: `1px solid ${c.border}`, color: c.text,
         fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px",
       }}>
@@ -95,23 +95,23 @@ export default function AdminPlansPage() {
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px", gap: "12px", flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: "22px", fontWeight: "700", marginBottom: "4px" }}>Membership Plans</h1>
-          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}>
+          <h1 className="page-title">Membership Plans</h1>
+          <p style={{ fontSize: "16px", color: "var(--text-2)" }}>
             {plans.length} plan{plans.length !== 1 ? "s" : ""} total
           </p>
         </div>
         <button onClick={() => { setEditingPlan(null); setShowModal(true); }} className="btn-gold"
-          style={{ width: "auto", padding: "11px 22px", fontSize: "14px" }}>
+          style={{ width: "auto", padding: "11px 22px", fontSize: "16px" }}>
           + Create Plan
         </button>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "rgba(255,255,255,0.3)" }}>
+        <div style={{ textAlign: "center", padding: "60px", color: "rgba(255,255,255,0.55)" }}>
           Loading plans...
         </div>
       ) : plans.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "rgba(255,255,255,0.3)" }}>
+        <div style={{ textAlign: "center", padding: "60px", color: "rgba(255,255,255,0.55)" }}>
           No plans created yet. Click "Create Plan" to get started.
         </div>
       ) : (
@@ -119,25 +119,25 @@ export default function AdminPlansPage() {
           {plans.map((plan) => (
             <div key={plan._id} style={{
               padding: "20px 24px", borderRadius: "14px",
-              background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)",
+              background: "var(--iron-850)", border: "1px solid #26262a",
               display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", flexWrap: "wrap",
             }}>
               {/* Plan info */}
               <div style={{ flex: 1, minWidth: "200px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px" }}>
-                  <h3 style={{ fontSize: "16px", fontWeight: "700" }}>{plan.name}</h3>
+                  <h3 style={{ fontSize: "17px", fontWeight: "700" }}>{plan.name}</h3>
                   {statusBadge(plan.status)}
                   {plan.isFeatured && (
-                    <span style={{ fontSize: "11px", padding: "3px 10px", borderRadius: "100px", background: "rgba(232,196,74,0.1)", border: "1px solid rgba(232,196,74,0.2)", color: "#e8c44a", fontWeight: "600" }}>
+                    <span style={{ fontSize: "13px", padding: "3px 10px", borderRadius: "100px", background: "rgba(243,212,0,0.1)", border: "1px solid rgba(243,212,0,0.2)", color: "#f3d400", fontWeight: "600" }}>
                       ★ Featured
                     </span>
                   )}
                 </div>
-                <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "10px" }}>{plan.description}</p>
+                <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.62)", marginBottom: "10px" }}>{plan.description}</p>
                 <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
                   {plan.pricingTiers.map((t) => (
-                    <span key={t.durationDays} style={{ fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
-                      {t.label}: <strong style={{ color: "#e8c44a" }}>₹{t.price / 100}</strong>
+                    <span key={t.durationDays} style={{ fontSize: "14px", color: "rgba(255,255,255,0.5)" }}>
+                      {t.label}: <strong style={{ color: "#f3d400" }}>₹{t.price / 100}</strong>
                     </span>
                   ))}
                 </div>
@@ -147,23 +147,23 @@ export default function AdminPlansPage() {
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 {plan.status !== "archived" && (
                   <button onClick={() => handleToggleStatus(plan)}
-                    style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: "12px", cursor: "pointer" }}>
+                    style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: "14px", cursor: "pointer" }}>
                     {plan.status === "active" ? "Deactivate" : "Activate"}
                   </button>
                 )}
                 <button onClick={() => { setEditingPlan(plan); setShowModal(true); }}
-                  style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(232,196,74,0.2)", background: "rgba(232,196,74,0.08)", color: "#e8c44a", fontSize: "12px", cursor: "pointer" }}>
+                  style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(243,212,0,0.2)", background: "rgba(243,212,0,0.08)", color: "#f3d400", fontSize: "14px", cursor: "pointer" }}>
                   Edit
                 </button>
                 {plan.status !== "archived" && (
                   <button onClick={() => setConfirmArchive(plan)}
-                    style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)", background: "transparent", color: "#ef4444", fontSize: "12px", cursor: "pointer" }}>
+                    style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)", background: "transparent", color: "#ef4444", fontSize: "14px", cursor: "pointer" }}>
                     Archive
                   </button>
                 )}
                 {plan.status === "archived" && (
                   <button onClick={() => handleToggleStatus({ ...plan, status: "inactive" })}
-                    style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(34,197,94,0.25)", background: "rgba(34,197,94,0.08)", color: "#22c55e", fontSize: "12px", cursor: "pointer" }}>
+                    style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(34,197,94,0.25)", background: "rgba(34,197,94,0.08)", color: "#22c55e", fontSize: "14px", cursor: "pointer" }}>
                     Restore
                   </button>
                 )}

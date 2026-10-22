@@ -11,7 +11,10 @@ import {
   updateProfile,
   updateProfilePicture,
   deleteProfilePicture,
+  deleteAccount,
 } from "../services/profile.service.js";
+import { clearRefreshTokenCookie } from "../services/auth/token.service.js";
+import ApiError from "../utils/apiError.js";
 
 // =============================================================================
 // getMyProfile
@@ -80,5 +83,24 @@ export const deleteMyProfilePicture = asyncHandler(async (req, res) => {
     HTTP_STATUS.OK,
     "Profile picture removed successfully.",
     { user: user.toJSON() },
+  ).send(res);
+});
+
+// =============================================================================
+// deleteMyAccount
+// POST /api/v1/profile/delete   { password }
+// Protected: authenticate + sessionGuard
+// =============================================================================
+
+export const deleteMyAccount = asyncHandler(async (req, res) => {
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!password) throw ApiError.badRequest("Please enter your password to confirm.");
+
+  await deleteAccount(req.user.userId, password);
+  clearRefreshTokenCookie(res);
+
+  return new ApiResponse(
+    HTTP_STATUS.OK,
+    "Your account has been deleted. Payment records are kept as required by law.",
   ).send(res);
 });

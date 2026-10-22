@@ -6,13 +6,13 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
-import * as THREE from "three";
 import { resetPassword } from "../../services/authService.js";
 import ParticleBackground from "../../components/three/ParticleBackground.jsx";
 import Logo from "../../components/ui/Logo.jsx";
 import PasswordStrength from "../../components/ui/PasswordStrength.jsx";
 import { motion } from "framer-motion";
 import { scaleIn } from "../../utils/animations.js";
+import { CircleCheck, Dumbbell, Eye, EyeOff, Lock } from "lucide-react";
 
 // =============================================================================
 // ResetPasswordPage
@@ -85,7 +85,7 @@ export default function ResetPasswordPage() {
   return (
     <div
       className="auth-page"
-      style={{ background: "#0a0a0a", position: "relative" }}
+      style={{ background: "var(--iron-950)", position: "relative" }}
     >
       <ParticleBackground />
 
@@ -95,7 +95,7 @@ export default function ResetPasswordPage() {
           inset: 0,
           zIndex: 0,
           background:
-            "radial-gradient(ellipse at center, rgba(232,196,74,0.05) 0%, transparent 65%)",
+            "radial-gradient(ellipse at center, rgba(243,212,0,0.05) 0%, transparent 65%)",
           pointerEvents: "none",
         }}
       />
@@ -109,8 +109,8 @@ export default function ResetPasswordPage() {
         style={{
           position: "relative",
           zIndex: 1,
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(255,255,255,0.07)",
+          background: "var(--iron-850)",
+          border: "1px solid #26262a",
           borderRadius: "24px",
           backdropFilter: "blur(40px)",
           WebkitBackdropFilter: "blur(40px)",
@@ -125,8 +125,8 @@ export default function ResetPasswordPage() {
                 width: "64px",
                 height: "64px",
                 borderRadius: "16px",
-                background: "rgba(232,196,74,0.1)",
-                border: "1px solid rgba(232,196,74,0.2)",
+                background: "rgba(243,212,0,0.1)",
+                border: "1px solid rgba(243,212,0,0.2)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -134,7 +134,7 @@ export default function ResetPasswordPage() {
                 margin: "0 auto 24px",
               }}
             >
-              🔒
+              <Lock size={40} strokeWidth={1.75} color="var(--yellow)" aria-hidden="true" />
             </div>
 
             <h1
@@ -149,14 +149,14 @@ export default function ResetPasswordPage() {
             </h1>
             <p
               style={{
-                fontSize: "14px",
-                color: "rgba(255,255,255,0.4)",
+                fontSize: "16px",
+                color: "rgba(255,255,255,0.62)",
                 marginBottom: "32px",
                 lineHeight: "1.6",
               }}
             >
               Create a strong password for{" "}
-              <span style={{ color: "#e8c44a" }}>{email}</span>
+              <span style={{ color: "#f3d400" }}>{email}</span>
             </p>
 
             <form
@@ -172,7 +172,7 @@ export default function ResetPasswordPage() {
               <div>
                 <label
                   style={{
-                    fontSize: "13px",
+                    fontSize: "15px",
                     fontWeight: "500",
                     color: "rgba(255,255,255,0.6)",
                     display: "block",
@@ -208,25 +208,25 @@ export default function ResetPasswordPage() {
                       background: "transparent",
                       border: "none",
                       cursor: "pointer",
-                      color: "rgba(255,255,255,0.35)",
-                      fontSize: "14px",
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: "16px",
                       padding: "4px",
                       transition: "color 0.2s",
                     }}
                     onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "#e8c44a")
+                      (e.currentTarget.style.color = "#f3d400")
                     }
                     onMouseLeave={(e) =>
-                      (e.currentTarget.style.color = "rgba(255,255,255,0.35)")
+                      (e.currentTarget.style.color = "#8c8c86")
                     }
                   >
-                    {showNew ? "🙈" : "👁️"}
+                    {showNew ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}<span className="sr-only">{showNew ? "Hide password" : "Show password"}</span>
                   </button>
                 </div>
                 {errors.newPassword && (
                   <p
                     style={{
-                      fontSize: "12px",
+                      fontSize: "14px",
                       color: "#ef4444",
                       marginTop: "6px",
                     }}
@@ -241,7 +241,7 @@ export default function ResetPasswordPage() {
               <div>
                 <label
                   style={{
-                    fontSize: "13px",
+                    fontSize: "15px",
                     fontWeight: "500",
                     color: "rgba(255,255,255,0.6)",
                     display: "block",
@@ -279,25 +279,25 @@ export default function ResetPasswordPage() {
                       background: "transparent",
                       border: "none",
                       cursor: "pointer",
-                      color: "rgba(255,255,255,0.35)",
-                      fontSize: "14px",
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: "16px",
                       padding: "4px",
                       transition: "color 0.2s",
                     }}
                     onMouseEnter={(e) =>
-                      (e.currentTarget.style.color = "#e8c44a")
+                      (e.currentTarget.style.color = "#f3d400")
                     }
                     onMouseLeave={(e) =>
-                      (e.currentTarget.style.color = "rgba(255,255,255,0.35)")
+                      (e.currentTarget.style.color = "#8c8c86")
                     }
                   >
-                    {showConfirm ? "🙈" : "👁️"}
+                    {showConfirm ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}<span className="sr-only">{showConfirm ? "Hide password" : "Show password"}</span>
                   </button>
                 </div>
                 {errors.confirmNewPassword && (
                   <p
                     style={{
-                      fontSize: "12px",
+                      fontSize: "14px",
                       color: "#ef4444",
                       marginTop: "6px",
                     }}
@@ -335,8 +335,8 @@ export default function ResetPasswordPage() {
               <Link
                 to="/forgot-password"
                 style={{
-                  fontSize: "13px",
-                  color: "rgba(255,255,255,0.3)",
+                  fontSize: "15px",
+                  color: "rgba(255,255,255,0.55)",
                   textDecoration: "none",
                   transition: "color 0.2s",
                 }}
@@ -344,7 +344,7 @@ export default function ResetPasswordPage() {
                   (e.target.style.color = "rgba(255,255,255,0.6)")
                 }
                 onMouseLeave={(e) =>
-                  (e.target.style.color = "rgba(255,255,255,0.3)")
+                  (e.target.style.color = "#8c8c86")
                 }
               >
                 ← Start over
@@ -370,7 +370,7 @@ export default function ResetPasswordPage() {
                 margin: "0 auto 28px",
               }}
             >
-              ✅
+              <CircleCheck size={40} strokeWidth={1.75} color="var(--yellow)" aria-hidden="true" />
             </div>
 
             <h1
@@ -385,7 +385,7 @@ export default function ResetPasswordPage() {
             </h1>
             <p
               style={{
-                fontSize: "14px",
+                fontSize: "16px",
                 color: "rgba(255,255,255,0.45)",
                 marginBottom: "32px",
                 lineHeight: "1.7",
@@ -411,7 +411,7 @@ export default function ResetPasswordPage() {
                   background: "rgba(255,255,255,0.06)",
                 }}
               />
-              <span style={{ fontSize: "20px" }}>💪</span>
+              <Dumbbell size={20} color="var(--yellow)" aria-hidden="true" />
               <div
                 style={{
                   flex: 1,

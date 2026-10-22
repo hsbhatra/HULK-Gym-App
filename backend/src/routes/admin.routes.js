@@ -16,6 +16,8 @@ import {
   cancelSubscription,
   getDashboardStats,
   collectOutstandingBalance,
+  refundDuplicatePayment,
+  getRefunds,
 } from "../controllers/admin.controller.js";
 
 const router = Router();
@@ -41,6 +43,10 @@ router.get("/subscriptions", getAllSubscriptions);
 router.post("/subscriptions/offline", recordOfflinePayment);
 router.patch("/subscriptions/:id/cancel", cancelSubscription);
 router.post("/subscriptions/:id/collect", collectOutstandingBalance);
+
+// Payments / refunds
+router.get("/refunds", getRefunds);
+router.post("/payments/:id/refund", refundDuplicatePayment);
 
 // Installments
 router.patch("/installments/:id", markInstallmentPaid);

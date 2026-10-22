@@ -12,6 +12,7 @@ import {
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import api from "../../services/api.js";
 import toast from "react-hot-toast";
+import { ArrowRight, CalendarClock, IndianRupee, RefreshCw, TriangleAlert, UserPlus, Users } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,11 +35,12 @@ const formatDate = (date) =>
 const getDaysLeft = (endDate) =>
   Math.ceil((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24));
 
-const DONUT_COLORS = ["#e8c44a", "#a78bfa", "#22c55e", "#f97316", "#60a5fa"];
+// Brand palette — yellow, ember, then steel tones (distinct in lightness, not hue alone)
+const DONUT_COLORS = ["#f3d400", "#e5482b", "#edede8", "#8c8c86", "#9e2c17"];
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 
-function KpiCard({ icon, label, value, sub, trend, loading }) {
+function KpiCard({ icon, label, value, sub, trend, loading, accent = false }) {
   const trendPositive = trend > 0;
   // null = no baseline last month → a % change would be meaningless
   const trendNeutral  = trend == null || trend === 0;
@@ -49,19 +51,19 @@ function KpiCard({ icon, label, value, sub, trend, loading }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       style={{
-        padding     : "24px",
-        borderRadius: "16px",
-        background  : "rgba(255,255,255,0.02)",
-        border      : "1px solid rgba(255,255,255,0.07)",
+        padding     : "22px",
+        borderRadius: "var(--radius-card)",
+        background  : "var(--iron-850)",
+        border      : "1px solid #26262a",
         display     : "flex",
         flexDirection: "column",
         gap         : "12px",
       }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <span style={{ fontSize: "24px" }}>{icon}</span>
+        <span className="perk-icon" style={{ width: "40px", height: "40px", borderRadius: "10px" }}>{icon}</span>
         {!trendNeutral && (
           <span style={{
-            fontSize  : "12px",
+            fontSize  : "14px",
             fontWeight: "600",
             padding   : "3px 8px",
             borderRadius: "100px",
@@ -75,16 +77,16 @@ function KpiCard({ icon, label, value, sub, trend, loading }) {
       {loading ? (
         <div style={{ height: "32px", background: "rgba(255,255,255,0.05)", borderRadius: "6px" }} />
       ) : (
-        <p style={{ fontSize: "28px", fontWeight: "800", letterSpacing: "-1px", margin: 0 }}>
+        <p className="font-display" style={{ fontSize: "clamp(36px, 4vw, 48px)", lineHeight: 1, margin: 0, color: accent ? "var(--yellow)" : "var(--text-1)" }}>
           {value}
         </p>
       )}
       <div>
-        <p style={{ fontSize: "13px", fontWeight: "600", color: "rgba(255,255,255,0.6)", margin: "0 0 2px" }}>
+        <p style={{ fontSize: "15px", fontWeight: "600", color: "rgba(255,255,255,0.6)", margin: "0 0 2px" }}>
           {label}
         </p>
         {sub && (
-          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)", margin: 0 }}>
+          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.55)", margin: 0 }}>
             {sub}
           </p>
         )}
@@ -99,13 +101,13 @@ function RevenueTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background  : "#1a1a1a",
+      background  : "var(--iron-850)",
       border      : "1px solid rgba(255,255,255,0.1)",
       borderRadius: "10px",
       padding     : "12px 16px",
     }}>
-      <p style={{ margin: "0 0 4px", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>{label}</p>
-      <p style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#e8c44a" }}>
+      <p style={{ margin: "0 0 4px", fontSize: "14px", color: "rgba(255,255,255,0.5)" }}>{label}</p>
+      <p style={{ margin: 0, fontSize: "17px", fontWeight: "700", color: "#f3d400" }}>
         {formatCurrency(payload[0].value)}
       </p>
     </div>
@@ -118,13 +120,13 @@ function PlanTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background  : "#1a1a1a",
+      background  : "var(--iron-850)",
       border      : "1px solid rgba(255,255,255,0.1)",
       borderRadius: "10px",
       padding     : "12px 16px",
     }}>
-      <p style={{ margin: 0, fontSize: "14px", fontWeight: "600" }}>
-        {payload[0].name}: <span style={{ color: "#e8c44a" }}>{payload[0].value} members</span>
+      <p style={{ margin: 0, fontSize: "16px", fontWeight: "600" }}>
+        {payload[0].name}: <span style={{ color: "#f3d400" }}>{payload[0].value} members</span>
       </p>
     </div>
   );
@@ -137,7 +139,6 @@ export default function AdminDashboardPage() {
   const [data, setData]     = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { fetchDashboard(); }, []);
 
   const fetchDashboard = async () => {
     setLoading(true);
@@ -151,11 +152,13 @@ export default function AdminDashboardPage() {
     }
   };
 
+  useEffect(() => { fetchDashboard(); }, []);
+
   const kpis = data?.kpis || {};
   const sectionLabel = {
-    fontSize     : "12px",
+    fontSize     : "14px",
     fontWeight   : "700",
-    color        : "rgba(255,255,255,0.4)",
+    color        : "rgba(255,255,255,0.62)",
     letterSpacing: "1px",
     textTransform: "uppercase",
     marginBottom : "14px",
@@ -164,43 +167,56 @@ export default function AdminDashboardPage() {
   return (
     <AdminLayout>
       {/* Page Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "28px", gap: "12px", flexWrap: "wrap" }}>
         <div>
-          <h1 style={{ fontSize: "22px", fontWeight: "700", marginBottom: "4px" }}>Dashboard</h1>
-          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}>
+          <p className="eyebrow" style={{ marginBottom: "8px" }}>
             {new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </p>
+          <h1 className="page-title">Floor report</h1>
         </div>
-        <button onClick={fetchDashboard}
-          style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: "13px", cursor: "pointer" }}>
-          ↻ Refresh
+        <button type="button" onClick={fetchDashboard} className="btn-ghost btn-sm" disabled={loading}>
+          <RefreshCw size={15} aria-hidden="true" /> Refresh
         </button>
       </div>
 
+      {data?.refundsDue?.length > 0 && (
+        <button type="button" className="refund-alert" onClick={() => navigate("/admin/refunds")}>
+          <TriangleAlert size={20} aria-hidden="true" />
+          <span>
+            <strong>
+              {data.refundsDue.length} refund{data.refundsDue.length > 1 ? "s" : ""} pending
+            </strong>{" "}
+            — {data.refundsDue.length > 1 ? "members" : "a member"} paid twice. Review and refund
+          </span>
+          <ArrowRight size={18} aria-hidden="true" />
+        </button>
+      )}
+
       {/* ── KPI Cards ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "28px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))", gap: "12px", marginBottom: "28px" }}>
         <KpiCard
-          icon="👥" label="Active Members"
+          accent
+          icon={<Users size={20} aria-hidden="true" />} label="Active Members"
           value={loading ? "—" : kpis.activeMembers ?? 0}
           sub={kpis.gracePeriodMembers ? `${kpis.gracePeriodMembers} in grace period` : `${kpis.totalMembers ?? 0} total registered`}
           loading={loading}
         />
         <KpiCard
-          icon="💰" label="Revenue This Month"
+          icon={<IndianRupee size={22} aria-hidden="true" />} label="Revenue This Month"
           value={loading ? "—" : formatCurrency(kpis.revenueThisMonth ?? 0)}
           sub={`Last month: ${formatCurrency(kpis.revenueLastMonth ?? 0)}`}
           trend={kpis.revenueTrend}
           loading={loading}
         />
         <KpiCard
-          icon="🆕" label="New Members This Month"
+          icon={<UserPlus size={22} aria-hidden="true" />} label="New Members This Month"
           value={loading ? "—" : kpis.newMembersThisMonth ?? 0}
           sub={`Last month: ${kpis.newMembersLastMonth ?? 0}`}
           trend={kpis.memberTrend}
           loading={loading}
         />
         <KpiCard
-          icon="⏰" label="Expiring This Week"
+          icon={<CalendarClock size={22} aria-hidden="true" />} label="Expiring This Week"
           value={loading ? "—" : kpis.expiringThisWeek ?? 0}
           sub="Need renewal follow-up"
           loading={loading}
@@ -208,79 +224,40 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── Refunds due (duplicate online payments) ── */}
-      {data?.refundsDue?.length > 0 && (
-        <div style={{ padding: "20px 24px", borderRadius: "16px", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.25)", marginBottom: "28px" }}>
-          <p style={{ ...sectionLabel, color: "#ef4444" }}>⚠ Refunds Due — Duplicate Payments</p>
-          <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)", margin: "-6px 0 14px" }}>
-            These members paid online while already having an active plan. No extra membership was given —
-            click a payment ID to open it in Razorpay, then use "Issue refund".
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {data.refundsDue.map((p) => (
-              <div key={p._id}
-                onClick={() => navigate(`/admin/members/${p.userId?._id || ""}`)}
-                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", padding: "10px 14px", borderRadius: "10px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(239,68,68,0.2)", cursor: "pointer" }}>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: "600" }}>
-                    {p.userId?.firstName} {p.userId?.lastName}
-                  </p>
-                  <p style={{ margin: 0, fontSize: "11px", color: "rgba(255,255,255,0.4)", wordBreak: "break-all" }}>
-                    {/* Direct link — Razorpay's own dashboard search is unreliable */}
-                    <a
-                      href={`https://dashboard.razorpay.com/app/payments/${p.razorpay?.paymentId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ color: "#60a5fa", textDecoration: "underline" }}
-                    >
-                      {p.razorpay?.paymentId} ↗
-                    </a>{" "}
-                    · {p.paidAt ? formatDate(p.paidAt) : ""}
-                  </p>
-                </div>
-                <p style={{ margin: 0, fontSize: "14px", fontWeight: "700", color: "#ef4444" }}>
-                  {formatCurrency(p.amountPaid)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ── Charts ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "28px" }}
         className="dashboard-charts">
 
         {/* Revenue Bar Chart */}
-        <div style={{ padding: "24px", borderRadius: "16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ padding: "24px", borderRadius: "16px", background: "var(--iron-850)", border: "1px solid #26262a" }}>
           <p style={sectionLabel}>Revenue — Last 6 Months</p>
           {loading ? (
-            <div style={{ height: "220px", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }} />
+            <div style={{ height: "220px", background: "var(--iron-850)", borderRadius: "8px" }} />
           ) : data?.revenueChart?.length === 0 ? (
-            <div style={{ height: "220px", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.2)", fontSize: "13px" }}>
+            <div style={{ height: "220px", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.5)", fontSize: "15px" }}>
               No revenue data yet
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={data?.revenueChart || []} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="month" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false}
+                <XAxis dataKey="month" tick={{ fill: "#8c8c86", fontSize: 13 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#8c8c86", fontSize: 13 }} axisLine={false} tickLine={false}
                   tickFormatter={formatAxisRupees} />
-                <Tooltip content={<RevenueTooltip />} cursor={{ fill: "rgba(232,196,74,0.06)" }} />
-                <Bar dataKey="revenue" fill="#e8c44a" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                <Tooltip content={<RevenueTooltip />} cursor={{ fill: "rgba(243,212,0,0.06)" }} />
+                <Bar dataKey="revenue" fill="#f3d400" radius={[4, 4, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
           )}
         </div>
 
         {/* Plan Distribution Donut */}
-        <div style={{ padding: "24px", borderRadius: "16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ padding: "24px", borderRadius: "16px", background: "var(--iron-850)", border: "1px solid #26262a" }}>
           <p style={sectionLabel}>Active Members by Plan</p>
           {loading ? (
-            <div style={{ height: "220px", background: "rgba(255,255,255,0.03)", borderRadius: "8px" }} />
+            <div style={{ height: "220px", background: "var(--iron-850)", borderRadius: "8px" }} />
           ) : !data?.planDistribution?.length ? (
-            <div style={{ height: "220px", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.2)", fontSize: "13px" }}>
+            <div style={{ height: "220px", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.5)", fontSize: "15px" }}>
               No active subscriptions yet
             </div>
           ) : (
@@ -301,7 +278,7 @@ export default function AdminDashboardPage() {
                 <Legend
                   iconType="circle" iconSize={8}
                   formatter={(value) => (
-                    <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "12px" }}>{value}</span>
+                    <span style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>{value}</span>
                   )}
                 />
               </PieChart>
@@ -315,34 +292,34 @@ export default function AdminDashboardPage() {
         className="dashboard-tables">
 
         {/* Expiring Soon */}
-        <div style={{ padding: "24px", borderRadius: "16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ padding: "24px", borderRadius: "16px", background: "var(--iron-850)", border: "1px solid #26262a" }}>
           <p style={sectionLabel}>Expiring This Week</p>
           {loading ? (
-            <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "13px" }}>Loading...</p>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "15px" }}>Loading...</p>
           ) : !data?.expiringSoon?.length ? (
-            <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "13px" }}>No memberships expiring this week ✓</p>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "15px" }}>No memberships expiring this week ✓</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {data.expiringSoon.map((sub) => {
                 const days  = getDaysLeft(sub.endDate);
-                const color = days <= 2 ? "#ef4444" : days <= 4 ? "#f97316" : "#e8c44a";
+                const color = days <= 2 ? "#ef4444" : days <= 4 ? "#f97316" : "#f3d400";
                 return (
                   <div key={sub._id}
                     onClick={() => navigate(`/admin/members`)}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: "10px", background: "rgba(255,255,255,0.02)", border: `1px solid ${color}22`, cursor: "pointer" }}>
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: "10px", background: "var(--iron-850)", border: `1px solid ${color}22`, cursor: "pointer" }}>
                     <div>
-                      <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: "600" }}>
+                      <p style={{ margin: "0 0 2px", fontSize: "15px", fontWeight: "600" }}>
                         {sub.userId?.firstName} {sub.userId?.lastName}
                       </p>
-                      <p style={{ margin: 0, fontSize: "11px", color: "rgba(255,255,255,0.35)" }}>
+                      <p style={{ margin: 0, fontSize: "13px", color: "rgba(255,255,255,0.6)" }}>
                         {sub.planSnapshot?.planName} · {sub.planSnapshot?.durationLabel}
                       </p>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <p style={{ margin: "0 0 2px", fontSize: "12px", fontWeight: "700", color }}>
+                      <p style={{ margin: "0 0 2px", fontSize: "14px", fontWeight: "700", color }}>
                         {days === 0 ? "Today" : days === 1 ? "Tomorrow" : `${days} days`}
                       </p>
-                      <p style={{ margin: 0, fontSize: "11px", color: "rgba(255,255,255,0.3)" }}>
+                      <p style={{ margin: 0, fontSize: "13px", color: "rgba(255,255,255,0.55)" }}>
                         {formatDate(sub.endDate)}
                       </p>
                     </div>
@@ -354,12 +331,12 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Pending Installments */}
-        <div style={{ padding: "24px", borderRadius: "16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ padding: "24px", borderRadius: "16px", background: "var(--iron-850)", border: "1px solid #26262a" }}>
           <p style={sectionLabel}>Pending Installments</p>
           {loading ? (
-            <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "13px" }}>Loading...</p>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "15px" }}>Loading...</p>
           ) : !data?.pendingInstallments?.length ? (
-            <p style={{ color: "rgba(255,255,255,0.2)", fontSize: "13px" }}>No pending installments ✓</p>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "15px" }}>No pending installments ✓</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {data.pendingInstallments.map((inst) => {
@@ -368,20 +345,20 @@ export default function AdminDashboardPage() {
                 return (
                   <div key={inst._id}
                     onClick={() => navigate(`/admin/members/${inst.userId?._id || ""}`)}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: "10px", background: "rgba(255,255,255,0.02)", border: `1px solid ${color}22`, cursor: "pointer" }}>
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: "10px", background: "var(--iron-850)", border: `1px solid ${color}22`, cursor: "pointer" }}>
                     <div>
-                      <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: "600" }}>
+                      <p style={{ margin: "0 0 2px", fontSize: "15px", fontWeight: "600" }}>
                         {inst.userId?.firstName} {inst.userId?.lastName}
                       </p>
-                      <p style={{ margin: 0, fontSize: "11px", color: "rgba(255,255,255,0.35)" }}>
+                      <p style={{ margin: 0, fontSize: "13px", color: "rgba(255,255,255,0.6)" }}>
                         Installment #{inst.installmentNumber}
                       </p>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: "700", color: "#e8c44a" }}>
+                      <p style={{ margin: "0 0 2px", fontSize: "15px", fontWeight: "700", color: "#f3d400" }}>
                         {formatCurrency(inst.amountDue)}
                       </p>
-                      <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "100px", background: `${color}18`, border: `1px solid ${color}33`, color, fontWeight: "600", textTransform: "uppercase" }}>
+                      <span style={{ fontSize: "13px", padding: "2px 8px", borderRadius: "100px", background: `${color}18`, border: `1px solid ${color}33`, color, fontWeight: "600", textTransform: "uppercase" }}>
                         {inst.status}
                       </span>
                     </div>

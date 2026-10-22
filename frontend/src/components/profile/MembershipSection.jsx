@@ -11,6 +11,7 @@ import {
   getMyReceipts,
 } from "../../services/subscriptionService.js";
 import ReceiptsList from "../ui/ReceiptsList.jsx";
+import { Dumbbell, TriangleAlert } from "lucide-react";
 
 function PaymentsSection({ receipts }) {
   if (!receipts.length) return null;
@@ -18,14 +19,14 @@ function PaymentsSection({ receipts }) {
     <div style={{ marginTop: "32px" }}>
       <h3
         style={{
-          fontSize: "13px", fontWeight: "700", color: "rgba(255,255,255,0.4)",
+          fontSize: "15px", fontWeight: "700", color: "rgba(255,255,255,0.62)",
           letterSpacing: "1px", textTransform: "uppercase", marginBottom: "14px",
         }}
       >
         Payments &amp; Receipts
       </h3>
       <ReceiptsList receipts={receipts} />
-      <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", marginTop: "10px" }}>
+      <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.55)", marginTop: "10px" }}>
         A receipt for each payment was emailed to you.
       </p>
     </div>
@@ -36,12 +37,12 @@ function PaymentsSection({ receipts }) {
 function SubscriptionHistory({ history, formatDate }) {
   const statusColors = {
     active: "#22c55e", grace: "#f97316", expired: "rgba(255,255,255,0.4)",
-    cancelled: "#ef4444", complimentary: "#a78bfa", pending: "#e8c44a",
+    cancelled: "#ef4444", complimentary: "#a78bfa", pending: "#f3d400",
   };
 
   return (
     <div style={{ marginTop: "28px" }}>
-      <p style={{ fontSize: "12px", fontWeight: "700", color: "rgba(255,255,255,0.4)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "14px" }}>
+      <p style={{ fontSize: "14px", fontWeight: "700", color: "rgba(255,255,255,0.62)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "14px" }}>
         Subscription History
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -49,27 +50,27 @@ function SubscriptionHistory({ history, formatDate }) {
           const isCancelled = sub.status === "cancelled";
           const color = statusColors[sub.status] || "rgba(255,255,255,0.4)";
           return (
-            <div key={sub._id} style={{ padding: "14px 16px", borderRadius: "10px", background: "rgba(255,255,255,0.02)", border: `1px solid ${isCancelled ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)"}` }}>
+            <div key={sub._id} style={{ padding: "14px 16px", borderRadius: "10px", background: "var(--iron-850)", border: `1px solid ${isCancelled ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)"}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
-                  <p style={{ fontSize: "14px", fontWeight: "600" }}>
+                  <p style={{ fontSize: "16px", fontWeight: "600" }}>
                     {sub.planSnapshot.planName} — {sub.planSnapshot.durationLabel}
                   </p>
-                  <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", marginTop: "3px" }}>
+                  <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)", marginTop: "3px" }}>
                     {formatDate(sub.startDate)} → {formatDate(sub.endDate)}
                   </p>
                   {isCancelled && sub.cancelReason && (
-                    <p style={{ fontSize: "12px", color: "rgba(239,68,68,0.6)", marginTop: "4px" }}>
+                    <p style={{ fontSize: "14px", color: "rgba(239,68,68,0.6)", marginTop: "4px" }}>
                       ↳ {sub.cancelReason}
                     </p>
                   )}
                   {isCancelled && sub.cancelledAt && (
-                    <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.25)", marginTop: "2px" }}>
+                    <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>
                       Cancelled on {formatDate(sub.cancelledAt)}
                     </p>
                   )}
                 </div>
-                <span style={{ fontSize: "11px", padding: "3px 10px", borderRadius: "100px", background: `${color}18`, border: `1px solid ${color}33`, color, fontWeight: "700", textTransform: "uppercase", flexShrink: 0, marginLeft: "12px" }}>
+                <span style={{ fontSize: "13px", padding: "3px 10px", borderRadius: "100px", background: `${color}18`, border: `1px solid ${color}33`, color, fontWeight: "700", textTransform: "uppercase", flexShrink: 0, marginLeft: "12px" }}>
                   {sub.status}
                 </span>
               </div>
@@ -137,9 +138,9 @@ export default function MembershipSection() {
     Math.ceil((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24));
 
   const labelStyle = {
-    fontSize: "12px",
+    fontSize: "14px",
     fontWeight: "600",
-    color: "rgba(255,255,255,0.4)",
+    color: "rgba(255,255,255,0.62)",
     letterSpacing: "0.5px",
     textTransform: "uppercase",
     display: "block",
@@ -152,14 +153,14 @@ export default function MembershipSection() {
         style={{
           textAlign: "center",
           padding: "48px",
-          color: "rgba(255,255,255,0.3)",
+          color: "rgba(255,255,255,0.55)",
         }}
       >
         <div
           className="spinner"
           style={{
             borderColor: "rgba(255,255,255,0.1)",
-            borderTopColor: "#e8c44a",
+            borderTopColor: "#f3d400",
             margin: "0 auto 12px",
           }}
         />
@@ -171,15 +172,13 @@ export default function MembershipSection() {
   if (!data) {
     return (
       <div>
-        <h2
-          style={{ fontSize: "18px", fontWeight: "700", marginBottom: "6px" }}
-        >
+        <h2 className="page-title page-title--sm">
           Membership
         </h2>
         <p
           style={{
-            fontSize: "13px",
-            color: "rgba(255,255,255,0.4)",
+            fontSize: "15px",
+            color: "rgba(255,255,255,0.62)",
             marginBottom: "32px",
           }}
         >
@@ -190,20 +189,20 @@ export default function MembershipSection() {
             padding: "40px",
             borderRadius: "16px",
             textAlign: "center",
-            background: "rgba(232,196,74,0.03)",
-            border: "1px dashed rgba(232,196,74,0.2)",
+            background: "rgba(243,212,0,0.03)",
+            border: "1px dashed rgba(243,212,0,0.2)",
           }}
         >
-          <p style={{ fontSize: "32px", marginBottom: "16px" }}>🏋️</p>
+          <p style={{ marginBottom: "16px" }}><Dumbbell size={36} color="var(--yellow)" aria-hidden="true" style={{ margin: "0 auto" }} /></p>
           <h3
-            style={{ fontSize: "16px", fontWeight: "700", marginBottom: "8px" }}
+            style={{ fontSize: "17px", fontWeight: "700", marginBottom: "8px" }}
           >
             No active membership
           </h3>
           <p
             style={{
-              fontSize: "13px",
-              color: "rgba(255,255,255,0.4)",
+              fontSize: "15px",
+              color: "rgba(255,255,255,0.62)",
               marginBottom: "24px",
             }}
           >
@@ -221,7 +220,7 @@ export default function MembershipSection() {
               );
             }}
             className="btn-gold"
-            style={{ width: "auto", padding: "12px 28px", fontSize: "14px" }}
+            style={{ width: "auto", padding: "12px 28px", fontSize: "16px" }}
           >
             View Plans →
           </button>
@@ -241,13 +240,13 @@ export default function MembershipSection() {
 
   return (
     <div>
-      <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "6px" }}>
+      <h2 className="page-title page-title--sm">
         Membership
       </h2>
       <p
         style={{
-          fontSize: "13px",
-          color: "rgba(255,255,255,0.4)",
+          fontSize: "15px",
+          color: "rgba(255,255,255,0.62)",
           marginBottom: "28px",
         }}
       >
@@ -268,15 +267,15 @@ export default function MembershipSection() {
             gap: "10px",
           }}
         >
-          <span>⚠️</span>
+          <TriangleAlert size={16} aria-hidden="true" />
           <div style={{ flex: 1 }}>
             <p
-              style={{ fontSize: "13px", fontWeight: "600", color: "#f97316" }}
+              style={{ fontSize: "15px", fontWeight: "600", color: "#f97316" }}
             >
               Membership expiring in {daysRemaining} day
               {daysRemaining !== 1 ? "s" : ""}
             </p>
-            <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)" }}>
+            <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.62)" }}>
               Renew now to avoid losing access.
             </p>
           </div>
@@ -297,7 +296,7 @@ export default function MembershipSection() {
               background: "rgba(249,115,22,0.15)",
               border: "1px solid rgba(249,115,22,0.3)",
               color: "#f97316",
-              fontSize: "12px",
+              fontSize: "14px",
               fontWeight: "600",
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -321,14 +320,14 @@ export default function MembershipSection() {
             gap: "10px",
           }}
         >
-          <span>🔴</span>
+          <span aria-hidden="true" style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#ef4444", display: "inline-block", flexShrink: 0 }} />
           <div>
             <p
-              style={{ fontSize: "13px", fontWeight: "600", color: "#ef4444" }}
+              style={{ fontSize: "15px", fontWeight: "600", color: "#ef4444" }}
             >
               Membership expired — Grace period active
             </p>
-            <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)" }}>
+            <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.62)" }}>
               Renew immediately to continue your access.
             </p>
           </div>
@@ -348,7 +347,7 @@ export default function MembershipSection() {
         >
           <p
             style={{
-              fontSize: "13px",
+              fontSize: "15px",
               fontWeight: "600",
               color: "#ef4444",
               marginBottom: "4px",
@@ -357,15 +356,15 @@ export default function MembershipSection() {
             Membership Cancelled
           </p>
           {subscription.cancelReason && (
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>
+            <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.5)" }}>
               Reason: {subscription.cancelReason}
             </p>
           )}
           {subscription.cancelledAt && (
             <p
               style={{
-                fontSize: "12px",
-                color: "rgba(255,255,255,0.3)",
+                fontSize: "14px",
+                color: "rgba(255,255,255,0.55)",
                 marginTop: "4px",
               }}
             >
@@ -382,8 +381,8 @@ export default function MembershipSection() {
           borderRadius: "16px",
           marginBottom: "20px",
           background:
-            "linear-gradient(135deg, rgba(232,196,74,0.08), rgba(232,196,74,0.02))",
-          border: "1px solid rgba(232,196,74,0.2)",
+            "linear-gradient(135deg, rgba(243,212,0,0.08), rgba(243,212,0,0.02))",
+          border: "1px solid rgba(243,212,0,0.2)",
         }}
       >
         <div
@@ -405,14 +404,14 @@ export default function MembershipSection() {
               {subscription.planSnapshot.planName}
             </h3>
             <p
-              style={{ fontSize: "13px", color: "#e8c44a", fontWeight: "600" }}
+              style={{ fontSize: "15px", color: "#f3d400", fontWeight: "600" }}
             >
               {subscription.planSnapshot.durationLabel} Plan
             </p>
           </div>
           <span
             style={{
-              fontSize: "11px",
+              fontSize: "13px",
               padding: "4px 12px",
               borderRadius: "100px",
               fontWeight: "700",
@@ -446,7 +445,7 @@ export default function MembershipSection() {
         >
           <div>
             <span style={labelStyle}>Start Date</span>
-            <p style={{ fontSize: "14px", fontWeight: "600" }}>
+            <p style={{ fontSize: "16px", fontWeight: "600" }}>
               {formatDate(subscription.startDate)}
             </p>
           </div>
@@ -454,7 +453,7 @@ export default function MembershipSection() {
             <span style={labelStyle}>Valid Until</span>
             <p
               style={{
-                fontSize: "14px",
+                fontSize: "16px",
                 fontWeight: "600",
                 color: isExpiringSoon ? "#f97316" : "#fff",
               }}
@@ -465,7 +464,7 @@ export default function MembershipSection() {
           <div>
             <span style={labelStyle}>Amount Paid</span>
             <p
-              style={{ fontSize: "14px", fontWeight: "600", color: "#e8c44a" }}
+              style={{ fontSize: "16px", fontWeight: "600", color: "#f3d400" }}
             >
               {payment
                 ? payment.paymentMode === "complimentary"
@@ -479,7 +478,7 @@ export default function MembershipSection() {
               <span style={labelStyle}>Balance Due</span>
               <p
                 style={{
-                  fontSize: "14px",
+                  fontSize: "16px",
                   fontWeight: "600",
                   color: "#ef4444",
                 }}
@@ -496,7 +495,7 @@ export default function MembershipSection() {
             <span style={labelStyle}>Days Remaining</span>
             <p
               style={{
-                fontSize: "14px",
+                fontSize: "16px",
                 fontWeight: "600",
                 color: isExpiringSoon ? "#f97316" : "#fff",
               }}
@@ -508,7 +507,7 @@ export default function MembershipSection() {
             <span style={labelStyle}>Payment Mode</span>
             <p
               style={{
-                fontSize: "14px",
+                fontSize: "16px",
                 fontWeight: "600",
                 textTransform: "capitalize",
               }}
@@ -519,7 +518,7 @@ export default function MembershipSection() {
           {payment?.receiptNumber && (
             <div>
               <span style={labelStyle}>Receipt No.</span>
-              <p style={{ fontSize: "14px", fontWeight: "600" }}>
+              <p style={{ fontSize: "16px", fontWeight: "600" }}>
                 {payment.receiptNumber}
               </p>
             </div>
@@ -541,12 +540,12 @@ export default function MembershipSection() {
                 }}
               >
                 <span
-                  style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)" }}
+                  style={{ fontSize: "13px", color: "rgba(255,255,255,0.55)" }}
                 >
                   Plan progress
                 </span>
                 <span
-                  style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)" }}
+                  style={{ fontSize: "13px", color: "rgba(255,255,255,0.55)" }}
                 >
                   {Math.round(pct)}% used
                 </span>
@@ -563,7 +562,7 @@ export default function MembershipSection() {
                     height: "100%",
                     borderRadius: "2px",
                     width: `${pct}%`,
-                    background: isExpiringSoon ? "#f97316" : "#e8c44a",
+                    background: isExpiringSoon ? "#f97316" : "#f3d400",
                     transition: "width 0.3s",
                   }}
                 />
@@ -595,7 +594,7 @@ export default function MembershipSection() {
                   style={{
                     padding: "14px 16px",
                     borderRadius: "10px",
-                    background: "rgba(255,255,255,0.02)",
+                    background: "var(--iron-850)",
                     border: `1px solid ${isPaid ? "rgba(34,197,94,0.1)" : isOverdue ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.05)"}`,
                   }}
                 >
@@ -613,17 +612,17 @@ export default function MembershipSection() {
                         gap: "10px",
                       }}
                     >
-                      <span style={{ fontSize: "16px", color }}>
+                      <span style={{ fontSize: "17px", color }}>
                         {isPaid ? "✓" : isOverdue ? "!" : "○"}
                       </span>
                       <div>
-                        <p style={{ fontSize: "14px", fontWeight: "600" }}>
+                        <p style={{ fontSize: "16px", fontWeight: "600" }}>
                           Installment {inst.installmentNumber}
                         </p>
                         <p
                           style={{
-                            fontSize: "12px",
-                            color: "rgba(255,255,255,0.4)",
+                            fontSize: "14px",
+                            color: "rgba(255,255,255,0.62)",
                             marginTop: "2px",
                           }}
                         >
@@ -638,12 +637,12 @@ export default function MembershipSection() {
                       </div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <p style={{ fontSize: "14px", fontWeight: "700" }}>
+                      <p style={{ fontSize: "16px", fontWeight: "700" }}>
                         ₹{(inst.amountDue / 100).toLocaleString("en-IN")}
                       </p>
                       <span
                         style={{
-                          fontSize: "11px",
+                          fontSize: "13px",
                           padding: "2px 8px",
                           borderRadius: "100px",
                           background: `${color}18`,
@@ -685,17 +684,17 @@ export default function MembershipSection() {
                 gap: "8px",
                 padding: "10px 14px",
                 borderRadius: "8px",
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid rgba(255,255,255,0.05)",
+                background: "var(--iron-850)",
+                border: "1px solid #26262a",
               }}
             >
               <span
-                style={{ color: "#e8c44a", fontSize: "12px", flexShrink: 0 }}
+                style={{ color: "#f3d400", fontSize: "14px", flexShrink: 0 }}
               >
                 ✓
               </span>
               <span
-                style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)" }}
+                style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)" }}
               >
                 {f}
               </span>

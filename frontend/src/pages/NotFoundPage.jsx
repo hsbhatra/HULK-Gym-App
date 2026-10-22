@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import ParticleBackground from "../components/three/ParticleBackground.jsx";
 import { heroContainer, heroItem } from "../utils/animations.js";
+import { Dumbbell } from "lucide-react";
 
 export default function NotFoundPage() {
   const navigate = useNavigate();
@@ -13,7 +14,7 @@ export default function NotFoundPage() {
   return (
     <div style={{
       minHeight      : "100vh",
-      background     : "#0a0a0a",
+      background     : "var(--iron-950)",
       display        : "flex",
       alignItems     : "center",
       justifyContent : "center",
@@ -22,7 +23,7 @@ export default function NotFoundPage() {
     }}>
       <ParticleBackground particleCount={60} />
 
-      <div style={{ position: "fixed", inset: 0, zIndex: 0, background: "radial-gradient(ellipse at center, rgba(232,196,74,0.04) 0%, transparent 65%)", pointerEvents: "none" }} />
+      <div style={{ position: "fixed", inset: 0, zIndex: 0, background: "radial-gradient(ellipse at center, rgba(243,212,0,0.04) 0%, transparent 65%)", pointerEvents: "none" }} />
 
       <motion.div
         variants={heroContainer}
@@ -32,7 +33,7 @@ export default function NotFoundPage() {
 
         <motion.div variants={heroItem}>
           <p style={{ fontSize: "120px", lineHeight: 1, marginBottom: "16px", filter: "grayscale(0.3)" }}>
-            💪
+            <Dumbbell size={64} strokeWidth={1.75} color="var(--yellow)" aria-hidden="true" style={{ margin: "0 auto" }} />
           </p>
         </motion.div>
 
@@ -44,15 +45,15 @@ export default function NotFoundPage() {
             lineHeight   : 1,
             marginBottom : "16px",
           }}>
-            4<span style={{ color: "#e8c44a" }}>0</span>4
+            4<span style={{ color: "#f3d400" }}>0</span>4
           </h1>
         </motion.div>
 
         <motion.div variants={heroItem}>
-          <p style={{ fontSize: "18px", fontWeight: "600", marginBottom: "12px" }}>
+          <p style={{ fontSize: "19px", fontWeight: "600", marginBottom: "12px" }}>
             Page not found
           </p>
-          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.4)", lineHeight: "1.7", marginBottom: "36px" }}>
+          <p style={{ fontSize: "16px", color: "rgba(255,255,255,0.62)", lineHeight: "1.7", marginBottom: "36px" }}>
             Looks like this page skipped leg day and doesn't exist.
             Let's get you back on track.
           </p>
@@ -60,11 +61,11 @@ export default function NotFoundPage() {
 
         <motion.div variants={heroItem} style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
           <button onClick={() => navigate("/")} className="btn-gold"
-            style={{ width: "auto", padding: "13px 28px", fontSize: "14px" }}>
+            style={{ width: "auto", padding: "13px 28px", fontSize: "16px" }}>
             Back to Home
           </button>
           <button onClick={() => navigate(-1)} className="btn-ghost"
-            style={{ padding: "13px 28px", fontSize: "14px" }}>
+            style={{ padding: "13px 28px", fontSize: "16px" }}>
             Go Back
           </button>
         </motion.div>

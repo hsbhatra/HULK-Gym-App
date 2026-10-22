@@ -14,7 +14,9 @@ import {
   updateMyProfile,
   updateMyProfilePicture,
   deleteMyProfilePicture,
+  deleteMyAccount,
 } from "../controllers/profile.controller.js";
+import { authLimiter } from "../middleware/rateLimiter.middleware.js";
 
 const router = Router();
 
@@ -25,5 +27,6 @@ router.get   ("/",        getMyProfile);
 router.patch ("/",        validateUpdateProfile, updateMyProfile);
 router.patch ("/picture", uploadProfilePictureMiddleware, updateMyProfilePicture);
 router.delete("/picture", deleteMyProfilePicture);
+router.post  ("/delete",  authLimiter, deleteMyAccount);
 
 export default router;

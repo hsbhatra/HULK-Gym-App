@@ -87,6 +87,13 @@ const userSchema = new mongoose.Schema(
       // when user uploads a new one or removes their picture
     },
 
+    // --- CONSENT (Terms & Privacy, age) ---
+    consent: {
+      termsAcceptedAt: { type: Date, default: null },
+      termsVersion: { type: String, default: null },
+      ageConfirmation: { type: String, enum: ["adult", "guardian", null], default: null },
+    },
+
     // --- READABLE USER ID ---
     userId: {
       type: String,
@@ -130,6 +137,9 @@ const userSchema = new mongoose.Schema(
       maxlength: [200, "Bio cannot exceed 200 characters"],
       trim: true,
     },
+
+    // Set when the member deletes their account (personal data erased)
+    deletedAt: { type: Date, default: null },
   },
 
   {
@@ -148,6 +158,8 @@ const userSchema = new mongoose.Schema(
 // Hook 1 — Password hashing
 userSchema.pre("save", async function () {
   if (!this.isModified("passwordHash")) return;
+  // Already a bcrypt hash (e.g. copied from a pending registration) — don't hash twice
+  if (/^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(this.passwordHash)) return;
   this.passwordHash = await bcrypt.hash(
     this.passwordHash,
     BCRYPT_CONFIG.SALT_ROUNDS,

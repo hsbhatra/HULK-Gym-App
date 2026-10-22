@@ -5,7 +5,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import * as THREE from "three";
 import { useAuthStore } from "../../store/authStore.js";
 import {
   getProfile,
@@ -29,6 +28,7 @@ import ProfileSection from "../../components/profile/ProfileSection.jsx";
 import SessionsSection from "../../components/profile/SessionsSection.jsx";
 import ChangePasswordSection from "../../components/profile/ChangePasswordSection.jsx";
 import MembershipSection from "../../components/profile/MembershipSection.jsx";
+import { BadgeCheck, House, Lock, MonitorSmartphone, User } from "lucide-react";
 
 // =============================================================================
 // ProfilePage — Main Component
@@ -69,10 +69,10 @@ export default function ProfilePage() {
   };
 
   const navItems = [
-    { id: "profile", label: "Profile", icon: "👤" },
-    { id: "membership", label: "Membership", icon: "🏅" },
-    { id: "sessions", label: "Active Sessions", icon: "🖥️" },
-    { id: "password", label: "Change Password", icon: "🔒" },
+    { id: "profile", label: "Profile", icon: <User size={18} aria-hidden="true" /> },
+    { id: "membership", label: "Membership", icon: <BadgeCheck size={18} aria-hidden="true" /> },
+    { id: "sessions", label: "Active Sessions", icon: <MonitorSmartphone size={18} aria-hidden="true" /> },
+    { id: "password", label: "Change Password", icon: <Lock size={18} aria-hidden="true" /> },
   ];
 
   const sidebarItemStyle = (isActive) => ({
@@ -80,13 +80,15 @@ export default function ProfilePage() {
     alignItems: "center",
     gap: "12px",
     padding: "12px 16px",
-    borderRadius: "10px",
+    borderRadius: "999px",
     cursor: "pointer",
-    background: isActive ? "rgba(232,196,74,0.1)" : "transparent",
-    border: `1px solid ${isActive ? "rgba(232,196,74,0.2)" : "transparent"}`,
-    color: isActive ? "#e8c44a" : "rgba(255,255,255,0.5)",
-    fontSize: "14px",
-    fontWeight: isActive ? "600" : "400",
+    // Same treatment as the admin sidebar: solid yellow pill with ember shadow
+    background: isActive ? "var(--yellow)" : "transparent",
+    border: `1px solid ${isActive ? "var(--yellow)" : "transparent"}`,
+    boxShadow: isActive ? "3px 3px 0 var(--ember)" : "none",
+    color: isActive ? "var(--iron-950)" : "#bdbdb6",
+    fontSize: "16px",
+    fontWeight: isActive ? "700" : "600",
     transition: "all 0.2s",
     userSelect: "none",
   });
@@ -95,7 +97,7 @@ export default function ProfilePage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#0a0a0a",
+        background: "var(--iron-950)",
         position: "relative",
       }}
     >
@@ -106,7 +108,7 @@ export default function ProfilePage() {
           inset: 0,
           zIndex: 0,
           background:
-            "radial-gradient(ellipse at 30% 50%, rgba(232,196,74,0.04) 0%, transparent 60%)",
+            "radial-gradient(ellipse at 30% 50%, rgba(243,212,0,0.04) 0%, transparent 60%)",
           pointerEvents: "none",
         }}
       />
@@ -126,15 +128,15 @@ export default function ProfilePage() {
           justifyContent: "space-between",
           background: "rgba(10,10,10,0.9)",
           backdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(255,255,255,0.05)",
+          borderBottom: "1px solid #26262a",
         }}
       >
         <Logo size="md" />
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           {user && (
-            <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}>
+            <span style={{ fontSize: "15px", color: "rgba(255,255,255,0.62)" }}>
               Hi,{" "}
-              <span style={{ color: "#e8c44a", fontWeight: "600" }}>
+              <span style={{ color: "#f3d400", fontWeight: "600" }}>
                 {user.firstName}
               </span>
             </span>
@@ -142,7 +144,7 @@ export default function ProfilePage() {
           <button
             onClick={handleLogout}
             className="btn-ghost"
-            style={{ padding: "7px 16px", fontSize: "13px" }}
+            style={{ padding: "7px 16px", fontSize: "15px" }}
           >
             Logout
           </button>
@@ -160,7 +162,7 @@ export default function ProfilePage() {
           style={{
             width: "240px",
             flexShrink: 0,
-            borderRight: "1px solid rgba(255,255,255,0.05)",
+            borderRight: "1px solid #26262a",
             padding: "32px 16px",
             position: "sticky",
             top: "60px",
@@ -177,8 +179,8 @@ export default function ProfilePage() {
               style={{
                 padding: "16px",
                 borderRadius: "12px",
-                background: "rgba(255,255,255,0.02)",
-                border: "1px solid rgba(255,255,255,0.05)",
+                background: "var(--iron-850)",
+                border: "1px solid #26262a",
                 marginBottom: "24px",
                 textAlign: "center",
               }}
@@ -189,8 +191,8 @@ export default function ProfilePage() {
                   height: "52px",
                   borderRadius: "50%",
                   margin: "0 auto 10px",
-                  background: "#1a1a1a",
-                  border: "2px solid rgba(232,196,74,0.3)",
+                  background: "var(--iron-850)",
+                  border: "2px solid rgba(243,212,0,0.3)",
                   overflow: "hidden",
                   display: "flex",
                   alignItems: "center",
@@ -212,7 +214,7 @@ export default function ProfilePage() {
                     style={{
                       fontSize: "20px",
                       fontWeight: "800",
-                      color: "#e8c44a",
+                      color: "#f3d400",
                     }}
                   >
                     {user.firstName?.[0]}
@@ -221,7 +223,7 @@ export default function ProfilePage() {
               </div>
               <p
                 style={{
-                  fontSize: "14px",
+                  fontSize: "16px",
                   fontWeight: "700",
                   marginBottom: "2px",
                 }}
@@ -230,8 +232,8 @@ export default function ProfilePage() {
               </p>
               <p
                 style={{
-                  fontSize: "11px",
-                  color: "#e8c44a",
+                  fontSize: "13px",
+                  color: "#f3d400",
                   fontWeight: "600",
                 }}
               >
@@ -250,16 +252,18 @@ export default function ProfilePage() {
             }}
           >
             {navItems.map((item) => (
-              <motion.div
+              <motion.button
+                type="button"
                 key={item.id}
-                style={sidebarItemStyle(activeTab === item.id)}
+                aria-current={activeTab === item.id ? "page" : undefined}
+                style={{ ...sidebarItemStyle(activeTab === item.id), width: "100%", textAlign: "left", fontFamily: "inherit" }}
                 onClick={() => setActiveTab(item.id)}
                 whileHover={{ x: 4, transition: { duration: 0.15 } }}
                 whileTap={{ scale: 0.98 }}
               >
-                <span style={{ fontSize: "18px" }}>{item.icon}</span>
+                <span style={{ fontSize: "19px", display: "inline-flex" }}>{item.icon}</span>
                 <span>{item.label}</span>
-              </motion.div>
+              </motion.button>
             ))}
           </nav>
 
@@ -269,24 +273,25 @@ export default function ProfilePage() {
             style={{
               marginTop: "auto",
               paddingTop: "16px",
-              borderTop: "1px solid rgba(255,255,255,0.05)",
+              borderTop: "1px solid #26262a",
             }}
           >
-            <div
-              style={sidebarItemStyle(false)}
+            <button
+              type="button"
+              style={{ ...sidebarItemStyle(false), width: "100%", textAlign: "left", fontFamily: "inherit" }}
               onClick={() => navigate("/")}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-                e.currentTarget.style.color = "rgba(255,255,255,0.7)";
+                e.currentTarget.style.color = "#edede8";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = "rgba(255,255,255,0.5)";
+                e.currentTarget.style.color = "#bdbdb6";
               }}
             >
-              <span>🏠</span>
+              <House size={16} aria-hidden="true" />
               <span>Back to Home</span>
-            </div>
+            </button>
           </div>
         </aside>
 
@@ -307,7 +312,7 @@ export default function ProfilePage() {
                 alignItems: "center",
                 justifyContent: "center",
                 height: "300px",
-                color: "rgba(255,255,255,0.3)",
+                color: "rgba(255,255,255,0.55)",
               }}
             >
               <div style={{ textAlign: "center" }}>
@@ -315,7 +320,7 @@ export default function ProfilePage() {
                   className="spinner"
                   style={{
                     borderColor: "rgba(255,255,255,0.1)",
-                    borderTopColor: "#e8c44a",
+                    borderTopColor: "#f3d400",
                     width: "32px",
                     height: "32px",
                     margin: "0 auto 16px",
