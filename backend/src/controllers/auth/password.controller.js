@@ -2,7 +2,11 @@ import asyncHandler from "../../utils/asyncHandler.js";
 import ApiResponse from "../../utils/apiResponse.js";
 import ApiError from "../../utils/apiError.js";
 import { HTTP_STATUS, OTP_CONFIG } from "../../utils/constants.js";
+import crypto from "crypto";
 import User from "../../models/user.model.js";
+import OTP from "../../models/otp.model.js";
+import Session from "../../models/session.model.js";
+import { revokeAllSessions } from "../../services/auth/session.service.js";
 import {
   validatePasswordStrength,
   validatePasswordMatch,
@@ -15,6 +19,8 @@ import {
   deleteUsedOtps,
 } from "../../services/auth/otp.service.js";
 import { sendForgotPasswordOtp } from "../../services/auth/email.service.js";
+
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
 
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
@@ -58,10 +64,24 @@ export const verifyForgotPasswordOtp = asyncHandler(async (req, res) => {
     );
   }
 
+  // Proof that THIS person verified the OTP. /reset-password requires it —
+  // previously any "used" OTP row (including ones invalidated by requesting a
+  // new code) let anyone reset the password without knowing the OTP.
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  await OTP.updateOne(
+    { _id: result.otpDoc._id },
+    {
+      $set: {
+        resetTokenHash: crypto.createHash("sha256").update(resetToken).digest("hex"),
+        resetTokenExpiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+      },
+    },
+  );
+
   return new ApiResponse(
     HTTP_STATUS.OK,
     "OTP verified successfully. You may now reset your password.",
-    { email, otpVerified: true },
+    { email, otpVerified: true, resetToken },
   ).send(res);
 });
 
@@ -86,28 +106,26 @@ export const resendForgotPasswordOtp = asyncHandler(async (req, res) => {
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {
-  const { email, newPassword, confirmNewPassword } = req.body;
+  const { email, newPassword, confirmNewPassword, resetToken } = req.body;
+  const expired = () =>
+    ApiError.unauthorized("Your reset session has expired. Please request a new OTP.");
+
+  if (typeof resetToken !== "string" || !/^[a-f0-9]{64}$/.test(resetToken)) throw expired();
 
   validatePasswordStrength(newPassword);
   validatePasswordMatch(newPassword, confirmNewPassword);
 
-  const user = await User.findOne({ email }).select("+passwordHash");
-  if (!user) {
-    throw ApiError.notFound("No account found with this email.");
-  }
-
-  const { default: OTP } = await import("../../models/otp.model.js");
-  const usedOtp = await OTP.findOne({
+  const verified = await OTP.findOne({
     email,
     purpose: OTP_CONFIG.PURPOSES.FORGOT_PASSWORD,
     isUsed: true,
+    resetTokenHash: crypto.createHash("sha256").update(resetToken).digest("hex"),
+    resetTokenExpiresAt: { $gt: new Date() },
   });
+  if (!verified) throw expired();
 
-  if (!usedOtp) {
-    throw ApiError.unauthorized(
-      "OTP verification required before resetting password.",
-    );
-  }
+  const user = await User.findOne({ email }).select("+passwordHash");
+  if (!user || !user.isActive) throw expired();
 
   const isSamePassword = await comparePassword(newPassword, user.passwordHash);
   if (isSamePassword) {
@@ -118,7 +136,9 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
   user.passwordHash = newPassword;
   await user.save();
+  // Single use, and sign out every device (someone else may have had access)
   await deleteUsedOtps(email, OTP_CONFIG.PURPOSES.FORGOT_PASSWORD);
+  await revokeAllSessions(user._id);
 
   return new ApiResponse(
     HTTP_STATUS.OK,
@@ -156,9 +176,15 @@ export const changePassword = asyncHandler(async (req, res) => {
   user.passwordHash = newPassword;
   await user.save();
 
+  // Keep this device signed in, sign out every other one
+  await Session.updateMany(
+    { userId: user._id, isActive: true, _id: { $ne: req.user.sessionId } },
+    { $set: { isActive: false } },
+  );
+
   return new ApiResponse(
     HTTP_STATUS.OK,
-    "Password changed successfully.",
+    "Password changed successfully. Other devices have been signed out.",
     null,
   ).send(res);
 });

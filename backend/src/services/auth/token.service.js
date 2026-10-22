@@ -15,7 +15,9 @@ export const generateAccessToken = (userId, role, sessionId) => {
 
 export const verifyAccessToken = (token) => {
   try {
-    return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    return jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, {
+      algorithms: [JWT_CONFIG.ALGORITHM],
+    });
   } catch (err) {
     if (err.name === "TokenExpiredError") {
       throw ApiError.unauthorized("Access token has expired. Please refresh.");

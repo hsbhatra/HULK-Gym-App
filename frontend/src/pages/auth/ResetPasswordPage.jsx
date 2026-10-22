@@ -21,7 +21,8 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate();
 
   const email = sessionStorage.getItem("pendingEmail") || "";
-  const otpVerified = sessionStorage.getItem("otpVerified") === "true";
+  const resetToken = sessionStorage.getItem("resetToken") || "";
+  const otpVerified = sessionStorage.getItem("otpVerified") === "true" && !!resetToken;
 
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -58,12 +59,14 @@ export default function ResetPasswordPage() {
         email,
         newPassword: data.newPassword,
         confirmNewPassword: data.confirmNewPassword,
+        resetToken,
       });
 
       // Clean up all session storage
       sessionStorage.removeItem("pendingEmail");
       sessionStorage.removeItem("otpPurpose");
       sessionStorage.removeItem("otpVerified");
+      sessionStorage.removeItem("resetToken");
 
       setSuccess(true);
       toast.success("Password reset successfully!");

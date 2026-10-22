@@ -195,7 +195,6 @@ export const resendRegistrationOtp = asyncHandler(async (req, res) => {
   const rawOtp = await resendOtp(email, OTP_CONFIG.PURPOSES.REGISTRATION);
 
   // Log OTP to console for testing purposes
-  console.log(`Resent OTP for ${email}: ${rawOtp}`);
 
   await tempReg.refreshExpiry();
   try {

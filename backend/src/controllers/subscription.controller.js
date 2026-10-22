@@ -5,6 +5,7 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiResponse from "../utils/apiResponse.js";
 import ApiError from "../utils/apiError.js";
+import Payment from "../models/payment.model.js";
 import { HTTP_STATUS } from "../utils/constants.js";
 
 import {
@@ -56,6 +57,13 @@ export const verify = asyncHandler(async (req, res) => {
   if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
     throw ApiError.badRequest("Missing payment verification details.");
   }
+
+  // Check ownership BEFORE activating anything
+  const owned = await Payment.exists({
+    "razorpay.orderId": String(razorpayOrderId),
+    userId: req.user.userId,
+  });
+  if (!owned) throw ApiError.forbidden("This payment does not belong to you.");
 
   const { subscription, payment, duplicate } = await verifyAndActivateSubscription(
     razorpayOrderId,

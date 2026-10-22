@@ -6,6 +6,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
+import { generalLimiter } from "./middleware/rateLimiter.middleware.js";
 
 import healthRoutes from "./routes/health.routes.js";
 import authRouter from "./routes/auth/index.js";
@@ -18,6 +19,11 @@ import errorHandler from "./middleware/error/errorHandler.middleware.js";
 import ApiError from "./utils/apiError.js";
 
 const app = express();
+
+// Render (and most hosts) sit behind a load balancer. Without this every
+// request looks like it comes from the proxy's IP, so rate limits are shared
+// by ALL users and session IPs are wrong. Override with TRUST_PROXY if needed.
+app.set("trust proxy", Number(process.env.TRUST_PROXY ?? 1));
 
 // -----------------------------------------------------------------------------
 // Security Middleware
@@ -51,24 +57,6 @@ app.use(
   }),
 );
 
-// Manual sanitizer — strips MongoDB operators from req.body only
-// Avoids express-mongo-sanitize conflict with Express's read-only req.query
-app.use((req, res, next) => {
-  if (req.body) {
-    const sanitize = (obj) => {
-      Object.keys(obj).forEach((key) => {
-        if (key.startsWith("$")) {
-          delete obj[key];
-        } else if (typeof obj[key] === "object" && obj[key] !== null) {
-          sanitize(obj[key]);
-        }
-      });
-    };
-    sanitize(req.body);
-  }
-  next();
-});
-
 // -----------------------------------------------------------------------------
 // Body & Cookie Parsing
 // -----------------------------------------------------------------------------
@@ -91,10 +79,30 @@ app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 // Required for reading the refresh token HTTP-only cookie
 app.use(cookieParser());
 
+// Strip MongoDB operators ("$ne", "$gt"…) from parsed bodies. Must run AFTER
+// the body parsers — before them req.body is still undefined. (Hand-written:
+// express-mongo-sanitize conflicts with Express 5's read-only req.query.)
+app.use((req, res, next) => {
+  if (req.body) {
+    const sanitize = (obj) => {
+      Object.keys(obj).forEach((key) => {
+        if (key.startsWith("$")) {
+          delete obj[key];
+        } else if (typeof obj[key] === "object" && obj[key] !== null) {
+          sanitize(obj[key]);
+        }
+      });
+    };
+    sanitize(req.body);
+  }
+  next();
+});
+
 // -----------------------------------------------------------------------------
 // Routes
 // -----------------------------------------------------------------------------
 
+app.use("/api/v1", generalLimiter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/profile", profileRouter);
 app.use("/api/v1/plans", planRouter);

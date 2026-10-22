@@ -99,7 +99,9 @@ export default function ForgotOtpPage() {
     }
     setLoading(true);
     try {
-      await verifyForgotOtp({ email, otp });
+      const res = await verifyForgotOtp({ email, otp });
+      // One-time token the server needs to accept the new password
+      sessionStorage.setItem("resetToken", res.data?.data?.resetToken || "");
       sessionStorage.setItem("otpVerified", "true");
       toast.success("OTP verified! Set your new password.");
       navigate("/reset-password");

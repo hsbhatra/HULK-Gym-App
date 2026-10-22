@@ -43,7 +43,8 @@ export const searchMembers = asyncHandler(async (req, res) => {
   const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const rx = (s) => ({ $regex: esc(s), $options: "i" });
 
-  let filter = {}; // empty search → list everyone
+  // Members only — not the admin account, not deleted (anonymised) accounts
+  let filter = { role: "member", deletedAt: null }; // empty search → every member
   if (trimmed) {
     const orConditions = [
       { firstName: rx(trimmed) },
@@ -72,7 +73,7 @@ export const searchMembers = asyncHandler(async (req, res) => {
         );
       }
     }
-    filter = { $or: orConditions };
+    filter = { ...filter, $or: orConditions };
   }
 
   const [members, total] = await Promise.all([

@@ -5,6 +5,7 @@
 import { Router } from "express";
 import authenticate from "../middleware/auth/authenticate.middleware.js";
 import authorize from "../middleware/auth/authorize.middleware.js";
+import sessionGuard from "../middleware/auth/sessionGuard.middleware.js";
 import {
   validateCreatePlan,
   validateUpdatePlan,
@@ -35,7 +36,7 @@ export default router;
 
 export const adminPlanRouter = Router();
 
-adminPlanRouter.use(authenticate, authorize("admin"));
+adminPlanRouter.use(authenticate, sessionGuard, authorize("admin"));
 
 adminPlanRouter.get   ("/",           getAllPlansAdminController);
 adminPlanRouter.post  ("/",           validateCreatePlan,       createPlanAdmin);

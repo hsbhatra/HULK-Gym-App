@@ -24,6 +24,13 @@ const forgotPasswordSchema = Joi.object({
 });
 
 const resetPasswordSchema = Joi.object({
+  resetToken: Joi.string().hex().length(64).required()
+    .messages({
+      "any.required": "Your reset session has expired. Please request a new OTP.",
+      "string.length": "Your reset session has expired. Please request a new OTP.",
+      "string.hex": "Your reset session has expired. Please request a new OTP.",
+    }),
+
   email: Joi.string().email().lowercase().trim().required()
     .messages({
       "string.email": "Please provide a valid email address",

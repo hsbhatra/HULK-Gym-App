@@ -17,14 +17,14 @@ import {
   logoutAllDevices,
   getSessions,
 } from "../../controllers/auth/authentication.controller.js";
-import { authLimiter, otpLimiter } from "../../middleware/rateLimiter.middleware.js";
+import { loginLimiter, registerLimiter, otpLimiter } from "../../middleware/rateLimiter.middleware.js";
 
 const router = Router();
 
-router.post("/register", authLimiter, validateRegister, register);
+router.post("/register", registerLimiter, validateRegister, register);
 router.post("/verify-registration-otp", otpLimiter, validateVerifyOtp, verifyRegistrationOtp);
 router.post("/resend-registration-otp", otpLimiter, validateResendOtp, resendRegistrationOtp);
-router.post("/login", authLimiter, validateLogin, login);
+router.post("/login", loginLimiter, validateLogin, login);
 router.get("/refresh-token", refreshToken);
 
 router.post("/logout", authenticate, sessionGuard, logout);

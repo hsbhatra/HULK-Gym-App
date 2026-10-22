@@ -22,6 +22,17 @@ const handleMongooseErrors = (err) => {
 };
 
 const errorHandler = (err, req, res, next) => {
+  // Malformed JSON / oversized body from express.json() — the client's fault
+  if (err.type === "entity.parse.failed" || err.type === "entity.too.large") {
+    const tooLarge = err.type === "entity.too.large";
+    return res.status(tooLarge ? 413 : 400).json({
+      success: false,
+      statusCode: tooLarge ? 413 : 400,
+      message: tooLarge ? "Request is too large." : "Invalid request body.",
+      errors: [],
+    });
+  }
+
   const mongooseError = handleMongooseErrors(err);
   if (mongooseError) {
     return res.status(mongooseError.statusCode).json({

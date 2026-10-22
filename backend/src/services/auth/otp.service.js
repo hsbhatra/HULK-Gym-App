@@ -68,7 +68,7 @@ export const verifyOtp = async (email, submittedOtp, purpose) => {
   otpDoc.isUsed = true;
   await otpDoc.save();
 
-  return { verified: true, exhausted: false, newOtpGenerated: false };
+  return { verified: true, exhausted: false, newOtpGenerated: false, otpDoc };
 };
 
 export const resendOtp = async (email, purpose, userId = null) => {

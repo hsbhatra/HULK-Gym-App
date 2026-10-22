@@ -48,6 +48,17 @@ const otpSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Forgot-password only: issued after the OTP is verified, required by
+    // /reset-password. Single use, short-lived, stored only as a hash.
+    resetTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    resetTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
 
     expiresAt: {
       type: Date,
