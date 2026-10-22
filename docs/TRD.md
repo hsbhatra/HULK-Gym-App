@@ -1,202 +1,133 @@
 # Technical Requirements Document (TRD)
-## HULK Gym Web Application
-**Version:** 1.0  
-**Last Updated:** July 2026
+## Hulk Gym Web App
+**Version:** 2.0 · **Last updated:** 22 October 2026
 
 ---
 
-## 1. Architecture Overview
-
-HULK Gym follows a standard three-tier architecture:
+## 1. Architecture
 
 ```
-Client (React/Vite)
-        ↓ HTTPS
-API Server (Node.js/Express)
-        ↓
-Database (MongoDB Atlas)
-        ↓
-External Services (Cloudinary, Gmail)
+Browser (React SPA on Netlify)
+   │  HTTPS · JSON · Authorization: Bearer <access token>
+   │  refresh token = httpOnly cookie (cross-site, SameSite=None in production)
+   ▼
+API (Express 5 on Render) ── MongoDB Atlas
+   │
+   ├── Razorpay  (orders, checkout verification, webhooks, refunds)
+   ├── Brevo     (transactional email over HTTPS API; Gmail SMTP fallback locally)
+   └── Cloudinary(profile photos, 400×400)
 ```
 
-### Design Principles
-- **Separation of concerns** — Models → Services → Controllers → Routes
-- **Single responsibility** — Each file/module does one job
-- **Security by default** — Passwords hashed, tokens encrypted, inputs validated
-- **Constants as truth** — All magic values live in `constants.js`
-- **Error standardization** — All errors flow through `ApiError` → `errorHandler`
+Layering in the backend: **routes → middleware → controllers → services → models**. Constants (statuses, limits, prefixes) live in `src/utils/constants.js`. Every error is an `ApiError` handled by one error middleware; every success uses `ApiResponse`:
 
----
-
-## 2. Backend Technical Specifications
-
-### 2.1 Runtime & Framework
-- **Node.js** v18+ with ES Modules (`"type": "module"`)
-- **Express.js** v4 — HTTP server and routing
-- **dotenv** isolation — `src/config/env.js` imported first to avoid ESM hoisting issues
-
-### 2.2 Database
-- **MongoDB Atlas** — cloud-hosted MongoDB
-- **Mongoose** v8 — ODM with schema validation, hooks, and TTL indexes
-- **Collections:** users, otps, sessions, tempregistrations
-
-### 2.3 Authentication Strategy
-
-```
-Registration Flow:
-  Form data → TempRegistration (15 min TTL)
-  OTP generated → SHA-256 hashed → saved to OTP collection
-  Raw OTP → email
-  User submits OTP → verified → User document created → auto-login
-
-Login Flow:
-  Email + password → bcrypt compare
-  New Session created → raw refresh token in HTTP-only cookie
-  Access token (JWT, 15 min) → response body
-  Frontend stores access token in Zustand (memory only)
-
-Token Refresh Flow:
-  Access token expires → frontend interceptor catches 401
-  Refresh token cookie sent automatically to /auth/refresh-token
-  New access token issued → original request retried
-  If refresh fails → logout + redirect to /login
-```
-
-### 2.4 Security Measures
-
-| Threat | Mitigation |
-|--------|------------|
-| XSS token theft | Access token in JS memory, refresh token in HTTP-only cookie |
-| CSRF | SameSite=Strict on refresh token cookie |
-| Password brute force | bcrypt cost 12, rate limiting on login |
-| OTP brute force | Max 3 attempts, auto-invalidate, 60s cooldown |
-| NoSQL injection | Manual body sanitizer strips `$` operators |
-| Email enumeration | Same response whether email exists or not |
-| Token replay | Refresh token rotation, session revocation |
-| Password exposure | `select: false` on passwordHash, stripped from toJSON |
-| Weak passwords | Joi validation + password strength service |
-| Mass assignment | Only whitelisted fields accepted in controllers |
-| Large payloads | 10kb body size limit |
-| Security headers | Helmet middleware |
-
-### 2.5 File Upload Strategy
-- **Multer** memory storage — file held in RAM as Buffer
-- Buffer streamed directly to Cloudinary via `upload_stream`
-- No temp files written to server disk
-- Old images deleted from Cloudinary on replacement/removal
-- `publicId` stored in User document for deletion reference
-
-### 2.6 Email Service
-- **Nodemailer** with Gmail SMTP
-- Gmail App Password (not account password)
-- Branded HTML email templates
-- Sent for: registration OTP, forgot password OTP
-
-### 2.7 API Design
-- RESTful conventions
-- Versioned routes: `/api/v1/`
-- Consistent response envelope:
-  ```json
-  { "success": true, "statusCode": 200, "message": "...", "data": {} }
-  { "success": false, "statusCode": 400, "message": "...", "errors": [] }
-  ```
-
-### 2.8 Middleware Stack (in order)
-```
-Helmet → CORS → Body Sanitizer → JSON Parser → URL Parser → Cookie Parser
-→ Route Handlers
-  → Rate Limiter → Input Validator → Authenticate → SessionGuard → Authorize → Controller
-→ 404 Handler
-→ Global Error Handler
+```json
+{ "success": true,  "statusCode": 200, "message": "…", "data": { } }
+{ "success": false, "statusCode": 400, "message": "…", "errors": [ ] }
 ```
 
 ---
 
-## 3. Frontend Technical Specifications
+## 2. Backend
 
-### 3.1 Build Tool
-- **Vite** v6 — dev server, HMR, production bundler
-- `@tailwindcss/vite` plugin for CSS processing
+### 2.1 Request pipeline (`src/app.js`, in order)
+1. `trust proxy` = `TRUST_PROXY` (default 1) — Render's load balancer; needed for real client IPs
+2. Helmet (security headers)
+3. CORS allowlist from `CLIENT_URL` (comma-separated), credentials on
+4. `/api/v1/webhooks` with **raw** body (Razorpay signature needs exact bytes)
+5. `express.json` / `urlencoded` (10 kb limit) → cookie-parser
+6. Body sanitizer — strips keys starting with `$` (runs after parsing)
+7. Global rate limit on `/api/v1` (1000 req / 15 min / IP)
+8. Routers → 404 → error handler (Mongoose, JWT, malformed/oversized body → 400/413, else 500)
 
-### 3.2 State Management
-- **Zustand** — lightweight global state
-- Auth store: `{ user, accessToken, isAuthenticated, isInitialized }`
-- Access token stored in memory (JS variable) — never localStorage/sessionStorage
-- Session restoration via `useAuthInit` hook on every app load
+### 2.2 Authentication
+- **Access token:** JWT HS256, 15 min, payload `{ sub, role, sessionId }`, verified with a pinned algorithm.
+- **Refresh token:** random 64-byte value in an httpOnly cookie; only its SHA-256 hash is stored in `sessions`. 30-day expiry, max 2 active devices (oldest revoked).
+- **Session guard:** every protected route checks the session is still active, so logout/revoke takes effect immediately.
+- **OTP:** 6 digits, SHA-256 hashed, 10 min, 3 attempts then a new code is emailed, 60 s resend cooldown.
+- **Password reset:** OTP verification issues a random reset token (hash stored on the OTP document, 15 min, single use). `/reset-password` requires it; success deletes the OTPs and revokes all sessions.
+- **Passwords:** bcrypt cost 12; temp registrations store only the hash.
 
-### 3.3 HTTP Client
-- **Axios** with custom instance
-- Base URL from `VITE_API_URL` env variable
-- `withCredentials: true` — sends cookies cross-origin
-- Request interceptor — auto-attaches `Authorization: Bearer <token>` header
-- Response interceptor — catches 401, calls refresh, retries original request
-- Queue system — prevents multiple simultaneous refresh calls
+### 2.3 Rate limits (`middleware/rateLimiter.middleware.js`)
+| Route | Limit | Keyed by |
+|---|---|---|
+| login | 10 failed / 15 min (successes not counted) | IP + email |
+| register | 10 / 15 min | IP |
+| forgot-password | 5 / 15 min | IP + email |
+| reset-password | 10 / 15 min | IP + email |
+| OTP verify/resend | 10 / 10 min | IP + email |
+| change-password, delete account | 10 / 15 min | IP |
+| everything under /api/v1 | 1000 / 15 min | IP |
 
-### 3.4 3D Graphics
-- **Three.js** — WebGL renderer, particle system, torus geometry
-- `ParticleBackground` component — single source of truth
-  - Particle count, size, opacity, connection distance configurable via props
-  - Mouse tracking — camera follows cursor
-  - Auto-cleanup on component unmount (cancelAnimationFrame, dispose)
-  - Resize handler — canvas redraws on window resize
+### 2.4 Payments (Razorpay)
+- **Price is server-side:** `initiate` takes only `planId` + `durationDays`; amount comes from the plan (offer price if valid). Amounts are integers in **paise**.
+- **Order reuse:** an open order for the same plan/tier/amount within 30 min is reused (no duplicate orders on double click).
+- **Activation paths (idempotent):** checkout `verify` (HMAC of `order|payment` with key secret, timing-safe compare, ownership checked first) and webhook `payment.captured` / `order.paid` (HMAC of raw body with webhook secret). Both call `completeOnlinePayment`, which uses an atomic status transition so a payment is activated once.
+- **Recovery:** before creating a new order, open orders from the last 3 days are checked with Razorpay; a paid one is completed instead of charging again.
+- **Duplicates:** if the member already has an active plan, the payment becomes `refund_due`, the new subscription is cancelled and the member is emailed.
+- **Refunds:** admin endpoint locks the payment atomically, calls `payments.refund` (full amount, normal speed), handles "already refunded", records refund id/status, emails the member.
+- **Plan snapshot:** each subscription stores the plan name, tier, price and features at purchase time, so later plan edits never change history.
 
-### 3.5 Animations
-- **Framer Motion** — declarative animations
-- `AnimatePresence` for page transitions (mode="wait")
-- Scroll-triggered animations via `whileInView`
-- Stagger containers for card grids
-- All variants centralized in `src/utils/animations.js`
-- Respects `prefers-reduced-motion` via CSS
+### 2.5 Offline payments & installments
+Admin can record full, partial (with an installment schedule) or complimentary memberships. Each money event creates a **receipt** (`HLK-YYYY-NNNNN`, from an atomic yearly counter) and emails it. Balance collection is applied to the oldest unpaid installments first.
 
-### 3.6 Forms
-- **react-hook-form** — form state, validation, error display
-- Client-side validation mirrors server-side rules
-- Error messages appear inline below each field
-- Password strength indicator updates live
+### 2.6 Scheduled job
+`jobs/subscriptionReminder.job.js` — node-cron `0 8 * * *` in Asia/Kolkata (8:00 AM IST): reminder emails at 7/3/1 days, active → grace → expired, pending → overdue installments. On Render's free tier the server must be awake for the job to run (UptimeRobot keeps it awake).
 
-### 3.7 Routing
-- **React Router v6** — client-side routing
-- `ProtectedRoute` — redirects unauthenticated users to `/login`
-- `PublicRoute` — redirects authenticated users to `/`
-- `useAuthInit` — runs before routes render, restores session
+### 2.7 Start-up migrations (`config/migrations.js`, idempotent)
+- Make `payments.receiptNumber` index unique + sparse
+- Seed this year's receipt counter above the highest existing number
+- Number plans 1..n for display order (first run only)
 
-### 3.8 Responsive Design
-- Mobile-first CSS approach
-- Breakpoints: 480px, 768px, 1024px, 1280px
-- CSS Grid with `auto-fit` and `minmax` for fluid layouts
-- Hamburger nav on mobile (<768px)
-- Profile sidebar becomes top tab bar on mobile
-- Touch device improvements (min tap target 44px)
+### 2.8 Email
+`services/email/transporter.js` sends through Brevo's HTTPS API when `BREVO_API_KEY` is set (Render blocks SMTP), otherwise Gmail SMTP for local dev; `SKIP_EMAIL=true` logs instead of sending. Templates: OTPs, receipts, complimentary activation, duplicate payment, refund initiated, expiry reminders.
 
----
-
-## 4. External Services
-
-| Service | Purpose | Free Tier |
-|---------|---------|-----------|
-| MongoDB Atlas | Database hosting | 512MB shared cluster |
-| Cloudinary | Image storage/transformation | 25GB storage, 25 credits/month |
-| Gmail SMTP | OTP emails | 500 emails/day |
+### 2.9 Uploads
+Multer memory storage (JPG/PNG/WebP, 5 MB) → streamed to Cloudinary (400×400 face crop). Old photo deleted on replace/remove/account deletion.
 
 ---
 
-## 5. Development Environment
+## 3. Frontend
 
-| Tool | Version |
-|------|---------|
-| Node.js | 18+ |
-| npm | 9+ |
-| MongoDB Compass | Optional — DB GUI |
-| VS Code | Recommended editor |
-| Thunder Client / Postman | API testing |
+- **Build:** Vite 8 + `@vitejs/plugin-react`, Tailwind 4 (preflight only), custom `seo.plugin.js` (JSON-LD, crawlable fallback HTML, font preloads, sitemap, robots). Routes are code-split with `React.lazy`.
+- **State:** Zustand auth store; access token kept in memory only. `useAuthInit` restores the session on load via `/auth/refresh-token`.
+- **HTTP:** axios instance with `withCredentials`, bearer header, and a 401 → refresh → retry queue.
+- **Forms:** react-hook-form; client rules mirror server Joi rules.
+- **SEO per route:** `applySeo` in `App.jsx` sets title, description, canonical, og:url, robots (private pages `noindex`).
+- **Content as data:** `content/gymContent.js` (facilities, amenities, FAQ, hours, `show` flags) and `content/legal.js` (policies). Contact details come only from `VITE_*` env vars via `utils/gymConfig.js`; empty = hidden.
+- **Motion:** 2D canvas ember background (no three.js), Framer Motion; everything respects `prefers-reduced-motion`.
+- **Netlify:** `public/_headers` (immutable cache for `/assets`, nosniff, frame and referrer policy), SPA redirect in `public/_redirects`.
 
 ---
 
-## 6. Deployment Considerations (Future)
+## 4. Environments
 
-- **Backend:** Railway, Render, or AWS EC2
-- **Frontend:** Vercel or Netlify
-- **Environment:** Set `NODE_ENV=production` — enables HTTPS-only cookies
-- **CORS:** Update `CLIENT_URL` to production frontend domain
-- **MongoDB:** Upgrade Atlas cluster for production workloads
-- **Cloudinary:** Create production account under gym owner email
+| | Testing | Production (planned) |
+|---|---|---|
+| Frontend | hulk-gym-kota-test.netlify.app | gym domain on Netlify |
+| Backend | hulk-gym-backend.onrender.com | Render (same or new service) |
+| Database | Atlas (test data) | **new** Atlas database — no test data |
+| Razorpay | test keys | live keys + live webhook |
+| Email | Brevo | Brevo with verified sender domain |
+
+---
+
+## 5. Security review (22 Oct 2026)
+
+Tested against the testing server:
+
+| Attack | Result |
+|---|---|
+| Admin/member APIs without login | 401 everywhere |
+| Forged JWT (`alg: none`, wrong signature) | 401 |
+| NoSQL operators in login / forgot password | 400 |
+| Spoofed Razorpay webhook / payment signature | 400 / 401 |
+| Changing price, plan or role from the browser | Ignored — server decides |
+| Reading the API from another website (CORS) | Blocked by browser |
+| **Password reset without OTP** | **Was possible — fixed** with single-use reset token |
+| **Rate limit shared by all users behind Render proxy** | **Fixed** with `trust proxy` + per-route IP+email limits |
+| Body sanitizer ran before parsing (no effect) | Fixed |
+| OTP printed in server logs | Removed |
+| Admin plan routes without session check | Fixed |
+| Malformed / huge JSON returned 500 | Now 400 / 413 |
+
+Still recommended before scale: Content-Security-Policy header, refresh-token rotation, MongoDB backups, an error-alert channel (Render logs or Sentry).

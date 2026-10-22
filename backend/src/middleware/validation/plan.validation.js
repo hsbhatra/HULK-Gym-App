@@ -83,6 +83,15 @@ const updatePlanSchema = Joi.object({
   gracePeriodDays: Joi.number().min(0).max(30),
 });
 
+const reorderPlansSchema = Joi.object({
+  order: Joi.array()
+    .items(Joi.string().hex().length(24))
+    .min(1)
+    .max(100)
+    .required()
+    .messages({ "any.required": "Plan order is required" }),
+});
+
 const updatePlanStatusSchema = Joi.object({
   status: Joi.string().valid("active", "inactive", "archived").required()
     .messages({
@@ -98,3 +107,4 @@ const updatePlanStatusSchema = Joi.object({
 export const validateCreatePlan       = validate(createPlanSchema);
 export const validateUpdatePlan       = validate(updatePlanSchema);
 export const validateUpdatePlanStatus = validate(updatePlanStatusSchema);
+export const validateReorderPlans     = validate(reorderPlansSchema);

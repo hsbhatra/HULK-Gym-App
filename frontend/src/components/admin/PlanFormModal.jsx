@@ -30,7 +30,7 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
     slug       : existingPlan?.slug        || "",
     description: existingPlan?.description || "",
     isFeatured : existingPlan?.isFeatured   || false,
-    displayOrder: existingPlan?.displayOrder ?? 0,
+    // Display order is set by dragging plans on the Plans page
   });
 
   const [tiers, setTiers] = useState(

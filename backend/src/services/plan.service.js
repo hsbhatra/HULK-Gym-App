@@ -20,8 +20,12 @@ export const createPlan = async (planData, adminId) => {
     throw ApiError.conflict(`A plan with slug "${planData.slug}" already exists.`);
   }
 
+  // New plans go to the end of the list; admins reorder from the Plans page
+  const last = await MembershipPlan.findOne().sort({ displayOrder: -1 }).select("displayOrder");
+
   const plan = await MembershipPlan.create({
     ...planData,
+    displayOrder: (last?.displayOrder || 0) + 1,
     createdBy: adminId,
   });
 
@@ -38,6 +42,9 @@ export const createPlan = async (planData, adminId) => {
 // =============================================================================
 
 export const updatePlan = async (planId, updateData) => {
+  // Order is changed only through reorderPlans — keeps numbers 1..n consistent
+  delete updateData.displayOrder;
+
   // If slug is being changed, ensure new slug isn't taken by another plan
   if (updateData.slug) {
     const existingSlug = await MembershipPlan.findOne({
@@ -125,7 +132,37 @@ export const archivePlan = async (planId) => {
 // =============================================================================
 
 export const getAllPlansAdmin = async () => {
-  return await MembershipPlan.find().sort({ displayOrder: 1, createdAt: -1 });
+  return await MembershipPlan.find().sort({ displayOrder: 1, createdAt: 1 });
+};
+
+// =============================================================================
+// reorderPlans
+// =============================================================================
+// Receives every plan id in the order the admin arranged them (top → bottom)
+// and saves displayOrder 1, 2, 3… The list must contain each plan exactly once
+// so a stale tab can't leave gaps or duplicate positions.
+// =============================================================================
+
+export const reorderPlans = async (orderedIds) => {
+  if (new Set(orderedIds).size !== orderedIds.length) {
+    throw ApiError.badRequest("Each plan can appear only once.");
+  }
+
+  const [total, found] = await Promise.all([
+    MembershipPlan.countDocuments(),
+    MembershipPlan.countDocuments({ _id: { $in: orderedIds } }),
+  ]);
+  if (found !== orderedIds.length || total !== orderedIds.length) {
+    throw ApiError.conflict("The plan list has changed. Refresh the page and try again.");
+  }
+
+  await MembershipPlan.bulkWrite(
+    orderedIds.map((id, i) => ({
+      updateOne: { filter: { _id: id }, update: { $set: { displayOrder: i + 1 } } },
+    })),
+  );
+
+  return getAllPlansAdmin();
 };
 
 // =============================================================================

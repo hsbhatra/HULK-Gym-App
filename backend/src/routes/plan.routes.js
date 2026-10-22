@@ -10,6 +10,7 @@ import {
   validateCreatePlan,
   validateUpdatePlan,
   validateUpdatePlanStatus,
+  validateReorderPlans,
 } from "../middleware/validation/plan.validation.js";
 
 import {
@@ -20,6 +21,7 @@ import {
   updatePlanStatusAdmin,
   archivePlanAdmin,
   getAllPlansAdminController,
+  reorderPlansAdmin,
 } from "../controllers/plan.controller.js";
 
 const router = Router();
@@ -40,6 +42,8 @@ adminPlanRouter.use(authenticate, sessionGuard, authorize("admin"));
 
 adminPlanRouter.get   ("/",           getAllPlansAdminController);
 adminPlanRouter.post  ("/",           validateCreatePlan,       createPlanAdmin);
+// Must be declared before "/:id" so "reorder" isn't read as a plan id
+adminPlanRouter.patch ("/reorder",    validateReorderPlans,     reorderPlansAdmin);
 adminPlanRouter.patch ("/:id",        validateUpdatePlan,       updatePlanAdmin);
 adminPlanRouter.patch ("/:id/status", validateUpdatePlanStatus, updatePlanStatusAdmin);
 adminPlanRouter.delete("/:id",        archivePlanAdmin);

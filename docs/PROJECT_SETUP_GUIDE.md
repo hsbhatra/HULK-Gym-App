@@ -1,400 +1,141 @@
-# Project Setup Guide
-## HULK Gym Web Application
-### Complete Guide for New Developers
+# Project Setup & Deployment Guide
+## Hulk Gym Web App
+**Last updated:** 22 October 2026
 
 ---
 
-## Prerequisites
+## 1. Accounts you need
 
-Before you start, make sure you have these installed:
-
-| Tool | Version | Download |
-|------|---------|----------|
-| Node.js | 18 or higher | nodejs.org |
-| npm | 9 or higher | comes with Node.js |
-| Git | Any recent | git-scm.com |
-| VS Code | Any | code.visualstudio.com |
-
-Verify your installations:
-```bash
-node --version   # should show v18.x.x or higher
-npm --version    # should show 9.x.x or higher
-git --version    # any version is fine
-```
+| Service | Used for | Notes |
+|---|---|---|
+| MongoDB Atlas | database | free M0 cluster is enough to start; separate DB for production |
+| Razorpay | online payments | test keys work instantly; live keys need KYC |
+| Brevo | emails (OTP, receipts, reminders) | free plan ~300 emails/day; verify a sender |
+| Cloudinary | profile photos | free plan |
+| Netlify | frontend hosting | connect the Git repo |
+| Render | backend hosting | free web service |
+| UptimeRobot | keeps Render awake | ping `/api/health` every 5 min |
 
 ---
 
-## Part 1: Accounts You Need to Create
+## 2. Local setup
 
-### 1.1 MongoDB Atlas (Database)
-
-1. Go to [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a free account
-3. Create a new project called "hulk-gym"
-4. Build a cluster → choose **FREE** (M0 Shared)
-5. Choose any cloud provider and region closest to you
-6. Click **Create Cluster** (takes 1–3 minutes)
-7. In the left sidebar → **Database Access** → Add Database User
-   - Username: `hulk-admin`
-   - Password: generate a secure password → copy it
-   - Role: `Atlas admin`
-8. In the left sidebar → **Network Access** → Add IP Address → **Allow Access from Anywhere** (0.0.0.0/0)
-9. In the left sidebar → **Database** → Click **Connect** on your cluster
-10. Choose **Connect your application**
-11. Copy the connection string — it looks like:
-    ```
-    mongodb+srv://hulk-admin:<password>@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
-    ```
-12. Replace `<password>` with your actual password
-
----
-
-### 1.2 Cloudinary (Image Storage)
-
-1. Go to [cloudinary.com](https://cloudinary.com)
-2. Create a free account
-3. After login, go to your **Dashboard**
-4. You will see three values — copy all three:
-   - **Cloud name** (e.g. `dxxx1234`)
-   - **API Key** (e.g. `123456789012345`)
-   - **API Secret** (e.g. `abcdefghijklmnopqrstuvwxyz12`)
-
----
-
-### 1.3 Gmail App Password (Email Service)
-
-> You need a Gmail account for sending OTP emails. Use a dedicated account for the app, not your personal Gmail.
-
-1. Go to [myaccount.google.com](https://myaccount.google.com)
-2. Click **Security** in the left sidebar
-3. Under "How you sign in to Google" → click **2-Step Verification**
-4. Make sure 2-Step Verification is **turned ON** (required for App Passwords)
-5. Go back to Security → scroll down → click **App passwords**
-   - If you don't see this option, 2-Step Verification is not enabled
-6. Select app: **Mail** → Select device: **Windows Computer** (or any)
-7. Click **Generate**
-8. Copy the 16-character password shown (e.g. `abcd efgh ijkl mnop`)
-9. Remove the spaces when you use it: `abcdefghijklmnop`
-
----
-
-## Part 2: Clone and Setup
-
-### 2.1 Clone the Repository
+Requirements: Node.js 20+ (22 recommended), npm 10+, Git.
 
 ```bash
-git clone https://github.com/hsbhatra/HULK-Gym-App.git
-cd HULK-Gym-App
-```
+git clone <repo-url> "Hulk Gym App"
+cd "Hulk Gym App"
 
-You should see this structure:
-```
-HULK-Gym-App/
-├── backend/
-├── frontend/
-└── docs/
-```
-
----
-
-### 2.2 Backend Setup
-
-```bash
+# Backend
 cd backend
 npm install
-```
+cp .env.example .env         # fill values (section 3)
+npm run dev                  # → http://localhost:8000/api/health  {"success":true,…}
 
-Create the environment file:
-```bash
-# On Windows:
-copy .env.example .env
-
-# On Mac/Linux:
-cp .env.example .env
-```
-
-Open `.env` in VS Code and fill in all values:
-
-```env
-# Server
-PORT=8000
-NODE_ENV=development
-
-# Database — paste your MongoDB connection string here
-MONGO_URI=mongodb+srv://hulk-admin:yourpassword@cluster0.xxxxx.mongodb.net/hulk-gym-dev?retryWrites=true&w=majority
-
-# JWT Secret — generate a strong random string
-# Run this command to generate one:
-# node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-ACCESS_TOKEN_SECRET=paste_your_generated_secret_here
-
-# Frontend URL (for CORS)
-CLIENT_URL=http://localhost:5173
-
-# Gmail credentials
-EMAIL_USER=your.gym.email@gmail.com
-EMAIL_PASS=abcdefghijklmnop
-
-# Cloudinary credentials
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-```
-
-Generate the ACCESS_TOKEN_SECRET:
-```bash
-node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-```
-Copy the output and paste it as `ACCESS_TOKEN_SECRET`.
-
-Start the backend:
-```bash
-npm run dev
-```
-
-You should see:
-```
-Server running on port 8000
-MongoDB Connected
-```
-
-Test it:
-```bash
-curl http://localhost:8000/api/health
-# Should return: {"success":true,"message":"API is healthy"}
-```
-
----
-
-### 2.3 Frontend Setup
-
-Open a **new terminal** (keep backend running):
-
-```bash
+# Frontend (new terminal)
 cd frontend
 npm install
-```
-
-Create the environment file:
-```bash
-# On Windows:
-copy .env.example .env
-
-# On Mac/Linux:
 cp .env.example .env
+npm run dev                  # → http://localhost:5173
 ```
 
-Open `frontend/.env` and fill in:
-```env
-VITE_API_URL=http://localhost:8000/api/v1
-```
+**First admin:** register normally, then in Atlas set that user's `role` to `"admin"`. Log out and in again.
 
-Start the frontend:
-```bash
-npm run dev
-```
-
-You should see:
-```
-VITE v6.x.x  ready in 1234 ms
-➜  Local:   http://localhost:5173/
-```
-
-Open your browser and go to `http://localhost:5173`
-
-You should see the HULK Gym landing page with the 3D particle animation.
+**Local payments:** Razorpay test keys + test UPI `success@razorpay` / `failure@razorpay`. To receive webhooks locally use ngrok and point a test webhook at `https://<ngrok>/api/v1/webhooks/razorpay` (checkout verify works without it).
 
 ---
 
-## Part 3: Verify Everything Works
+## 3. Environment variables
 
-Run through this checklist:
+### 3.1 Backend (`backend/.env`, Render → Environment)
+| Key | Example / note |
+|---|---|
+| PORT | 8000 (Render sets its own) |
+| NODE_ENV | `development` locally, **`production` on Render** |
+| TRUST_PROXY | 1 (Render) |
+| CLIENT_URL | `http://localhost:5173` · testing/production site URL(s), comma-separated |
+| MONGO_URI | Atlas connection string |
+| ACCESS_TOKEN_SECRET | 64+ random chars (different per environment) |
+| GYM_NAME / GYM_USER_ID_PREFIX / GYM_RECEIPT_PREFIX | Hulk Gym / hulkgym / HLK |
+| RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET | test or live pair |
+| RAZORPAY_WEBHOOK_SECRET | the secret you set on the webhook |
+| BREVO_API_KEY / BREVO_SENDER_EMAIL | required on Render |
+| EMAIL_USER / EMAIL_PASS | Gmail fallback for local dev only |
+| SKIP_EMAIL | `true` to log emails instead of sending |
+| CLOUDINARY_CLOUD_NAME / _API_KEY / _API_SECRET | |
 
-### 3.1 Backend Health
-```
-✅ GET http://localhost:8000/api/health → { "success": true }
-```
+### 3.2 Frontend (`frontend/.env`, Netlify → Site configuration → Environment variables)
+All `VITE_*` values are public (they go into the browser bundle) — never put secrets here. Empty contact values are hidden on the site.
 
-### 3.2 Registration Flow
-```
-1. Go to http://localhost:5173/register
-2. Fill in all fields with valid data
-3. Click "Create Account"
-4. ✅ You should receive an OTP email within 30 seconds
-5. Enter the OTP
-6. ✅ You should be redirected to the landing page, logged in
-```
+| Key | Note |
+|---|---|
+| VITE_API_URL | `http://localhost:8000/api/v1` · `https://<render-app>.onrender.com/api/v1` |
+| VITE_SITE_URL | public site URL — canonical links, sitemap, share image (**required at build**) |
+| VITE_GYM_NAME, VITE_GYM_CITY | HULK GYM, Kota |
+| VITE_GYM_PHONE, VITE_GYM_WHATSAPP | `+91…`; WhatsApp only if different |
+| VITE_GYM_EMAIL | leave empty until the mailbox exists |
+| VITE_GYM_INSTAGRAM_URL, VITE_GYM_ADDRESS, VITE_GYM_MAPS_URL | maps URL optional |
+| VITE_DEV_NAME, VITE_DEV_PHONE, VITE_DEV_WHATSAPP, VITE_DEV_EMAIL, VITE_DEV_URL | footer developer credit |
 
-### 3.3 Login Flow
-```
-1. Go to http://localhost:5173/login
-2. Enter your email and password
-3. ✅ You should be logged in and redirected to landing page
-```
-
-### 3.4 Session Persistence
-```
-1. While logged in, press F5 (refresh)
-2. ✅ You should still be logged in (not redirected to login)
-```
-
-### 3.5 Profile
-```
-1. Click "My Profile" in the navbar
-2. ✅ Your profile should load with your details
-3. Click "Edit Profile" → change first name → Save
-4. ✅ Name should update
-5. Upload a profile picture
-6. ✅ Picture should appear from Cloudinary URL
-```
+Opening hours, facilities, amenities and FAQ are **not** env vars — edit `frontend/src/content/gymContent.js`. Policy text: `frontend/src/content/legal.js` (update `LAST_UPDATED`, and `LEGAL_VERSION` in `backend/src/utils/constants.js` when terms change).
 
 ---
 
-## Part 4: Common Issues and Fixes
+## 4. Deployment
 
-### Issue: "MongoDB connection failed"
-**Cause:** Wrong MONGO_URI or IP not whitelisted  
-**Fix:**
-1. Check your MONGO_URI has the correct password (no `<>` angle brackets)
-2. In MongoDB Atlas → Network Access → make sure `0.0.0.0/0` is allowed
-3. Make sure the database name is in the URI: `.../hulk-gym-dev?retryWrites...`
+### 4.1 Backend on Render
+1. New **Web Service** from the repo · Root directory `backend` · Build `npm install` · Start `npm start`
+2. Add all backend env vars (section 3.1), `NODE_ENV=production`
+3. Deploy → open `https://<app>.onrender.com/api/health`
+4. UptimeRobot: HTTP monitor on that URL every 5 min (keeps the daily 8 AM job running)
 
-### Issue: "Cannot send OTP email"
-**Cause:** Wrong EMAIL_PASS or 2FA not enabled on Gmail  
-**Fix:**
-1. Make sure 2-Step Verification is ON in your Google account
-2. Generate a fresh App Password (the old one may have expired)
-3. Make sure there are no spaces in EMAIL_PASS in your .env
+### 4.2 Frontend on Netlify
+1. Import the repo — `netlify.toml` sets base `frontend`, build `npm run build`, publish `dist`
+2. Add all `VITE_*` vars, then **Clear cache and deploy** (env changes need a rebuild)
+3. `public/_redirects` handles SPA routes; `public/_headers` sets caching and security headers
 
-### Issue: "Cloudinary upload failed"
-**Cause:** Wrong Cloudinary credentials  
-**Fix:**
-1. Log into cloudinary.com and copy credentials fresh from Dashboard
-2. Make sure CLOUDINARY_API_SECRET is the full string (it's long)
-
-### Issue: "CORS error in browser console"
-**Cause:** CLIENT_URL in backend .env doesn't match frontend URL  
-**Fix:**
-1. Make sure `CLIENT_URL=http://localhost:5173` in backend `.env`
-2. Restart the backend server after changing .env
-
-### Issue: "Page shows blank / white screen"
-**Cause:** Usually a JavaScript error  
-**Fix:**
-1. Open browser DevTools (F12) → Console tab
-2. Read the error message
-3. Most common: a missing import or wrong file path
-
-### Issue: "Session not restored after refresh"
-**Cause:** Refresh token cookie not being sent  
-**Fix:**
-1. Make sure `withCredentials: true` in `src/services/api.js`
-2. Make sure `credentials: true` in CORS config in backend `app.js`
-3. Make sure `CLIENT_URL` exactly matches the frontend URL including port
+### 4.3 Razorpay webhook
+Dashboard → Settings → Webhooks → Add: URL `https://<render-app>.onrender.com/api/v1/webhooks/razorpay`, events **payment.captured, order.paid, payment.failed**, a strong secret → same value in `RAZORPAY_WEBHOOK_SECRET`. Test-mode and live-mode webhooks are separate.
 
 ---
 
-## Part 5: VS Code Extensions (Recommended)
+## 5. Go-live checklist (testing → production)
 
-Install these for the best development experience:
+**Data & accounts**
+- [ ] New Atlas database (or cluster) for production; production `MONGO_URI` on Render
+- [ ] New `ACCESS_TOKEN_SECRET` for production
+- [ ] Register the owner's admin account on production and set `role: "admin"`
+- [ ] Create the real plans and arrange their order (Admin → Plans)
 
-| Extension | Purpose |
-|-----------|---------|
-| ESLint | JavaScript linting |
-| Prettier | Code formatting |
-| ES7+ React/Redux/React-Native snippets | React shortcuts |
-| MongoDB for VS Code | View DB in editor |
-| Thunder Client | API testing inside VS Code |
-| GitLens | Better Git integration |
-| Auto Rename Tag | Rename JSX tags simultaneously |
-| Tailwind CSS IntelliSense | Tailwind class autocomplete |
+**Payments**
+- [ ] Razorpay KYC complete → live `RAZORPAY_KEY_ID` / `_SECRET`
+- [ ] Live-mode webhook created with its own secret
+- [ ] One small real payment end to end, then refund it from Admin → Refunds
 
----
+**Email & domain**
+- [ ] Gym email created → `VITE_GYM_EMAIL`
+- [ ] Brevo sender verified (SPF + DKIM on the domain) → `BREVO_SENDER_EMAIL`
+- [ ] Custom domain on Netlify (HTTPS auto) → update `VITE_SITE_URL` and Render `CLIENT_URL`
 
-## Part 6: Project Scripts Reference
+**Content**
+- [ ] Owner confirmed: free trial, refund/cancellation rules (edit `legal.js` if different), hours, address, maps link
+- [ ] Real photos (optional)
 
-### Backend (`/backend`)
-```bash
-npm run dev     # Start with nodemon (auto-restart on file change)
-npm start       # Production start (no auto-restart)
-```
-
-### Frontend (`/frontend`)
-```bash
-npm run dev     # Vite dev server with HMR
-npm run build   # Build for production (output: /dist)
-npm run preview # Preview the production build locally
-npm run lint    # Run ESLint
-```
+**After launch**
+- [ ] Submit `https://<domain>/sitemap.xml` in Google Search Console
+- [ ] Add the website to the Google Business Profile
+- [ ] Atlas backups on; check Render logs and Admin → Refunds daily for the first week
 
 ---
 
-## Part 7: File Structure Reference
+## 6. Troubleshooting
 
-```
-backend/src/
-├── config/
-│   ├── env.js          ← loads dotenv (imported first in server.js)
-│   ├── db.js           ← MongoDB connection
-│   └── cloudinary.js   ← Cloudinary SDK config
-├── controllers/auth/
-│   ├── authentication.controller.js  ← register, login, logout, sessions
-│   └── password.controller.js        ← forgot, reset, change password
-├── controllers/
-│   └── profile.controller.js
-├── middleware/
-│   ├── auth/           ← authenticate, sessionGuard, authorize
-│   ├── error/          ← errorHandler
-│   ├── upload/         ← multer + cloudinary upload
-│   └── validation/     ← Joi schemas for all routes
-├── models/
-│   ├── user.model.js
-│   ├── otp.model.js
-│   ├── session.model.js
-│   └── tempRegistration.model.js
-├── routes/
-│   ├── health.routes.js
-│   ├── auth/           ← authentication + password routes + index
-│   └── profile.routes.js
-├── services/auth/
-│   ├── password.service.js
-│   ├── otp.service.js
-│   ├── email.service.js
-│   ├── token.service.js
-│   └── session.service.js
-├── services/
-│   └── profile.service.js
-└── utils/
-    ├── constants.js    ← ALL config values (OTP expiry, max devices, etc.)
-    ├── apiResponse.js  ← Standard success response class
-    ├── apiError.js     ← Standard error class with factory methods
-    └── asyncHandler.js ← Wraps async controllers, catches errors
-
-frontend/src/
-├── components/
-│   ├── three/ParticleBackground.jsx  ← 3D animation (used on all pages)
-│   ├── ui/
-│   │   ├── Logo.jsx
-│   │   ├── AppLoader.jsx
-│   │   ├── ConfirmDialog.jsx
-│   │   └── PasswordStrength.jsx
-│   └── layout/
-│       ├── ProtectedRoute.jsx
-│       ├── Navbar.jsx
-│       └── Footer.jsx
-├── hooks/
-│   └── useAuthInit.js  ← restores session on page refresh
-├── pages/
-│   ├── LandingPage.jsx
-│   ├── NotFoundPage.jsx
-│   ├── auth/           ← Login, Register, OTP, Forgot, Reset pages
-│   └── profile/        ← ProfilePage (with Sessions + Change Password tabs)
-├── services/
-│   ├── api.js          ← Axios instance + interceptors
-│   ├── authService.js  ← All auth API calls
-│   └── profileService.js ← All profile API calls
-├── store/
-│   └── authStore.js    ← Zustand auth state
-└── utils/
-    └── animations.js   ← All Framer Motion variants
-```
+| Problem | Fix |
+|---|---|
+| CORS error | `CLIENT_URL` must exactly match the site origin (no trailing slash); redeploy backend |
+| Logged out on every refresh in production | `NODE_ENV=production` (cookie needs `Secure; SameSite=None`) and HTTPS on both sites |
+| Everyone gets "Too many attempts" together | `TRUST_PROXY` wrong — check Active sessions IPs; try 2 |
+| OTP/receipt emails not arriving | Brevo key + verified sender; check spam; Render logs `[EMAIL]` |
+| Paid but membership not active | Webhook URL/secret; member can click Pay again — it reconciles the earlier payment |
+| First load takes ~50 s | Render free tier waking up; UptimeRobot monitor |
+| Changed env var but site unchanged | Netlify needs a fresh deploy; Render restarts on env change |

@@ -84,7 +84,9 @@ const runReminderJob = async () => {
 
 export const startSubscriptionReminderJob = () => {
   // "30 2 * * *" = 2:30 AM UTC = 8:00 AM IST
-  cron.schedule("30 2 * * *", runReminderJob, {
+  // Cron fields are read in the timezone below, so this is 8:00 AM IST.
+  // (It was "30 2 * * *" — 2:30 AM IST — while the log claimed 8 AM.)
+  cron.schedule("0 8 * * *", runReminderJob, {
     timezone: "Asia/Kolkata",
   });
 

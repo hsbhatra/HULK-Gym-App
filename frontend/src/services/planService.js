@@ -28,3 +28,7 @@ export const updatePlanStatus = (id, status) =>
 
 export const archivePlan = (id) =>
   api.delete(`/admin/plans/${id}`);
+
+// order = every plan id, top → bottom
+export const reorderPlans = (order) =>
+  api.patch("/admin/plans/reorder", { order });

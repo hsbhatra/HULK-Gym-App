@@ -14,6 +14,7 @@ import {
   getAllPlansAdmin,
   getActivePlans,
   getPlanBySlug,
+  reorderPlans,
 } from "../services/plan.service.js";
 
 // =============================================================================
@@ -88,6 +89,13 @@ export const archivePlanAdmin = asyncHandler(async (req, res) => {
     : "Plan archived successfully.";
 
   return new ApiResponse(HTTP_STATUS.OK, message, { plan }).send(res);
+});
+
+// PATCH /api/v1/admin/plans/reorder   body: { order: [planId, planId, …] }
+export const reorderPlansAdmin = asyncHandler(async (req, res) => {
+  const plans = await reorderPlans(req.body.order);
+
+  return new ApiResponse(HTTP_STATUS.OK, "Plan order saved.", { plans }).send(res);
 });
 
 // GET /api/v1/admin/plans

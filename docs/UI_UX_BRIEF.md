@@ -1,195 +1,82 @@
-# UI/UX Brief
-## HULK Gym Web Application
+# UI/UX Brief — "Molten Iron" Design System
+## Hulk Gym Web App
+**Last updated:** 22 October 2026 · Direction F "Molten Iron", chosen Oct 2026
 
 ---
 
-## 1. Design Philosophy
+## 1. Design idea
+Dark steel surfaces, the logo's **yellow** for every primary action, and its **ember red-orange** as an offset "forged" shadow and for alerts. Heavy condensed display type for headings and prices; a clean sans for reading. It should feel like a serious strength gym — no stock-photo gloss, no invented claims, no emoji in the UI.
 
-HULK Gym's visual identity is built on three principles:
-
-**Premium Dark Aesthetic**
-The app uses a near-black background (#0a0a0a) with gold accents (#e8c44a). This combination signals luxury, seriousness, and strength — the same feeling you get walking into a high-end gym.
-
-**Depth Through 3D**
-Every page features a Three.js particle animation — floating gold dots connected by lines, with a rotating wireframe torus ring. The camera follows the mouse cursor, giving a sense of infinite depth. This makes the app feel alive rather than static.
-
-**Motion With Purpose**
-Framer Motion animations are not decorative — they guide the user's eye. Cards stagger in on scroll so the user reads them in sequence. Page transitions use a consistent direction (fade + slide). Hover states lift cards slightly to signal interactivity.
+Readable by every age group: 17 px body text, 15 px minimum for secondary text, strong contrast, 44 px tap targets.
 
 ---
 
-## 2. Color System
+## 2. Tokens (`frontend/src/index.css` `:root`)
 
-```
-Primary Background:    #0a0a0a  (near black — main page background)
-Secondary Background:  #111111  (slightly lighter — cards, modals)
-Tertiary Background:   #1a1a1a  (input fields, secondary cards)
-Quaternary Background: #222222  (hover states, subtle dividers)
+| Token | Value | Use |
+|---|---|---|
+| `--iron-950` | #0a0a0b | page background |
+| `--iron-850` | #151517 | cards, surfaces |
+| `--iron-700` | #2e2e33 | borders, dividers |
+| `--text-1` / `--text-2` / `--text-3` | #edede8 / #bdbdb6 / #8c8c86 | primary / secondary / muted (all ≥ 4.5:1) |
+| `--yellow` | #f3d400 | CTAs, active nav, prices, accents |
+| `--ember` | #e5482b | offset shadows, alerts, danger, badges |
+| `--font-display` | Big Shoulders Display 900 | h1/h2, numbers, prices — UPPERCASE |
+| `--font-body` | Inter Tight 400–700 | everything else |
 
-Gold Primary:          #e8c44a  (CTAs, active states, accents)
-Gold Dark:             #c9a832  (gold hover states)
-Gold Light:            #f0d060  (gold focus states)
-
-Text Primary:          #ffffff  (headings, important text)
-Text Secondary:        rgba(255,255,255,0.55) (body text)
-Text Muted:            rgba(255,255,255,0.35) (captions, placeholders)
-Text Disabled:         rgba(255,255,255,0.2)  (disabled inputs)
-
-Success:               #22c55e  (password checks, verified states)
-Error:                 #ef4444  (error messages, danger buttons)
-Warning:               #f97316  (medium password strength)
-```
-
----
+Fonts are self-hosted (`@fontsource`) and preloaded. Legacy names (`--gold`, `--dark-*`, `--white-*`) map onto these tokens.
 
 ## 3. Typography
 
-**Primary Font:** Inter, Segoe UI, system-ui (system stack — no Google Fonts dependency)
+| Style | Size | Use |
+|---|---|---|
+| `.hero-title` | clamp(64 px, 10 vw, 150 px) | landing hero |
+| `.section-title` | clamp(44 px, 6 vw, 84 px) | section headings |
+| `.page-title` | clamp(36 px, 4.4 vw, 52 px) | app/admin page titles (`--sm` 30–40 px) |
+| `.hero-lead` | clamp(18 px, 2 vw, 21 px) | intro paragraph |
+| Body | 17 px | default (`body`) |
+| Secondary / labels | 15–16 px | meta, form labels, chips |
+| Smallest | 12–14 px | badges, eyebrows (uppercase, tracked) |
 
-| Style | Size | Weight | Usage |
-|-------|------|--------|-------|
-| Hero Title | clamp(36px, 8vw, 104px) | 900 | Landing page main heading |
-| Section Title | clamp(24px, 4vw, 46px) | 800 | Section headings |
-| Card Title | 17–20px | 700 | Card and modal titles |
-| Body | 14–15px | 400 | General text |
-| Label | 12–13px | 500–600 | Form labels, badges |
-| Caption | 11–12px | 400–500 | Helper text, metadata |
+## 4. Components (classes)
 
-**Letter Spacing:**
-- Hero titles: -2px to -3px (tight, impactful)
-- Section labels: +2px to +3px (uppercase, spaced out)
-- Body: default
+- **Buttons:** `.btn-gold` (yellow pill; ember offset shadow on hover) · `.btn-ghost` (outline pill) · `.btn-dark` / `.btn-outline-dark` (on yellow) · `.btn-danger` · `.btn-lg` / `.btn-sm`. Work on `<a>` and `<button>`.
+- **Cards:** `.card-iron` · `.plan-card` (+ `--featured`) · `.contact-card` · `.refund-row` · `.plan-row`
+- **Inputs:** `.input-dark`; consent `.consent-box` / `.consent-option`
+- **Nav:** admin + profile sidebars — active item is a solid yellow pill with a 3 px ember shadow (`.admin-nav-item--active`); on phones the admin nav becomes a 2×2 grid. Pending counts use `.nav-badge` (ember).
+- **Misc:** `.eyebrow`, `.text-molten`, `.status-pill` (open/closed), `.tab-pill`, `.faq-item` (`<details>`), `.amenity-list`, `.modal-card`, `.danger-zone`, `.refund-alert`
+- **Icons:** lucide-react only; Instagram glyph in `components/ui/InstagramIcon.jsx`
+- **Logo:** real brand mark on a light pill (`components/ui/Logo.jsx`)
 
----
+## 5. Layout
 
-## 4. Component Patterns
+- Containers: `.container-wide`; vertical rhythm `.section-block` (back-to-back blocks share one gap)
+- `#root` / `body` use `overflow-x: clip` (not hidden) so sticky sidebars work
+- Breakpoints used: 480, 640, 768, 1024 px (+ 520 px for small-phone tweaks)
+- **Landing order:** hero (+ open-now pill) → fact strip → The floor (facilities) → amenities → plans → FAQ → Walk in (hours, map, contact) → final CTA → footer
+- **Footer:** gym info, Gym / Policies / Contact columns, then a highlighted **developer credit card** (yellow border, ember shadow, large name, WhatsApp as the primary button), then copyright
+- **Admin:** fixed top bar, sticky sidebar, max 1200 px content; Plans page shows position numbers, drag handle (hidden on phones) and ↑/↓ buttons
 
-### Cards
-All cards use the `.auth-card` or inline equivalent pattern:
-```
-background: rgba(255,255,255,0.02)
-border: 1px solid rgba(255,255,255,0.06)
-border-radius: 16–24px
-backdrop-filter: blur(20–40px)
-```
-On hover: `y: -6px`, `border-color: rgba(232,196,74,0.25)`
+## 6. Motion
 
-### Buttons
+- Background: `components/three/ParticleBackground.jsx` — 2D-canvas ember field (no three.js)
+- Hero: 3 parallax layers, transform-only, rAF-throttled; rotating weight plates
+- Props: `components/ui/GymProps.jsx` (dumbbell, kettlebell) with `.prop-spin3d`, `.prop-curl`, `.prop-swing`, `.prop-float`; hidden on phones
+- Framer Motion for entrances, tabs and drag-to-reorder
+- Everything respects `prefers-reduced-motion`
 
-**Primary (Gold)** — `.btn-gold`
-```
-background: #e8c44a
-color: #0a0a0a
-border-radius: 10px
-font-weight: 600
-padding: 12–15px 24–36px
-hover: background #f0d060, box-shadow gold glow
-```
+## 7. Content rules
 
-**Ghost** — `.btn-ghost`
-```
-background: transparent
-border: 1px solid rgba(255,255,255,0.1)
-color: rgba(255,255,255,0.7)
-hover: border-color #e8c44a, color #e8c44a
-```
+- Only verifiable facts. No invented member counts, trainers, testimonials or "since 20XX".
+- Offer, amenities, hours, FAQ: `src/content/gymContent.js` — items render only with `show: true`.
+  - Shown: free weights, functional zone, personal training (on request); lockers, changing room, RO water, parking, CCTV; Mon–Sat 6–11 AM & 5–10 PM, Sunday closed.
+  - Hidden: group sessions, Zumba, AC (not offered), music system, free trial (pending owner).
+- Policies: `src/content/legal.js`.
+- Contacts only from env vars (`src/utils/gymConfig.js`); empty = hidden. WhatsApp and email links open with a prefilled message.
+- The owner's name is never shown publicly.
 
-**Danger** — used in ConfirmDialog
-```
-background: #ef4444
-color: white
-hover: background #dc2626
-```
-
-### Inputs — `.input-dark`
-```
-background: rgba(255,255,255,0.04)
-border: 1px solid rgba(255,255,255,0.08)
-border-radius: 10px
-padding: 12px 16px
-color: white
-focus: border-color #e8c44a, background rgba(232,196,74,0.04)
-placeholder: rgba(255,255,255,0.25)
-```
-
-### Badges / Tags
-```
-Pill style: border-radius 100px
-Gold: bg rgba(232,196,74,0.1), border rgba(232,196,74,0.2), text #e8c44a
-Green: bg rgba(34,197,94,0.1), border rgba(34,197,94,0.2), text #22c55e
-```
-
----
-
-## 5. Layout System
-
-### Navbar
-- Fixed position, height 64px
-- Transparent when at top of landing page → solid on scroll
-- Logo left, nav links center (desktop), CTA buttons right
-- Hamburger menu on mobile (<768px)
-- backdrop-filter: blur(24px) always active
-
-### Auth Pages
-- Full viewport height, centered card
-- Card max-width: 420px (register: 480px)
-- Padding: 40px 36px desktop, 28px 20px mobile
-- ParticleBackground fixed behind
-- Radial gold glow behind card
-
-### Landing Page Sections
-- Each section: `padding: 60–120px 16–48px` (responsive)
-- Max content width: 1100–1200px centered
-- Section label → title → subtitle → content pattern
-
-### Profile Page
-- Fixed top navbar (60px)
-- Sidebar (240px) left, sticky
-- Main content right, max-width 900px
-- Mobile: sidebar becomes horizontal tab bar at top
-
----
-
-## 6. Animation System
-
-### Timing Philosophy
-All animations use the same easing curve: `[0.25, 0.46, 0.45, 0.94]`
-This is a custom ease-out that starts fast and decelerates — feels natural, not bouncy.
-
-### Animation Durations
-| Type | Duration |
-|------|----------|
-| Fast (hover, color change) | 150–200ms |
-| Standard (element entrance) | 350–500ms |
-| Slow (hero, page reveal) | 500–600ms |
-| Page transition | 250ms |
-
-### Stagger Timing
-- Card grids: 80ms between children
-- Slower grids (trainers, pricing): 120ms between children
-- Hero elements: 120ms between children
-
-### Scroll Animations
-- Trigger: `viewport: { once: true, margin: "-80px" }`
-- "once: true" — elements don't re-animate on scroll up
-- margin: -80px — animation triggers slightly before element is fully visible
-
----
-
-## 7. Responsive Breakpoints
-
-| Name | Width | Target Devices |
-|------|-------|----------------|
-| xs | 0–479px | Small phones |
-| sm | 480–767px | Large phones |
-| md | 768–1023px | Tablets, small laptops |
-| lg | 1024–1279px | Standard laptops |
-| xl | 1280px+ | Desktops, large monitors, TVs |
-
-### Key Responsive Behaviors
-- Hero text: `clamp()` functions for fluid sizing
-- Card grids: 1 col → 2 col → 3 col as screen grows
-- Navbar: hamburger on <768px
-- Profile sidebar: horizontal tabs on mobile, fixed sidebar on desktop
-- Auth cards: full width on mobile with reduced padding
-- Pricing "featured" card: no scale transform on mobile
+## 8. Accessibility checklist
+- Visible focus rings; real `<button>`/`<a>` elements; labelled icon buttons
+- Tap targets ≥ 44 px; 17 px body text; only tiny badges go below 14 px
+- AA contrast on all text tokens; no information by colour alone (status badges have text)
+- Forms show errors inline and in a toast

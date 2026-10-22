@@ -223,6 +223,7 @@ membershipPlanSchema.methods.getTier = function (durationDays) {
 membershipPlanSchema.statics.findActivePlans = async function () {
   return await this.find({ status: PLAN_STATUS.ACTIVE }).sort({
     displayOrder: 1,
+    createdAt: 1, // stable order when numbers tie
   });
 };
 

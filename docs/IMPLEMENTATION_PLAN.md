@@ -1,190 +1,95 @@
-# Implementation Plan
-## HULK Gym Web Application
+# Implementation Status & Roadmap
+## Hulk Gym Web App
+**Last updated:** 22 October 2026 · **Phase:** client review on the testing server → production setup
 
 ---
 
-## 1. What's Done ✅
+## 1. Done ✅
 
-### Backend — Authentication System
-- [x] Project setup (Node.js, Express, ES Modules, MongoDB Atlas)
-- [x] Environment configuration (`src/config/env.js` — dotenv isolation)
-- [x] Constants file (`src/utils/constants.js`) — single source of truth
-- [x] **Models:** User, OTP, Session, TempRegistration
-- [x] **Utils:** ApiResponse, ApiError, asyncHandler
-- [x] **Services:** password, otp, email, token, session
-- [x] **Middleware:** authenticate, sessionGuard, authorize, errorHandler, upload, validation (auth + password)
-- [x] **Controllers:** authentication.controller, password.controller
-- [x] **Routes:** auth routes (13 endpoints), profile routes (4 endpoints)
-- [x] app.js — Helmet, CORS, sanitizer, cookie-parser, routes, error handler
+### Platform
+- [x] Auth: OTP sign-up with consent, login, 2-device sessions, refresh cookie, forgot/change password, logout everywhere
+- [x] Profile: details, photo, sessions, delete account (anonymised, records kept)
+- [x] Plans: tiers, offers, featured, grace days, status, **drag-and-drop display order**
+- [x] Online payments: Razorpay orders, verify + webhook, recovery of missed payments, duplicate detection
+- [x] Offline payments: full / installments / complimentary, collect balance, cancel (waives future installments)
+- [x] Receipts: numbered, emailed for every money event
+- [x] Refunds: one-click Razorpay refund for duplicates, history page, sidebar badge
+- [x] Daily 8 AM IST job: reminders, grace/expiry, overdue installments
+- [x] Admin dashboard: KPIs, revenue chart, plan split, expiring, dues
 
-### Backend — Profile Module
-- [x] Cloudinary config (`src/config/cloudinary.js`)
-- [x] Upload middleware (multer memory → Cloudinary stream)
-- [x] Profile service (get, update, updatePicture, deletePicture)
-- [x] Profile controller
-- [x] Profile routes
-- [x] User model updated with: userId, height, weight, dateOfBirth, gender, bio, profilePicturePublicId
-- [x] Auto-generate userId on new user creation
+### Website
+- [x] "Molten Iron" design across public, member and admin screens; responsive; larger text for all ages
+- [x] Real gym content only; contacts from env; open-now status in IST; map
+- [x] Contact, Terms, Privacy (DPDP 2023), Refund pages
+- [x] SEO: JSON-LD, sitemap, robots, canonical, share image; Netlify cache + security headers
 
-### Frontend — Foundation
-- [x] React 18 + Vite setup
-- [x] Tailwind CSS + custom CSS variables
-- [x] Responsive CSS system (mobile-first, 4 breakpoints)
-- [x] Framer Motion — animation variants (`src/utils/animations.js`)
-- [x] Axios instance with request + response interceptors
-- [x] Zustand auth store (user, accessToken, isAuthenticated, isInitialized)
-- [x] `useAuthInit` hook — session restoration on page refresh
-- [x] React Router v6 — all routes configured
-- [x] ProtectedRoute + PublicRoute components
-
-### Frontend — Components
-- [x] `ParticleBackground` — Three.js 3D animation (single component, used everywhere)
-- [x] `Logo` — app logo with size variants
-- [x] `Navbar` — responsive, transparent/solid, hamburger mobile menu
-- [x] `Footer` — links, socials, copyright
-- [x] `ConfirmDialog` — reusable confirmation popup
-- [x] `PasswordStrength` — live password strength indicator
-- [x] `AppLoader` — session restoration loading screen
-
-### Frontend — Pages
-- [x] **Landing Page** — 3D hero, programs, stats, trainers, equipment, pricing, testimonials, CTA, footer
-- [x] **Login Page** — email + password, show/hide, forgot password link
-- [x] **Register Page** — all fields, password strength, phone with +91 prefix
-- [x] **Verify OTP Page** — 6-box input, auto-advance, paste, countdown, resend
-- [x] **Forgot Password Page** — email entry, success state
-- [x] **Forgot OTP Page** — same as verify OTP but for password reset flow
-- [x] **Reset Password Page** — new password + confirm, strength indicator, success state
-- [x] **Profile Page** — sidebar with 3 tabs (Profile, Sessions, Change Password)
-- [x] **404 Page** — gym-themed not found page
-
-### Security Implemented
-- [x] Passwords: bcrypt cost 12, never stored raw
-- [x] OTPs: SHA-256 hashed, timing-safe comparison, 3 attempt limit
-- [x] Refresh tokens: opaque random bytes, SHA-256 hashed in DB
-- [x] Access tokens: JWT 15 min, stored in JS memory (not localStorage)
-- [x] HTTP-only cookies for refresh tokens
-- [x] Email enumeration protection
-- [x] Rate limiting ready (express-rate-limit installed)
-- [x] Input validation (Joi on all routes)
-- [x] NoSQL injection protection (manual sanitizer)
-- [x] Security headers (Helmet)
-- [x] CORS configured with credentials
+### Security (review 22 Oct 2026 — see TRD §5)
+- [x] Password-reset bypass fixed (single-use reset token)
+- [x] Real client IPs behind Render + per-route IP+email rate limits
+- [x] Sanitizer order, pinned JWT algorithm, OTP removed from logs, session guard on admin plans, 400/413 for bad bodies
+- [x] Ownership check before payment activation; members list excludes admin/deleted
+- [x] Reminder job ran at 2:30 AM IST — now 8:00 AM IST
 
 ---
 
-## 2. What's Next 🚧
+## 2. Manual test checklist (testing server)
 
-### Phase 2 — Member Features
+**Security fixes**
+- [ ] Forgot password with a real OTP → new password works; resubmitting the old reset page says "expired"
+- [ ] Reset/change password on one device → the other device is signed out
+- [ ] Profile → Active sessions shows real, different IPs for phone (mobile data) and laptop (Wi-Fi)
+- [ ] 10 wrong passwords for one email → "wait 15 minutes"; another account still logs in
 
-#### Priority 1: Workout Tracking
-- [ ] `workoutlogs` collection — exercises, sets, reps, weight, date
-- [ ] Log workout endpoint
-- [ ] Get workout history (with pagination)
-- [ ] Workout history page (frontend)
-- [ ] Basic analytics — total sessions this week/month
+**Member journey (fresh email)**
+- [ ] Register without age/terms → blocked; with them → OTP → profile
+- [ ] Buy a plan (test UPI `success@razorpay`) → active + receipt email (check spam)
+- [ ] Pay the same plan in two tabs → second appears in Admin → Refunds → Refund → refund email
+- [ ] `failure@razorpay` / close checkout → no membership; retry works
 
-#### Priority 2: Body Measurement History
-- [ ] `measurements` collection — weight, bodyFat, BMI over time
-- [ ] Log measurement endpoint
-- [ ] Measurement chart (recharts or Chart.js)
-- [ ] Progress page (frontend)
+**Admin**
+- [ ] Plans: drag and ↑/↓ reorder → order on the home page matches; new plan lands last
+- [ ] Cash membership with installments → mark one paid → collect balance → cancel another
+- [ ] Search by name, phone, member ID
 
-#### Priority 3: Membership Plans
-- [ ] `memberships` collection — plan name, price, features, duration
-- [ ] `subscriptions` collection — userId, planId, startDate, endDate, status
-- [ ] Membership page (frontend) — current plan display
-- [ ] Plan selection flow
-
----
-
-### Phase 3 — Trainer Features
-
-- [ ] Trainer profile extended fields (certifications, specializations, experience, bio)
-- [ ] Trainer directory page (public) — cards with filters
-- [ ] Assigned members list (trainer dashboard)
-- [ ] Workout plan creation
-- [ ] Assign plan to member
+**Account & layout**
+- [ ] Delete account blocked with an active plan; works without; old login fails
+- [ ] Phone check of every page; footer developer card clearly visible
 
 ---
 
-### Phase 4 — Admin Features
+## 3. Open items
 
-- [ ] Admin dashboard route + page
-- [ ] User management (list, search, filter, suspend, change role)
-- [ ] Trainer management (assign trainer to member)
-- [ ] Membership plan CRUD
-- [ ] Class schedule management
-- [ ] Basic analytics (total members, active subscriptions, revenue)
+| Item | Owner | Status |
+|---|---|---|
+| Free trial offered? | Sanjay | pending (hidden on site) |
+| Refund / cancellation rules | Sanjay | pending (site: fees non-refundable once active; duplicates refunded) |
+| Gym email address | Sanjay / Himanshu | to create today → `VITE_GYM_EMAIL`, Brevo sender |
+| Exact Google Maps link, real photos | Sanjay | optional |
+| Plan features text | Himanshu | test data — replace with real features |
+| Production setup (domain, DB, live Razorpay, Brevo domain) | Himanshu | after client review — see PROJECT_SETUP_GUIDE §5 |
+| Final installment ₹6,000 | Sanjay | after launch |
 
----
+## 4. Known limitations / tech debt
 
-### Phase 5 — Content Pages
-
-- [ ] About page — gym story, mission, values, team
-- [ ] Contact page — form, location, map embed
-- [ ] Class schedule page (public)
-- [ ] Trainer directory (public)
-- [ ] Blog/Articles system
-
----
-
-### Phase 6 — Payments
-
-- [ ] Razorpay integration
-- [ ] Payment flow — select plan → pay → subscription activated
-- [ ] Payment history
-- [ ] Invoice generation (PDF)
-- [ ] Subscription renewal reminders (email)
+| Item | Priority | Note |
+|---|---|---|
+| Render free tier cold start (~50 s) | Medium | UptimeRobot keeps it warm; paid instance if it matters |
+| No Content-Security-Policy header | Medium | add after confirming Razorpay + Maps sources |
+| Refresh token not rotated on use | Low | sessions are revocable; rotation would add theft detection |
+| Joi validators don't write the cleaned body back | Low | controllers whitelist fields, so no exposure today |
+| ESLint: ~45 pre-existing React-hooks style errors | Low | no runtime impact; clean up gradually |
+| `trainer` role unused | — | trainer module deferred |
 
 ---
 
-### Phase 7 — Advanced Features
+## 5. Roadmap (if the client wants more)
 
-- [ ] Real-time notifications (WebSockets / Socket.io)
-- [ ] Direct messaging (trainer ↔ member)
-- [ ] Progress photos
-- [ ] Class booking system
-- [ ] QR code check-in
-- [ ] Multi-location support
-
----
-
-### Phase 8 — Deployment
-
-- [ ] Backend deployment (Railway or Render)
-- [ ] Frontend deployment (Vercel)
-- [ ] Production environment variables
-- [ ] MongoDB Atlas production cluster
-- [ ] Cloudinary production account (gym owner email)
-- [ ] Domain setup + SSL
-- [ ] Error monitoring (Sentry)
-- [ ] Analytics (Google Analytics or Plausible)
-
----
-
-## 3. Known Issues / Technical Debt
-
-| Issue | Priority | Status |
-|-------|----------|--------|
-| `SessionsPage.jsx` and `ChangePasswordPage.jsx` are placeholder files | Low | These features are built inside ProfilePage — placeholders can be removed or converted to redirects |
-| Rate limiting middleware installed but not applied to routes | Medium | Apply `rateLimiter` middleware to auth routes |
-| No email rate limiting (spam prevention) | Medium | Implement server-side email send tracking |
-| Phone number change requires OTP re-verification | Medium | Not yet implemented — phone is currently read-only |
-| No admin route protection in middleware | Medium | Authorize middleware exists but not applied to admin routes yet |
-| ParticleBackground re-renders on every tab switch in Profile | Low | Consider using CSS visibility toggle instead of unmounting |
-
----
-
-## 4. Timeline Estimate
-
-| Phase | Estimated Time | Notes |
-|-------|---------------|-------|
-| Phase 2 — Member Features | 3–4 weeks | Core value delivery |
-| Phase 3 — Trainer Features | 2–3 weeks | Depends on Phase 2 |
-| Phase 4 — Admin Features | 3–4 weeks | Most complex |
-| Phase 5 — Content Pages | 1–2 weeks | Mostly frontend |
-| Phase 6 — Payments | 2–3 weeks | Razorpay integration |
-| Phase 7 — Advanced | 4–6 weeks | WebSockets, real-time |
-| Phase 8 — Deployment | 1 week | Infrastructure setup |
-
-**Total estimated remaining work:** 16–23 weeks (part-time development)
+| Phase | Scope | Rough effort |
+|---|---|---|
+| Launch support | go-live, owner training, first-week monitoring | 2–3 days |
+| Renewals | "Renew now" from reminder emails, renewal discounts | 2–3 days |
+| Attendance | QR check-in at the desk, visit history | 1 week |
+| Trainer module | trainer profiles, PT bookings, assigned members | 1–2 weeks |
+| Member progress | weight/measurements log, charts | 1 week |
+| Notifications | WhatsApp reminders (paid API) | 3–4 days |
+| Reports | monthly revenue/dues export (Excel/PDF) | 2–3 days |

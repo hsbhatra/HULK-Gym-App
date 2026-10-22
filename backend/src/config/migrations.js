@@ -46,10 +46,32 @@ const seedReceiptCounter = async () => {
   );
 };
 
+// Plans all started with displayOrder 0, so the pricing page order was
+// effectively random. Number them 1..n once (keeping their current order);
+// after that the admin's drag-and-drop on the Plans page owns the order.
+const normalizePlanOrder = async () => {
+  const coll = mongoose.connection.collection("membershipplans");
+  const plans = await coll
+    .find({}, { projection: { displayOrder: 1 } })
+    .sort({ displayOrder: 1, createdAt: 1 })
+    .toArray();
+  const numbers = plans.map((p) => p.displayOrder);
+  const alreadyClean = numbers.every((n, i) => n === i + 1);
+  if (alreadyClean) return;
+
+  await coll.bulkWrite(
+    plans.map((p, i) => ({
+      updateOne: { filter: { _id: p._id }, update: { $set: { displayOrder: i + 1 } } },
+    })),
+  );
+  console.log(`[migration] numbered ${plans.length} plans 1..${plans.length}`);
+};
+
 export const runMigrations = async () => {
   for (const [name, fn] of [
     ["makeReceiptIndexSparse", makeReceiptIndexSparse],
     ["seedReceiptCounter", seedReceiptCounter],
+    ["normalizePlanOrder", normalizePlanOrder],
   ]) {
     try {
       await fn();

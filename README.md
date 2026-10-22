@@ -1,151 +1,119 @@
-# HULK Gym 💪
+# Hulk Gym — Membership & Payments Web App
 
-A full-stack gym management web application built with the MERN stack. Features a 3D animated dark-themed frontend, complete authentication system, profile management, and a scalable architecture for future gym features.
+Website and membership system for **Hulk Gym, Nayapura, Kota**. Members join online, pay with Razorpay (or at the desk), and see their membership, installments and receipts. The gym runs everything from an admin panel: plans, members, cash payments, installments and refunds.
 
----
-
-## Tech Stack
-
-**Backend**
-- Node.js + Express.js (ES Modules)
-- MongoDB Atlas + Mongoose
-- JWT Authentication + HTTP-only cookies
-- Cloudinary (image storage)
-- Nodemailer + Gmail (OTP emails)
-
-**Frontend**
-- React 18 + Vite
-- Three.js (3D particle backgrounds)
-- Framer Motion (animations)
-- Tailwind CSS + custom CSS
-- Zustand (auth state)
-- Axios (API + auto token refresh)
+- **Testing site:** https://hulk-gym-kota-test.netlify.app (Razorpay test mode)
+- **API (testing):** https://hulk-gym-backend.onrender.com/api/v1
+- **Built by:** Himanshu Sharma
 
 ---
 
-## Quick Start
+## Features at a glance
 
-### Prerequisites
-- Node.js v18+
-- MongoDB Atlas account
-- Cloudinary account
-- Gmail account with App Password
+**Public website**
+- Landing page with real gym info (facilities, amenities, hours with live "Open now" status, map, FAQ), membership plans, contact page
+- Terms, Privacy and Refund policies (DPDP Act 2023 aligned)
+- SEO: per-page titles, JSON-LD (ExerciseGym, FAQ), sitemap, share image
 
-### 1. Clone the repository
+**Members**
+- Sign up with email OTP, age confirmation and terms consent
+- Buy a plan online (Razorpay: UPI, card, net banking) — instant activation + emailed receipt
+- Profile, photo, active devices, change password, delete account
+- Membership tab: current plan, installments, receipts
+
+**Admin**
+- Dashboard: active members, revenue, expiring soon, pending installments
+- Plans: create/edit, pricing tiers & offers, activate/deactivate/archive, **drag-and-drop display order**
+- Members: search, profile, record cash/UPI payment with installments, collect balance, cancel
+- Refunds: one-click Razorpay refund for duplicate payments, with history
+
+**Automatic**
+- Daily 8 AM IST job: expiry reminders (7/3/1 days), grace → expired, overdue installments
+- Receipt numbers (`HLK-2026-00001`), member IDs (`hulkgym_0001`)
+
+---
+
+## Tech stack
+
+| Layer | Tech |
+|---|---|
+| Frontend | React 19, Vite 8, React Router 7, Zustand, Framer Motion, react-hook-form, Recharts, lucide-react, Tailwind 4 (preflight) |
+| Backend | Node.js (ES modules), Express 5, Mongoose 9, Joi, bcryptjs, JWT, Helmet, express-rate-limit, node-cron |
+| Database | MongoDB Atlas |
+| Services | Razorpay (payments), Brevo (email), Cloudinary (photos) |
+| Hosting | Netlify (frontend), Render (backend), UptimeRobot (keep-alive) |
+
+---
+
+## Quick start (local)
+
 ```bash
-git clone https://github.com/hsbhatra/HULK-Gym-App.git
-cd HULK-Gym-App
-```
-
-### 2. Backend setup
-```bash
+# Backend
 cd backend
 npm install
-cp .env.example .env
-# Fill in your .env values (see Environment Variables section)
-npm run dev
-```
+cp .env.example .env      # fill in values — see docs/PROJECT_SETUP_GUIDE.md
+npm run dev               # http://localhost:8000  (health: /api/health)
 
-### 3. Frontend setup
-```bash
+# Frontend
 cd frontend
 npm install
 cp .env.example .env
-# Fill in VITE_API_URL
-npm run dev
-```
-
-### 4. Open the app
-```
-Frontend: http://localhost:5173
-Backend:  http://localhost:8000
-Health:   http://localhost:8000/api/health
+npm run dev               # http://localhost:5173
 ```
 
 ---
 
-## Environment Variables
+## Documentation
 
-### Backend `.env`
-```
-PORT=8000
-NODE_ENV=development
-MONGO_URI=mongodb+srv://...
-ACCESS_TOKEN_SECRET=your_64_char_secret
-CLIENT_URL=http://localhost:5173
-EMAIL_USER=your@gmail.com
-EMAIL_PASS=your_app_password
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
-```
-
-### Frontend `.env`
-```
-VITE_API_URL=http://localhost:8000/api/v1
-```
+| Doc | What's inside |
+|---|---|
+| [docs/PRD.md](docs/PRD.md) | What the product does, for whom, scope |
+| [docs/TRD.md](docs/TRD.md) | Architecture, security, payments, infra |
+| [docs/APP_FLOW.md](docs/APP_FLOW.md) | Step-by-step user and admin flows |
+| [docs/BACKEND_SCHEMA.md](docs/BACKEND_SCHEMA.md) | Collections, fields, indexes, API list |
+| [docs/UI_UX_BRIEF.md](docs/UI_UX_BRIEF.md) | "Molten Iron" design system and content rules |
+| [docs/PROJECT_SETUP_GUIDE.md](docs/PROJECT_SETUP_GUIDE.md) | Accounts, env vars, local setup, deployment, go-live checklist |
+| [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Status, testing checklist, open items, roadmap |
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
-hulk-gym/
-├── backend/
-│   └── src/
-│       ├── config/          # DB, Cloudinary, env config
-│       ├── controllers/     # Request handlers
-│       ├── middleware/       # Auth, validation, error, upload
-│       ├── models/          # Mongoose schemas
-│       ├── routes/          # Express routers
-│       ├── services/        # Business logic
-│       └── utils/           # Helpers, constants
-└── frontend/
-    └── src/
-        ├── components/      # Reusable UI, layout, 3D components
-        ├── hooks/           # Custom React hooks
-        ├── pages/           # Page components
-        ├── services/        # API call functions
-        ├── store/           # Zustand state
-        └── utils/           # Animation variants
+Hulk Gym App/
+├── backend/src/
+│   ├── config/        DB, Cloudinary, Razorpay, start-up migrations
+│   ├── controllers/   request handlers (auth/, admin, plan, profile, subscription, webhook)
+│   ├── jobs/          daily reminder / expiry job
+│   ├── middleware/    auth, validation (Joi), rate limits, upload, errors
+│   ├── models/        Mongoose schemas
+│   ├── routes/        Express routers
+│   ├── services/      business logic, email templates
+│   └── utils/         constants, ApiError/ApiResponse
+├── frontend/src/
+│   ├── components/    layout, ui, profile, admin, background canvas
+│   ├── content/       gymContent.js (facilities, hours, FAQ) · legal.js (policies)
+│   ├── pages/         public, auth, profile, admin, legal
+│   ├── services/      API calls (axios with auto token refresh)
+│   ├── store/         Zustand auth store
+│   └── utils/         gymConfig (env contacts), hours, animations
+├── frontend/seo.plugin.js   build-time SEO (JSON-LD, sitemap, robots)
+├── docs/
+└── netlify.toml
 ```
-
----
-
-## API Overview
-
-All endpoints are prefixed with `/api/v1/`
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | /auth/register | No | Start registration |
-| POST | /auth/verify-registration-otp | No | Verify email OTP |
-| POST | /auth/login | No | Login |
-| POST | /auth/logout | Yes | Logout current device |
-| POST | /auth/logout-all | Yes | Logout all devices |
-| GET | /auth/sessions | Yes | Get active sessions |
-| GET | /auth/refresh-token | Cookie | Refresh access token |
-| POST | /auth/forgot-password | No | Send reset OTP |
-| POST | /auth/reset-password | No | Reset password |
-| POST | /auth/change-password | Yes | Change password |
-| GET | /profile | Yes | Get profile |
-| PATCH | /profile | Yes | Update profile |
-| PATCH | /profile/picture | Yes | Upload profile picture |
-| DELETE | /profile/picture | Yes | Remove profile picture |
 
 ---
 
 ## Scripts
 
-### Backend
-```bash
-npm run dev    # Start with nodemon
-npm start      # Production start
-```
+| Where | Command | Does |
+|---|---|---|
+| backend | `npm run dev` | start with nodemon |
+| backend | `npm start` | production start |
+| frontend | `npm run dev` | Vite dev server |
+| frontend | `npm run build` | production build (needs `VITE_SITE_URL`) |
+| frontend | `npm run lint` | ESLint |
 
-### Frontend
-```bash
-npm run dev    # Vite dev server
-npm run build  # Production build
-npm run preview # Preview production build
-```
+---
+
+© Hulk Gym, Kota. Built by Himanshu Sharma.

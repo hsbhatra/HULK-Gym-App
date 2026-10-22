@@ -1,147 +1,85 @@
 # Product Requirements Document (PRD)
-## HULK Gym Web Application
-**Version:** 1.0  
-**Last Updated:** July 2026  
-**Status:** In Development
+## Hulk Gym Web App
+**Version:** 2.0 · **Last updated:** 22 October 2026 · **Status:** User testing on the testing server, production setup next
 
 ---
 
-## 1. Product Overview
+## 1. Overview
 
-### 1.1 Product Summary
-HULK Gym is a full-stack web application for managing gym memberships, member profiles, trainer interactions, and fitness tracking. It targets both gym owners and members, providing a premium digital experience that matches the quality of a high-end gym.
+### 1.1 Summary
+A website and membership system for Hulk Gym (Nayapura, Kota). It replaces paper registers and cash-only tracking: members can join and pay online, and the gym manages plans, payments, installments and refunds from one admin panel.
 
-### 1.2 Problem Statement
-Most gym management software is either expensive enterprise software with poor UX, or basic tools that lack the features modern gyms need. HULK Gym fills this gap with a modern, beautiful, and feature-rich platform built specifically for the Indian fitness market.
+### 1.2 Problem
+- Membership, payment and due dates were tracked by hand, so renewals and dues were easy to miss.
+- No online presence that shows real gym information, prices and hours.
+- No way to take payment online or give proper receipts.
 
-### 1.3 Target Users
-| User Type | Description |
-|-----------|-------------|
-| **Member** | Gym members who sign up, track progress, book classes, manage their profile |
-| **Trainer** | Certified trainers who manage assigned members, create workout plans |
-| **Admin** | Gym owners/managers who manage everything — users, trainers, plans, content |
+### 1.3 Users
+| User | Needs |
+|---|---|
+| **Visitor** | See facilities, prices, hours, location; contact the gym; join |
+| **Member** | Pay online, see plan/expiry/installments/receipts, manage account |
+| **Admin (gym owner/staff)** | Manage plans, record cash payments and installments, see dues and revenue, refund duplicates |
 
-### 1.4 Key Goals
-- Deliver a premium user experience with 3D animations and dark theme
-- Provide secure, reliable authentication with OTP verification
-- Enable members to manage profiles, track fitness, and book services
-- Give admins full control over the gym's digital presence
-- Support future scaling to multiple gym locations
+A `trainer` role exists in the code but has no screens — the trainer module is **deferred** until the client asks for it.
 
----
-
-## 2. Features
-
-### 2.1 Completed Features ✅
-
-#### Authentication System
-- Email + password registration with OTP email verification
-- Secure login with JWT access tokens (15 min) + HTTP-only refresh tokens (30 days)
-- Auto-refresh tokens — users stay logged in transparently
-- Max 2 active sessions per user (device management)
-- Per-device session revocation
-- Logout from all devices
-- Forgot password via OTP email
-- Change password (requires current password verification)
-- Role-based access control (member / trainer / admin)
-- Email enumeration protection on all password flows
-- OTP attempt limiting (max 3) with auto-resend
-- 60-second cooldown between OTP resend requests
-
-#### Profile Management
-- View complete profile
-- Edit personal info (first name, last name)
-- Body information (height, weight, date of birth, gender)
-- Bio / about me (max 200 characters)
-- Profile picture upload to Cloudinary (400x400 auto-crop with face detection)
-- Profile picture deletion
-- Auto-generated readable member ID (e.g. `hulkgym_0001`)
-- Account information display (member since, role, email verification status)
-- Active sessions list with device info
-- Per-session revocation from profile
-
-#### Frontend
-- 3D animated particle background (Three.js) on all pages
-- Fully responsive design (mobile, tablet, laptop, desktop, TV)
-- Dark theme with gold accents
-- Framer Motion page transitions and scroll animations
-- Password strength indicator (live feedback)
-- 6-box OTP input with auto-advance, paste support, countdown timer
-- Toast notifications for all user actions
-- Session restoration on page refresh (no logout on F5)
-- 404 page
-
-### 2.2 Planned Features 🚧
-
-#### Member Features
-- Workout tracking (log exercises, sets, reps, weight)
-- Body measurement history (weight, BMI trends)
-- Progress photos
-- Class booking and scheduling
-- Membership plan management
-- Payment history
-
-#### Trainer Features
-- Trainer profile with specializations, experience, certifications
-- Assigned members list
-- Create and assign workout plans
-- Track member progress
-- Direct messaging with assigned members
-
-#### Admin Features
-- User management (view, suspend, change roles)
-- Trainer management (assign trainers to members)
-- Membership plan creation and pricing
-- Class schedule management
-- Gym analytics dashboard
-- Announcement system
-
-#### Content Pages
-- About page
-- Contact page
-- Blog/Articles
-- Class schedule (public)
-- Trainer directory (public)
+### 1.4 Gym facts used on the site (confirmed Oct 2026)
+- Offering: free weights, functional zone, personal training on request (occasional). **No group classes, no Zumba, no AC.**
+- Amenities: lockers, changing room, RO drinking water, parking, CCTV.
+- Hours: Monday–Saturday, 6–11 AM and 5–10 PM; Sunday closed.
+- Pending owner confirmation: free trial (currently not offered on the site), refund/cancellation rules, gym email address.
 
 ---
 
-## 3. User Stories
+## 2. Features (built)
 
-### Member
-- As a member, I want to register with my email and verify it via OTP so my account is secure
-- As a member, I want to stay logged in after closing the browser tab so I don't have to re-enter credentials every time
-- As a member, I want to see which devices I'm logged into and be able to end sessions remotely
-- As a member, I want to upload a profile picture that looks professional
-- As a member, I want to track my height and weight over time
+### 2.1 Public website
+- Landing page: hero, live "Open now / Closed" status in IST, facilities, amenities, plans with tier switcher, FAQ, map, contact (call / WhatsApp / email with prefilled messages / Instagram / directions)
+- Contact page; Terms, Privacy, Refund & Cancellation pages
+- Responsive from 360 px phones to large screens; text sized for all ages (17 px base)
+- SEO: per-route meta, canonical, JSON-LD, sitemap, robots, Open Graph image
 
-### Trainer
-- As a trainer, I want a profile page showing my expertise and experience
-- As a trainer, I want to see the list of members assigned to me
+### 2.2 Accounts & security
+- Sign up → email OTP → account; age confirmation (18+ or guardian consent) and Terms/Privacy acceptance stored with version and time
+- Login with JWT access token (15 min, memory only) + refresh token (30 days, httpOnly cookie); max 2 devices
+- Forgot password: OTP → one-time reset token (15 min) → new password; all devices signed out
+- Change password (other devices signed out); see and end active sessions
+- Delete account: password confirmation; blocked while a plan, unpaid installment or refund is open; personal data anonymised, payment records kept for tax law
+- Rate limits per IP + email on login, OTP, reset; generous global API limit
 
-### Admin
-- As an admin, I want to manage all user accounts
-- As an admin, I want to assign trainers to members
-- As an admin, I want to set membership pricing and manage plans
+### 2.3 Membership & payments
+- Plans with 1–4 pricing tiers (30/90/180/365 days), optional offer price with end date, features list, featured flag, grace period, status (active/inactive/archived)
+- Online purchase via Razorpay; price always computed on the server; dual confirmation (checkout verify + webhook); recovers payments that succeeded while the browser closed
+- Duplicate payment (member already active) is not activated — marked "refund due" and emailed
+- Offline payments by admin: full, partial with installments, or complimentary
+- Numbered receipts emailed for every payment event
+
+### 2.4 Admin panel
+- Dashboard: active members, revenue this month vs last, new members, expiring this week, 6-month revenue chart, plan split, expiring list, pending/overdue installments, alert for pending refunds
+- Plans: create/edit, activate/deactivate/archive/restore, **display order by drag-and-drop or ↑/↓ (top = first on website)**
+- Members: search by name/email/phone/ID, member detail, new membership (cash/UPI/complimentary/installments), collect balance, mark installment paid, cancel membership
+- Refunds: pending duplicate payments with one-click Razorpay refund (emails member), refund history
+
+### 2.5 Automation
+- Daily 8:00 AM IST: reminder emails 7, 3 and 1 day before expiry; active → grace → expired; pending installments → overdue
 
 ---
 
-## 4. Non-Functional Requirements
+## 3. Non-functional requirements
 
-| Requirement | Target |
-|-------------|--------|
-| Page load time | < 2 seconds on 4G |
-| API response time | < 300ms for most endpoints |
-| Uptime | 99.9% |
-| Mobile support | iOS 14+, Android 10+ |
-| Browser support | Chrome, Firefox, Safari, Edge (last 2 versions) |
-| Security | OWASP Top 10 compliance |
-| Accessibility | WCAG 2.1 AA |
+| Area | Target |
+|---|---|
+| Performance | Landing page usable < 2.5 s on 4G; images and fonts self-hosted |
+| Availability | Free-tier hosting; first request after idle can take ~50 s (Render cold start) — UptimeRobot pings `/api/health` |
+| Security | OWASP Top 10 basics; tested Oct 2026 (see TRD §5) |
+| Privacy | DPDP Act 2023: consent, purpose, processors listed, deletion |
+| Accessibility | Keyboard focus rings, 44 px tap targets, reduced-motion support, AA contrast |
+| Browsers | Last 2 versions of Chrome, Safari, Firefox, Edge; Android 10+, iOS 15+ |
 
 ---
 
-## 5. Out of Scope (v1.0)
-- Native mobile apps (iOS/Android)
-- Multi-language support
-- Payment processing (future Razorpay integration)
-- Real-time features (WebSockets)
-- Video streaming for workout tutorials
+## 4. Out of scope (for now)
+- Trainer module, workout/diet tracking, class booking
+- Automatic recurring payments (autopay)
+- Native mobile apps, multi-branch, multiple languages
+- Attendance / biometric integration
