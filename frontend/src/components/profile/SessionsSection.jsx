@@ -9,6 +9,7 @@ import {
 import ConfirmDialog from "../ui/ConfirmDialog.jsx";
 import toast from "react-hot-toast";
 import { Globe, Laptop, Monitor, Smartphone } from "lucide-react";
+import { Tip } from "../ui/Tip.jsx";
 
 export default function SessionsSection({ onLogout }) {
   const [sessions, setSessions] = useState([]);
@@ -259,7 +260,7 @@ export default function SessionsSection({ onLogout }) {
               </div>
 
               {/* End Session */}
-              <button
+              <Tip text="Signs this device out. Your other devices stay signed in."><button
                 className="session-end-btn"
                 onClick={() => setConfirm({ type: "single", sessionId: s._id })}
                 disabled={revoking === s._id}
@@ -283,7 +284,7 @@ export default function SessionsSection({ onLogout }) {
                 }
               >
                 {revoking === s._id ? "Ending..." : "End Session"}
-              </button>
+              </button></Tip>
             </div>
           ))}
         </div>

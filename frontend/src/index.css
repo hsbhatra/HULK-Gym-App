@@ -1264,3 +1264,71 @@ a.contact-card:hover { border-color: var(--yellow); }
   .plan-handle { display: none; } /* phones: use the arrows */
   .plan-row { padding: 16px; }
 }
+
+
+/* =============================================================================
+   PHOTOS + BIGGER LOGO (proposal)
+============================================================================= */
+:root { --nav-h: 76px; }
+@media (max-width: 767px) { :root { --nav-h: 68px; } }
+
+/* Navbar logo: larger on desktop, a bit smaller on phones */
+@media (max-width: 767px) { .nav-logo img { height: 42px !important; } }
+
+/* Hero logo badge — sits above the eyebrow, hero layout otherwise unchanged */
+.hero-logo { align-self: flex-start; margin-bottom: 4px; box-shadow: 6px 6px 0 var(--ember), 0 0 60px rgba(243, 212, 0, 0.18) !important; }
+@media (max-width: 767px) { .hero-logo img { height: 76px !important; } .hero-inner { padding-top: 104px; } }
+
+/* The floor: photo cards. First card is the large lead tile */
+.floor-grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 820px) {
+  .floor-grid { grid-template-columns: repeat(12, 1fr); }
+  .floor-card { grid-column: span 4; }
+  .floor-card--lead { grid-column: span 12; flex-direction: row !important; }
+  .floor-card--lead .floor-card__media { flex: 1.35; aspect-ratio: auto !important; min-height: 340px; }
+  .floor-card--lead .floor-card__body { flex: 1; justify-content: center; padding: 40px; }
+  .floor-card--lead .floor-card__title { font-size: clamp(40px, 4.6vw, 60px); }
+  .floor-card--lead .floor-card__copy { font-size: 19px; }
+  .floor-card:not(.floor-card--lead) { grid-column: span 6; }
+}
+.floor-card { display: flex; flex-direction: column; overflow: hidden; padding: 0; transition: transform .25s, border-color .25s, box-shadow .25s; }
+.floor-card:hover { transform: translateY(-4px); border-color: var(--yellow); box-shadow: 6px 6px 0 var(--ember); }
+.floor-card__media { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--iron-950); }
+.floor-card__media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,11,0) 55%, rgba(21,21,23,.9) 100%); pointer-events: none; }
+.floor-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+.floor-card:hover .floor-card__media img { transform: scale(1.05); }
+.floor-card__body { padding: 26px; display: flex; flex-direction: column; gap: 12px; }
+.floor-card--plain .floor-card__body { padding: 26px; }
+.floor-card__title { font-size: 28px; text-transform: uppercase; line-height: 1; }
+.floor-card__copy { color: var(--text-2); font-size: 17px; line-height: 1.6; }
+
+/* Walk in: photo banner above the hours card */
+.visit-banner { position: relative; margin: 0 auto 20px; border-radius: var(--radius-card); overflow: hidden; border: 1px solid #26262a; height: clamp(190px, 26vw, 320px); }
+.visit-banner img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 60%; display: block; }
+.visit-banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,11,.88) 0%, rgba(10,10,11,.35) 60%, rgba(10,10,11,.1) 100%); }
+.visit-banner figcaption { position: absolute; z-index: 1; left: clamp(20px, 3vw, 40px); bottom: clamp(18px, 3vw, 34px); display: flex; flex-direction: column; gap: 6px; }
+.visit-banner__hours { font-size: clamp(26px, 3.6vw, 44px); line-height: 1; text-transform: uppercase; color: var(--text-1); }
+
+/* =============================================================================
+   TIPS — plain-language hints on confusing controls (components/ui/Tip.jsx)
+============================================================================= */
+.tip { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
+.tip__touch { display: none; }
+.tip__touch, .tip__info {
+  align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; flex-shrink: 0;
+  border-radius: 50%; border: 1px solid var(--iron-700); background: transparent; color: var(--text-2); cursor: pointer;
+}
+.tip__info { display: inline-flex; }
+.tip__touch:hover, .tip__info:hover, .tip__info:focus-visible, .tip__touch:focus-visible { color: var(--yellow); border-color: var(--yellow); }
+/* Phones and tablets have no hover — show an "i" next to the control instead */
+@media (hover: none) { .tip__touch { display: inline-flex; width: 36px; height: 36px; } }
+
+.tip-bubble {
+  position: fixed; z-index: 10000; transform: translate(-50%, -100%); width: max-content; max-width: min(280px, calc(100vw - 24px));
+  padding: 10px 14px; border-radius: 10px; background: var(--iron-850); color: var(--text-1);
+  border: 1px solid var(--yellow); box-shadow: 3px 3px 0 var(--ember);
+  font-family: var(--font-body); font-size: 15px; font-weight: 500; line-height: 1.45; text-align: left; text-transform: none; letter-spacing: 0;
+  pointer-events: none; animation: tipIn .14s ease-out both;
+}
+.tip-bubble--below { transform: translate(-50%, 0); }
+@keyframes tipIn { from { opacity: 0; } to { opacity: 1; } }

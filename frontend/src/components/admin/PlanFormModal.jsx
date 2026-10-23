@@ -8,6 +8,7 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { createPlan, updatePlan } from "../../services/planService.js";
+import { Tip, InfoTip } from "../ui/Tip.jsx";
 
 const DURATION_LABELS = {
   30 : "Monthly",
@@ -162,7 +163,9 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
 
           {/* Slug */}
           <div>
-            <label style={labelStyle}>Slug (URL identifier)</label>
+            <label style={labelStyle}>Slug (URL identifier){" "}
+              <InfoTip text="The plan's web address, for example /plans/pro. It is made from the name for you. Changing it breaks any old links to this plan." />
+            </label>
             <input style={inputStyle} value={form.slug}
               onChange={(e) => setForm({ ...form, slug: e.target.value })}
               placeholder="e.g. pro" />
@@ -221,10 +224,12 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
                   onChange={(e) => handleFeatureChange(i, e.target.value)}
                   placeholder="e.g. Full gym access" />
                 {features.length > 1 && (
-                  <button aria-label="Remove feature" type="button" onClick={() => removeFeature(i)}
-                    style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: "8px", padding: "0 14px", cursor: "pointer" }}>
-                    ✕
-                  </button>
+                  <Tip touch={false} text="Remove this feature line.">
+                    <button aria-label="Remove feature" type="button" onClick={() => removeFeature(i)}
+                      style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", borderRadius: "8px", padding: "0 14px", cursor: "pointer", height: "100%" }}>
+                      ✕
+                    </button>
+                  </Tip>
                 )}
               </div>
             ))}
@@ -241,6 +246,7 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
               onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
               style={{ width: "16px", height: "16px", accentColor: "#f3d400" }} />
             <span style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)" }}>Mark as "Most Popular" (featured)</span>
+            <InfoTip text="Shows this plan highlighted in yellow with a 'most picked' tag on the website." />
           </label>
 
           {/* Actions */}

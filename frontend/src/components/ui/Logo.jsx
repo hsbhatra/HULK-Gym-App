@@ -11,11 +11,15 @@ const SIZES = {
   sm: { h: 26, padX: 10, padY: 3 },
   md: { h: 34, padX: 14, padY: 4 },
   lg: { h: 48, padX: 18, padY: 6 },
+  xl: { h: 46, padX: 20, padY: 6 }, // navbar
+  hero: { h: 104, padX: 30, padY: 14 }, // landing hero badge
 };
 
 export default function Logo({
   size = "md", // "sm" | "md" | "lg"
   clickable = true, // links to "/"
+  highlight = false, // yellow ring + ember offset shadow (navbar / hero)
+  className = "",
   style = {}, // extra wrapper styles
 }) {
   const s = SIZES[size] || SIZES.md;
@@ -42,14 +46,17 @@ export default function Logo({
     lineHeight: 0,
     textDecoration: "none",
     minHeight: 0,
+    ...(highlight
+      ? { border: "2px solid var(--yellow)", boxShadow: "4px 4px 0 var(--ember)" }
+      : null),
     ...style,
   };
 
   return clickable ? (
-    <Link to="/" aria-label="Hulk Gym — home" style={pill}>
+    <Link to="/" aria-label="Hulk Gym — home" className={className} style={pill}>
       {mark}
     </Link>
   ) : (
-    <span style={pill}>{mark}</span>
+    <span className={className} style={pill}>{mark}</span>
   );
 }

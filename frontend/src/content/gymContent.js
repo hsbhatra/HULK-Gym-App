@@ -14,12 +14,16 @@ export const FACILITIES = [
     show: true, // seen on the gym's Instagram
     icon: "Dumbbell",
     title: "Free weights",
+    image: "/photos/free-weights.webp",
+    imageAlt: "Loaded 20 kg plates on a barbell",
     copy: "Dumbbells, barbells, plates and benches for real strength work.",
   },
   {
     show: true, // seen on the gym's Instagram
     icon: "Activity",
     title: "Functional zone",
+    image: "/photos/functional-zone.webp",
+    imageAlt: "Member training with battle ropes on the turf strip",
     copy: "Open space for kettlebells, battle ropes and bodyweight training.",
   },
   {
@@ -55,7 +59,7 @@ export const CLASSES = [
   { show: false, icon: "Shield", title: "MMA", copy: "Striking and grappling basics." },
   { show: false, icon: "Flower2", title: "Yoga", copy: "Mobility, breathing and recovery." },
   { show: false, icon: "Flame", title: "HIIT / CrossFit-style", copy: "Short, intense circuits." },
-  { show: true, icon: "UserCheck", title: "Personal training", copy: "One-on-one coaching on request — ask at the desk." },
+  { show: true, icon: "UserCheck", title: "Personal training", image: "/photos/personal-training.webp", imageAlt: "Lifter chalking up before a barbell lift", copy: "One-on-one coaching on request — ask at the desk." },
   { show: false, icon: "Salad", title: "Diet guidance", copy: "Simple nutrition plans that fit Indian meals." },
 ];
 

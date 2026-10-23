@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import PlanFormModal from "../../components/admin/PlanFormModal.jsx";
 import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
+import { Tip } from "../../components/ui/Tip.jsx";
 import {
   getAllPlansAdmin,
   updatePlanStatus,
@@ -54,24 +55,29 @@ function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit
     >
       {/* Order controls */}
       <div className="plan-order">
-        <button
-          type="button"
-          className="plan-handle"
-          aria-label={`Drag to reorder ${plan.name}`}
-          title="Drag to reorder"
-          disabled={busy}
-          onPointerDown={(e) => !busy && controls.start(e)}
-        >
-          <GripVertical size={20} aria-hidden="true" />
-        </button>
+        <Tip touch={false} text="Press and drag to change the order plans appear on the website.">
+          <button
+            type="button"
+            className="plan-handle"
+            aria-label={`Drag to reorder ${plan.name}`}
+            disabled={busy}
+            onPointerDown={(e) => !busy && controls.start(e)}
+          >
+            <GripVertical size={20} aria-hidden="true" />
+          </button>
+        </Tip>
         <span className="plan-pos" aria-label={`Position ${index + 1}`}>{index + 1}</span>
         <div className="plan-arrows">
-          <button type="button" aria-label={`Move ${plan.name} up`} disabled={busy || index === 0} onClick={() => onMove(index, -1)}>
-            <ArrowUp size={16} aria-hidden="true" />
-          </button>
-          <button type="button" aria-label={`Move ${plan.name} down`} disabled={busy || index === count - 1} onClick={() => onMove(index, 1)}>
-            <ArrowDown size={16} aria-hidden="true" />
-          </button>
+          <Tip touch={false} text="Move this plan one place up on the website.">
+            <button type="button" aria-label={`Move ${plan.name} up`} disabled={busy || index === 0} onClick={() => onMove(index, -1)}>
+              <ArrowUp size={16} aria-hidden="true" />
+            </button>
+          </Tip>
+          <Tip touch={false} text="Move this plan one place down on the website.">
+            <button type="button" aria-label={`Move ${plan.name} down`} disabled={busy || index === count - 1} onClick={() => onMove(index, 1)}>
+              <ArrowDown size={16} aria-hidden="true" />
+            </button>
+          </Tip>
         </div>
       </div>
 
@@ -99,26 +105,34 @@ function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit
       {/* Actions */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
         {plan.status !== "archived" && (
-          <button onClick={() => onToggle(plan)}
-            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: "14px", cursor: "pointer" }}>
-            {plan.status === "active" ? "Deactivate" : "Activate"}
-          </button>
+          <Tip text={plan.status === "active"
+            ? "Takes this plan off the website. Nobody can buy it online or be given it at the desk. Members who already have it keep it. Press Activate to put it back."
+            : "Puts this plan back on the website so people can buy it online and you can give it at the desk."}>
+            <button onClick={() => onToggle(plan)}
+              style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: "14px", cursor: "pointer" }}>
+              {plan.status === "active" ? "Deactivate" : "Activate"}
+            </button>
+          </Tip>
         )}
         <button onClick={() => onEdit(plan)}
           style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(243,212,0,0.2)", background: "rgba(243,212,0,0.08)", color: "#f3d400", fontSize: "14px", cursor: "pointer" }}>
           Edit
         </button>
         {plan.status !== "archived" && (
-          <button onClick={() => onArchive(plan)}
-            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)", background: "transparent", color: "#ef4444", fontSize: "14px", cursor: "pointer" }}>
-            Archive
-          </button>
+          <Tip text="Retires this plan for good: it is hidden and can't be bought or given. Members who already have it keep it. You can bring it back later with Restore.">
+            <button onClick={() => onArchive(plan)}
+              style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)", background: "transparent", color: "#ef4444", fontSize: "14px", cursor: "pointer" }}>
+              Archive
+            </button>
+          </Tip>
         )}
         {plan.status === "archived" && (
-          <button onClick={() => onToggle({ ...plan, status: "inactive" })}
-            style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(34,197,94,0.25)", background: "rgba(34,197,94,0.08)", color: "#22c55e", fontSize: "14px", cursor: "pointer" }}>
-            Restore
-          </button>
+          <Tip text="Brings this plan back as Inactive, so it is still hidden. Press Activate afterwards to show it on the website.">
+            <button onClick={() => onToggle({ ...plan, status: "inactive" })}
+              style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(34,197,94,0.25)", background: "rgba(34,197,94,0.08)", color: "#22c55e", fontSize: "14px", cursor: "pointer" }}>
+              Restore
+            </button>
+          </Tip>
         )}
       </div>
     </Reorder.Item>

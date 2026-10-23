@@ -13,6 +13,7 @@ import { ExternalLink, RefreshCw, RotateCcw } from "lucide-react";
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
 import api from "../../services/api.js";
+import { Tip } from "../../components/ui/Tip.jsx";
 
 const formatCurrency = (paise) => `₹${((paise || 0) / 100).toLocaleString("en-IN")}`;
 const formatDate = (date) =>
@@ -141,7 +142,7 @@ export default function AdminRefundsPage() {
                 </div>
                 <div className="refund-side">
                   <span className="refund-amount">{formatCurrency(p.amountPaid)}</span>
-                  <button
+                  <Tip text="Sends the full amount back to the member's original payment method through Razorpay and emails them. Only for duplicate online payments."><button
                     type="button"
                     className="btn-danger"
                     disabled={refundingId === p._id}
@@ -149,7 +150,7 @@ export default function AdminRefundsPage() {
                   >
                     <RotateCcw size={16} aria-hidden="true" />
                     {refundingId === p._id ? "Refunding…" : "Refund"}
-                  </button>
+                  </button></Tip>
                 </div>
               </article>
             ))}

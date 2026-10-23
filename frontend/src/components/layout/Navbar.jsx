@@ -64,7 +64,7 @@ export default function Navbar({
         left          : 0,
         right         : 0,
         zIndex        : 100,
-        height        : "64px",
+        height        : "var(--nav-h, 76px)",
         padding       : "0 2rem",
         display       : "flex",
         alignItems    : "center",
@@ -77,7 +77,7 @@ export default function Navbar({
       }}>
 
         {/* Logo */}
-        <Logo size="md" clickable={true} />
+        <Logo size="xl" clickable={true} highlight className="nav-logo" />
 
         {/* Center nav links — desktop only, landing page only */}
         {showNavLinks && (
@@ -154,7 +154,7 @@ export default function Navbar({
       {menuOpen && (
         <div style={{
           position      : "fixed",
-          top           : "64px",
+          top           : "var(--nav-h, 76px)",
           left          : 0,
           right         : 0,
           zIndex        : 99,

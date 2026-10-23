@@ -9,6 +9,7 @@ import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import api from "../../services/api.js";
 import ReceiptsList from "../../components/ui/ReceiptsList.jsx";
 import { Search, TriangleAlert } from "lucide-react";
+import { Tip, InfoTip } from "../../components/ui/Tip.jsx";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -412,7 +413,8 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
                   color: "#f3d400",
                 }}
               >
-                Complimentary Membership
+                Complimentary Membership{" "}
+                <InfoTip text="A free membership. Nothing is charged, no receipt is made, and it adds nothing to revenue. The member gets a welcome email." />
               </span>
               <p
                 style={{
@@ -570,7 +572,8 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
                 <span
                   style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)" }}
                 >
-                  Create installment schedule
+                  Create installment schedule{" "}
+                  <InfoTip text="Split what is still unpaid into parts, each with a due date. The member sees what is due, and late parts are flagged as overdue." />
                 </span>
               </label>
 
@@ -1296,17 +1299,12 @@ export default function AdminMembersPage() {
                       </p>
                     </div>
                   </div>
-                  <button
+                  <Tip text={memberDetail.activeSubscription ? "This member already has an active plan. Collect any balance, or cancel the plan first." : null}><button
                     onClick={() => setShowPaymentForm(true)}
                     className="btn-gold"
                     // One active plan per member (backend enforces it) — say so
                     // up front instead of after the admin fills the whole form.
                     disabled={!!memberDetail.activeSubscription}
-                    title={
-                      memberDetail.activeSubscription
-                        ? "Member already has an active plan. Use Collect Balance, or cancel it first."
-                        : undefined
-                    }
                     style={{
                       width: "auto",
                       padding: "10px 20px",
@@ -1317,7 +1315,7 @@ export default function AdminMembersPage() {
                     }}
                   >
                     + New Membership
-                  </button>
+                  </button></Tip>
                 </div>
 
                 {/* Active Subscription */}
@@ -1407,7 +1405,7 @@ export default function AdminMembersPage() {
                             const hasBalance =
                               payment && payment.status === "partial";
                             return hasBalance ? (
-                              <button
+                              <Tip text="Record money this member still owes on their plan. It goes to the earliest unpaid installments and a receipt is emailed to them."><button
                                 onClick={() =>
                                   setCollectBalanceModal({
                                     subscription:
@@ -1426,11 +1424,11 @@ export default function AdminMembersPage() {
                                 }}
                               >
                                 Collect Balance
-                              </button>
+                              </button></Tip>
                             ) : null;
                           })()}
                           
-                          <button
+                          <Tip text="Ends this membership now and drops any unpaid installments. Money already paid is not refunded by this button."><button
                             onClick={() => setCancelDialog(true)}
                             style={{
                               padding: "6px 12px",
@@ -1442,8 +1440,8 @@ export default function AdminMembersPage() {
                               cursor: "pointer",
                             }}
                           >
-                            Cancel
-                          </button>
+                            Cancel membership
+                          </button></Tip>
                         </div>
                       </div>
 
@@ -1675,7 +1673,7 @@ export default function AdminMembersPage() {
                                           </span>
                                         </div>
                                         {!isPaid && (
-                                          <button
+                                          <Tip text="Record that this installment was paid at the desk. You enter the amount (part payment is fine) and a receipt is emailed to the member."><button
                                             onClick={() =>
                                               setMarkingInstallment(inst)
                                             }
@@ -1693,7 +1691,7 @@ export default function AdminMembersPage() {
                                             }}
                                           >
                                             Mark Paid
-                                          </button>
+                                          </button></Tip>
                                         )}
                                       </div>
                                     </div>

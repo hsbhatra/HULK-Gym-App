@@ -19,6 +19,7 @@ import { useAuthStore } from "../store/authStore.js";
 import ParticleBackground from "../components/three/ParticleBackground.jsx";
 import Navbar from "../components/layout/Navbar.jsx";
 import Footer from "../components/layout/Footer.jsx";
+import Logo from "../components/ui/Logo.jsx";
 import { getPublicPlans } from "../services/planService.js";
 import { GYM } from "../utils/gymConfig.js";
 import { FACILITIES, CLASSES, AMENITIES, FAQ, HOURS } from "../content/gymContent.js";
@@ -159,18 +160,23 @@ function SectionHead({ eyebrow, title, intro, id }) {
 }
 
 function FeatureCard({ item, index }) {
+  const lead = index === 0 && !!item.image;
   return (
     <motion.article
       {...reveal}
       transition={{ ...reveal.transition, delay: Math.min(index, 4) * 0.06 }}
-      className="card-iron"
-      style={{ padding: "26px", display: "flex", flexDirection: "column", gap: "12px" }}
+      className={`card-iron floor-card${lead ? " floor-card--lead" : ""}${item.image ? "" : " floor-card--plain"}`}
     >
-      <span style={{ color: "var(--yellow)" }}><Icon name={item.icon} /></span>
-      <h3 className="font-display" style={{ fontSize: "28px", textTransform: "uppercase", lineHeight: 1 }}>
-        {item.title}
-      </h3>
-      {item.copy && <p style={{ color: "var(--text-2)", fontSize: "17px", lineHeight: 1.6 }}>{item.copy}</p>}
+      {item.image && (
+        <div className="floor-card__media">
+          <img src={item.image} alt={item.imageAlt || item.title} loading="lazy" decoding="async" width="1600" height="1015" />
+        </div>
+      )}
+      <div className="floor-card__body">
+        <span style={{ color: "var(--yellow)" }}><Icon name={item.icon} /></span>
+        <h3 className="font-display floor-card__title">{item.title}</h3>
+        {item.copy && <p className="floor-card__copy">{item.copy}</p>}
+      </div>
     </motion.article>
   );
 }
@@ -269,7 +275,8 @@ export default function LandingPage() {
           </div>
 
           <div className="hero-inner" style={shift(y, 0.08)}>
-            <p className="eyebrow hg-rise">{GYM.name} · {GYM.city}</p>
+            <Logo size="hero" clickable={false} highlight className="hero-logo hg-rise" />
+            <p className="eyebrow hg-rise" style={{ animationDelay: "0.05s" }}>{GYM.name} · {GYM.city}</p>
             <h1 id="hero-title" className="hero-title hg-rise" style={{ maxWidth: "780px", animationDelay: "0.1s" }}>
               <span className="sr-only">{GYM.name}, {GYM.city} — </span>
               Forge
@@ -323,7 +330,7 @@ export default function LandingPage() {
                 title="The floor"
                 intro="What you can train with from day one."
               />
-              <div className="grid-auto">
+              <div className="floor-grid">
                 {offerings.map((f, i) => <FeatureCard key={f.title} item={f} index={i} />)}
               </div>
             </div>
@@ -522,6 +529,13 @@ export default function LandingPage() {
         {/* ══ VISIT (hours + map) ════════════════════════════════════════════ */}
         {(GYM.address || GYM.phone || HOURS.slots.length > 0) && (
           <section id="visit" className="section-dark section-block" aria-labelledby="visit-title">
+            <motion.figure {...reveal} className="container-wide visit-banner">
+              <img src="/photos/dumbbell-rack.webp" alt="Rows of hex dumbbells on the gym's rack" loading="lazy" decoding="async" width="1600" height="1015" />
+              <figcaption>
+                <span className="eyebrow">Doors open</span>
+                <span className="font-display visit-banner__hours">{HOURS.daysLabel} · {HOURS.slots.map((x) => x.label).join(" · ")}</span>
+              </figcaption>
+            </motion.figure>
             <div className="container-wide visit-grid">
               <motion.div {...reveal} className="card-iron visit-card">
                 <h2 id="visit-title" className="section-title" style={{ fontSize: "clamp(44px, 5vw, 60px)" }}>
