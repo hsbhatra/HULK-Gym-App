@@ -11,10 +11,9 @@ import {
   updateProfile,
   updateProfilePicture,
   deleteProfilePicture,
-  deleteAccount,
 } from "../services/profile.service.js";
+import { requestDeletion, cancelMyRequest, getMyRequest } from "../services/accountDeletion.service.js";
 import { saveMyId } from "../services/idProof.service.js";
-import { clearRefreshTokenCookie } from "../services/auth/token.service.js";
 import ApiError from "../utils/apiError.js";
 
 // =============================================================================
@@ -88,22 +87,49 @@ export const deleteMyProfilePicture = asyncHandler(async (req, res) => {
 });
 
 // =============================================================================
-// deleteMyAccount
-// POST /api/v1/profile/delete   { password }
+// Account deletion — the member asks, the gym admin approves
 // Protected: authenticate + sessionGuard
 // =============================================================================
 
-export const deleteMyAccount = asyncHandler(async (req, res) => {
+const publicRequest = (r) =>
+  r
+    ? {
+        _id: r._id,
+        status: r.status,
+        reason: r.reason,
+        requestedAt: r.createdAt,
+        decidedAt: r.decidedAt,
+        decisionNote: r.decisionNote,
+      }
+    : null;
+
+// GET /api/v1/profile/deletion-request
+export const getMyDeletionRequest = asyncHandler(async (req, res) => {
+  const request = await getMyRequest(req.user.userId);
+  return new ApiResponse(HTTP_STATUS.OK, "Deletion request status retrieved.", {
+    request: publicRequest(request),
+  }).send(res);
+});
+
+// POST /api/v1/profile/deletion-request   { password, reason? }
+export const requestMyAccountDeletion = asyncHandler(async (req, res) => {
   const password = typeof req.body?.password === "string" ? req.body.password : "";
   if (!password) throw ApiError.badRequest("Please enter your password to confirm.");
 
-  await deleteAccount(req.user.userId, password);
-  clearRefreshTokenCookie(res);
-
+  const request = await requestDeletion(req.user.userId, password, req.body?.reason);
   return new ApiResponse(
     HTTP_STATUS.OK,
-    "Your account has been deleted. Payment records are kept as required by law.",
+    "Request sent. The gym will review it, usually within 7 days, and email you the decision.",
+    { request: publicRequest(request) },
   ).send(res);
+});
+
+// DELETE /api/v1/profile/deletion-request
+export const cancelMyDeletionRequest = asyncHandler(async (req, res) => {
+  await cancelMyRequest(req.user.userId);
+  return new ApiResponse(HTTP_STATUS.OK, "Your deletion request has been cancelled.", {
+    request: null,
+  }).send(res);
 });
 
 // =============================================================================

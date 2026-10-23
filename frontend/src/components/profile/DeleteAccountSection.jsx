@@ -1,33 +1,52 @@
 // =============================================================================
 // src/components/profile/DeleteAccountSection.jsx
 // =============================================================================
-// "Danger zone" — lets a member erase their account (DPDP right to erasure).
-// Payment/receipt records are kept by the server as the law requires.
+// "Danger zone" — the member ASKS to delete their account (DPDP right to
+// erasure). Nothing is erased until the gym admin approves; the member keeps
+// using the app meanwhile and is emailed the decision. Payment/receipt records
+// are kept by the server as the law requires.
 // =============================================================================
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
-import { TriangleAlert } from "lucide-react";
-import { deleteMyAccount } from "../../services/profileService.js";
-import { useAuthStore } from "../../store/authStore.js";
+import { Clock, TriangleAlert } from "lucide-react";
+import {
+  getDeletionRequest,
+  requestAccountDeletion,
+  cancelDeletionRequest,
+} from "../../services/profileService.js";
+
+const formatDate = (d) =>
+  new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 export default function DeleteAccountSection() {
-  const navigate = useNavigate();
-  const logout = useAuthStore((s) => s.logout);
+  const [request, setRequest] = useState(null); // pending, or a recent rejection
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
+  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    getDeletionRequest()
+      .then((res) => alive && setRequest(res.data.data.request))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const close = () => {
     if (busy) return;
     setOpen(false);
     setPassword("");
+    setReason("");
     setError("");
   };
 
-  const confirmDelete = async (e) => {
+  const sendRequest = async (e) => {
     e.preventDefault();
     if (!password) {
       setError("Please enter your password to confirm.");
@@ -36,27 +55,73 @@ export default function DeleteAccountSection() {
     setBusy(true);
     setError("");
     try {
-      await deleteMyAccount(password);
-      logout({ manual: true });
-      toast.success("Your account has been deleted.");
-      navigate("/", { replace: true });
+      const res = await requestAccountDeletion({ password, reason: reason.trim() });
+      setRequest(res.data.data.request);
+      toast.success("Request sent. The gym will review it and email you.");
+      setOpen(false);
+      setPassword("");
+      setReason("");
     } catch (err) {
-      setError(err.response?.data?.message || "Couldn't delete your account. Please try again.");
+      setError(err.response?.data?.message || "Couldn't send your request. Please try again.");
+    } finally {
       setBusy(false);
     }
   };
 
+  const cancelRequest = async () => {
+    setCancelling(true);
+    try {
+      await cancelDeletionRequest();
+      setRequest(null);
+      toast.success("Your deletion request has been cancelled.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't cancel the request. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const pending = request?.status === "pending";
+  const declined = request?.status === "rejected";
+
   return (
     <section aria-labelledby="danger-title" className="danger-zone">
-      <h3 id="danger-title" className="danger-title">Delete account</h3>
-      <p className="danger-copy">
-        This permanently removes your name, email, phone, photo and profile details, and logs you
-        out everywhere. Your payment receipts are kept for the gym's tax records, without your
-        personal details.
-      </p>
-      <button type="button" className="btn-danger" onClick={() => setOpen(true)}>
-        Delete my account
-      </button>
+      <h3 id="danger-title" className="danger-title">
+        {pending ? "Deletion requested" : "Delete account"}
+      </h3>
+
+      {pending ? (
+        <>
+          <p className="danger-copy" style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
+            <Clock size={20} aria-hidden="true" style={{ flexShrink: 0, marginTop: "2px" }} />
+            <span>
+              You asked to delete your account on {formatDate(request.requestedAt)}. The gym reviews
+              requests, usually within 7 days, and will email you the decision. Until then your account
+              works as normal.
+            </span>
+          </p>
+          <button type="button" className="btn-ghost" onClick={cancelRequest} disabled={cancelling}>
+            {cancelling ? "Cancelling…" : "Cancel my request"}
+          </button>
+        </>
+      ) : (
+        <>
+          {declined && (
+            <p role="status" className="danger-copy" style={{ color: "var(--text-1)" }}>
+              Your last request ({formatDate(request.decidedAt)}) was declined: “{request.decisionNote}”
+            </p>
+          )}
+          <p className="danger-copy">
+            You can ask the gym to permanently remove your name, email, phone, photo, government ID
+            details and profile details. The gym reviews every request — usually within 7 days — and
+            emails you the decision. Once approved you are logged out everywhere. Your payment
+            receipts are kept for the gym's tax records, without your personal details.
+          </p>
+          <button type="button" className="btn-danger" onClick={() => setOpen(true)}>
+            Request account deletion
+          </button>
+        </>
+      )}
 
       {open && (
         <div className="modal-backdrop" role="presentation" onClick={close}>
@@ -66,16 +131,28 @@ export default function DeleteAccountSection() {
             aria-labelledby="delete-dialog-title"
             className="modal-card"
             onClick={(e) => e.stopPropagation()}
-            onSubmit={confirmDelete}
+            onSubmit={sendRequest}
           >
             <TriangleAlert size={36} color="var(--ember)" aria-hidden="true" />
             <h3 id="delete-dialog-title" className="danger-title" style={{ marginTop: "12px" }}>
-              Delete your account?
+              Request account deletion?
             </h3>
             <p className="danger-copy">
-              This can't be undone. If you have an active membership or unpaid installments, please
-              sort them out with the gym first.
+              Nothing is deleted yet. The gym will review your request and email you. If you have an
+              active membership or unpaid installments, please sort them out with the gym first.
             </p>
+            <label htmlFor="delete-reason" className="danger-label">
+              Reason (optional)
+            </label>
+            <textarea
+              id="delete-reason"
+              className="input-dark"
+              rows={2}
+              maxLength={300}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              style={{ resize: "vertical", marginBottom: "14px" }}
+            />
             <label htmlFor="delete-password" className="danger-label">
               Enter your password to confirm
             </label>
@@ -98,7 +175,7 @@ export default function DeleteAccountSection() {
                 Keep my account
               </button>
               <button type="submit" className="btn-danger" disabled={busy} style={{ flex: "1 1 160px" }}>
-                {busy ? "Deleting…" : "Delete permanently"}
+                {busy ? "Sending…" : "Send request"}
               </button>
             </div>
           </form>

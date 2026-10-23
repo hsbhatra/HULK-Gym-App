@@ -185,3 +185,49 @@ export const sendRefundInitiatedEmail = async (user, payment) => {
     html: shell(inner),
   });
 };
+
+// -----------------------------------------------------------------------------
+// Account deletion — the gym's decision on the member's request
+// `contact` = { email, firstName } (captured before the account was erased)
+// -----------------------------------------------------------------------------
+export const sendDeletionApprovedEmail = async (contact) => {
+  const inner = `
+    <h2 style="margin:0 0 6px; color:#1a1a1a; font-size:20px;">Your account has been deleted</h2>
+    <p style="margin:0 0 14px; color:#666; font-size:14px; line-height:1.6;">
+      Hi ${esc(contact.firstName)}, we approved your request. Your name, email, phone number,
+      photo, profile details and ID details have been erased, and you are signed out everywhere.
+    </p>
+    <p style="margin:0; color:#666; font-size:14px; line-height:1.6;">
+      Payment and receipt records are kept for as long as tax and accounting laws require,
+      without your personal details. Thank you for training with us.
+    </p>`;
+
+  await sendEmail({
+    to: contact.email,
+    subject: `Your ${GYM_CONFIG.NAME} account has been deleted`,
+    html: shell(inner),
+  });
+};
+
+export const sendDeletionRejectedEmail = async (user, note) => {
+  const inner = `
+    <h2 style="margin:0 0 6px; color:#1a1a1a; font-size:20px;">We couldn't delete your account yet</h2>
+    <p style="margin:0 0 14px; color:#666; font-size:14px; line-height:1.6;">
+      Hi ${esc(user.firstName)}, we reviewed your request to delete your account, and we
+      can't do it right now.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0"
+      style="background:#f9f9f9; border-radius:10px; padding:16px 20px; margin-bottom:14px;">
+      ${row("Reason", esc(note), { bold: true })}
+    </table>
+    <p style="margin:0; color:#666; font-size:14px; line-height:1.6;">
+      Your account is unchanged. Once this is sorted out you can send a new request from
+      My profile, or speak to the front desk.
+    </p>`;
+
+  await sendEmail({
+    to: user.email,
+    subject: `About your account deletion request — ${GYM_CONFIG.NAME}`,
+    html: shell(inner),
+  });
+};

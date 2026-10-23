@@ -11,6 +11,8 @@
 // =============================================================================
 
 export const LAST_UPDATED = "22 October 2026";
+// The privacy policy changed on its own (government ID), so it has its own date
+const PRIVACY_UPDATED = "23 October 2026";
 
 const contactLine = (c) =>
   [c.email && `email ${c.email}`, c.phone && `call ${c.phone}`, c.address && `visit us at ${c.address}`]
@@ -19,7 +21,7 @@ const contactLine = (c) =>
 
 export const privacyPolicy = (c) => ({
   title: "Privacy Policy",
-  updated: LAST_UPDATED,
+  updated: PRIVACY_UPDATED,
   intro:
     "This policy explains what personal data Hulk Gym collects through this website and app, why we collect it, who we share it with, and the choices you have. We follow India's Digital Personal Data Protection Act, 2023.",
   sections: [
@@ -31,6 +33,7 @@ export const privacyPolicy = (c) => ({
             "Account details: your first and last name, email address, mobile number and a password (stored only as a secure hash — we can never see it).",
             "Optional profile details you choose to add: profile photo, height, weight, date of birth, gender and a short bio.",
             "Membership records: plans you buy, start and end dates, payments, installments and receipts.",
+            "Government ID: the type of ID you show us (for example PAN card, driving licence, Voter ID or passport) and its number, which you type in yourself at the front desk. We do not collect Aadhaar numbers, and we do not keep photos or copies of your ID.",
             "Login sessions: the device/browser name and IP address of each active login, so you can see and end your sessions.",
             "Messages you send us by email or WhatsApp.",
           ],
@@ -46,6 +49,7 @@ export const privacyPolicy = (c) => ({
             "To create and secure your account and verify your email with a one-time code.",
             "To sell and manage your membership, record payments and installments, and email you receipts.",
             "To remind you before your membership or an installment is due.",
+            "To confirm who our members are: the front desk checks your original ID once, and we keep its type and number on your account for member verification.",
             "To answer your questions and keep the gym safe.",
             "To meet legal, tax and accounting obligations.",
           ],
@@ -65,7 +69,20 @@ export const privacyPolicy = (c) => ({
             "Our hosting and database providers — to run the website and store data securely.",
           ],
         },
-        "We may also share data when the law requires it.",
+        "We do not share your government ID with any of them: it is stored encrypted in our database. We may also share data when the law requires it, for example when a court or the police lawfully ask for it.",
+      ],
+    },
+    {
+      heading: "Your government ID",
+      body: [
+        {
+          list: [
+            "You show your original ID at the front desk. After the receptionist unlocks the page, you type the ID type and number into your own profile while they watch.",
+            "The number is stored encrypted. Only the gym's admin can view it, and every time it is viewed, the date, time and the person who viewed it are recorded.",
+            "Once saved, it cannot be changed from the app, by you or by the gym. If you notice a mistake, tell the front desk and we will arrange a correction.",
+            "It is erased when you delete your account.",
+          ],
+        },
       ],
     },
     {
@@ -78,7 +95,7 @@ export const privacyPolicy = (c) => ({
     {
       heading: "How long we keep it",
       body: [
-        "We keep your account data while your account is active. Payment and receipt records are kept for as long as Indian tax and accounting laws require, even after an account is deleted. Login session records expire automatically.",
+        "We keep your account data while your account is active. Payment and receipt records are kept for as long as Indian tax and accounting laws require, even after an account is deleted. Your government ID details are erased when your account is deleted. The record of who viewed an ID is kept for at least one year, and it never contains the ID number. Login session records expire automatically.",
       ],
     },
     {
@@ -88,7 +105,7 @@ export const privacyPolicy = (c) => ({
           list: [
             "See and update your details any time from My profile.",
             "End any active login from Active sessions.",
-            "Ask us to delete your account: use “Delete my account” in My profile → Profile. We remove your personal details and keep only the payment records the law requires.",
+            "Ask us to delete your account: use “Request account deletion” in My profile → Profile. The gym reviews every request, usually within 7 days, and emails you the decision. If it is approved, we remove your personal details, including your government ID, and keep only the payment records the law requires. Until then your account works as normal, and you can cancel your request.",
             "Withdraw consent or raise a complaint with us first, and if unresolved, with the Data Protection Board of India.",
           ],
         },

@@ -10,7 +10,7 @@ import Logo from "../ui/Logo.jsx";
 import { useAuthStore } from "../../store/authStore.js";
 import { logoutUser } from "../../services/authService.js";
 import toast from "react-hot-toast";
-import { LayoutDashboard, Package, RotateCcw, Users } from "lucide-react";
+import { LayoutDashboard, Package, RotateCcw, UserX, Users } from "lucide-react";
 import api from "../../services/api.js";
 
 export default function AdminLayout({ children }) {
@@ -39,11 +39,30 @@ export default function AdminLayout({ children }) {
     };
   }, [location.pathname]);
 
+  // Same idea for account-deletion requests waiting for a decision
+  const [deletionsPending, setDeletionsPending] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      api.get("/admin/deletion-requests")
+        .then((res) => alive && setDeletionsPending(res.data?.data?.pending?.length || 0))
+        .catch(() => {});
+    const onChange = (e) =>
+      typeof e.detail?.pending === "number" ? setDeletionsPending(e.detail.pending) : load();
+    load();
+    window.addEventListener("hg:deletions-changed", onChange);
+    return () => {
+      alive = false;
+      window.removeEventListener("hg:deletions-changed", onChange);
+    };
+  }, [location.pathname]);
+
   const navItems = [
     { path: "/admin",         label: "Dashboard", icon: <LayoutDashboard size={18} aria-hidden="true" /> },
     { path: "/admin/plans",   label: "Plans",     icon: <Package size={18} aria-hidden="true" /> },
     { path: "/admin/members", label: "Members",   icon: <Users size={18} aria-hidden="true" /> },
     { path: "/admin/refunds", label: "Refunds",   icon: <RotateCcw size={18} aria-hidden="true" />, badge: refundsPending },
+    { path: "/admin/deletion-requests", label: "Deletions", icon: <UserX size={18} aria-hidden="true" />, badge: deletionsPending },
   ];
 
   // Must revoke the server session too — clearing local state alone left the

@@ -205,7 +205,9 @@ export default function IdProofSection({ user, onUpdate }) {
             <input type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); setError(""); }}
               style={{ marginTop: "4px", width: "18px", height: "18px", accentColor: "#f3d400", flexShrink: 0 }} />
             <span>
-              I agree that the gym may store this ID number securely for member verification. The receptionist has checked my original ID.
+              I agree that the gym may store this ID number securely for member verification, as described in the{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "var(--yellow)", textDecoration: "underline" }}>Privacy Policy</a>.
+              The receptionist has checked my original ID.
             </span>
           </label>
 
