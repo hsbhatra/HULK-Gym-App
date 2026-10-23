@@ -14,7 +14,9 @@ import {
   updateMyProfile,
   updateMyProfilePicture,
   deleteMyProfilePicture,
-  deleteMyAccount,
+  getMyDeletionRequest,
+  requestMyAccountDeletion,
+  cancelMyDeletionRequest,
   saveMyIdProof,
 } from "../controllers/profile.controller.js";
 import { sensitiveActionLimiter } from "../middleware/rateLimiter.middleware.js";
@@ -28,7 +30,10 @@ router.get   ("/",        getMyProfile);
 router.patch ("/",        validateUpdateProfile, updateMyProfile);
 router.patch ("/picture", uploadProfilePictureMiddleware, updateMyProfilePicture);
 router.delete("/picture", deleteMyProfilePicture);
-router.post  ("/delete",  sensitiveActionLimiter, deleteMyAccount);
+// Account deletion needs the gym admin's approval
+router.get   ("/deletion-request", getMyDeletionRequest);
+router.post  ("/deletion-request", sensitiveActionLimiter, requestMyAccountDeletion);
+router.delete("/deletion-request", cancelMyDeletionRequest);
 router.post  ("/id",      sensitiveActionLimiter, saveMyIdProof);
 
 export default router;

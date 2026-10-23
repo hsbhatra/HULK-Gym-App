@@ -33,6 +33,7 @@ const LegalPage = lazy(() => import("./pages/legal/LegalPage.jsx"));
 const ContactPage = lazy(() => import("./pages/ContactPage.jsx"));
 const AdminMembersPage = lazy(() => import("./pages/admin/AdminMembersPage.jsx"));
 const AdminRefundsPage = lazy(() => import("./pages/admin/AdminRefundsPage.jsx"));
+const AdminDeletionRequestsPage = lazy(() => import("./pages/admin/AdminDeletionRequestsPage.jsx"));
 
 // Per-route SEO: tab title, description, canonical and indexing rules
 const SITE_URL = (import.meta.env.VITE_SITE_URL || "").replace(/\/$/, "");
@@ -57,6 +58,7 @@ const PAGES = {
   "/admin/plans": { title: "Plans — Hulk Gym Admin" },
   "/admin/members": { title: "Members — Hulk Gym Admin" },
   "/admin/refunds": { title: "Refunds — Hulk Gym Admin" },
+  "/admin/deletion-requests": { title: "Deletion requests — Hulk Gym Admin" },
 };
 
 function pageFor(pathname) {
@@ -244,6 +246,14 @@ function AppContent() {
             element={
               <AdminRoute>
                 <AdminRefundsPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/deletion-requests"
+            element={
+              <AdminRoute>
+                <AdminDeletionRequestsPage />
               </AdminRoute>
             }
           />

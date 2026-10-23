@@ -105,7 +105,7 @@ export const privacyPolicy = (c) => ({
           list: [
             "See and update your details any time from My profile.",
             "End any active login from Active sessions.",
-            "Ask us to delete your account: use “Delete my account” in My profile → Profile. We remove your personal details, including your government ID, and keep only the payment records the law requires. Your account is deleted straight away, with no approval step.",
+            "Ask us to delete your account: use “Request account deletion” in My profile → Profile. The gym reviews every request, usually within 7 days, and emails you the decision. If it is approved, we remove your personal details, including your government ID, and keep only the payment records the law requires. Until then your account works as normal, and you can cancel your request.",
             "Withdraw consent or raise a complaint with us first, and if unresolved, with the Data Protection Board of India.",
           ],
         },

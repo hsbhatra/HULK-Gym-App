@@ -26,6 +26,7 @@ import {
 } from "../services/email/receiptEmail.service.js";
 import razorpay from "../config/razorpay.js";
 import { unlockMemberId, revealMemberId, ID_UNLOCK_MINUTES } from "../services/idProof.service.js";
+import { listRequests, approveRequest, rejectRequest } from "../services/accountDeletion.service.js";
 
 // =============================================================================
 // searchMembers
@@ -924,4 +925,30 @@ export const revealMemberIdNumber = asyncHandler(async (req, res) => {
   res.set("Cache-Control", "no-store");
 
   return new ApiResponse(HTTP_STATUS.OK, "ID number retrieved.", result).send(res);
+});
+
+// =============================================================================
+// Account deletion requests
+// =============================================================================
+
+// GET /api/v1/admin/deletion-requests  →  { pending, history }
+export const getDeletionRequests = asyncHandler(async (req, res) => {
+  const data = await listRequests();
+  return new ApiResponse(HTTP_STATUS.OK, "Deletion requests retrieved.", data).send(res);
+});
+
+// POST /api/v1/admin/deletion-requests/:id/approve
+// Erases the member's personal data (name, contact, photo, ID) and emails them.
+export const approveDeletionRequest = asyncHandler(async (req, res) => {
+  await approveRequest(req.params.id, req.user.userId);
+  return new ApiResponse(
+    HTTP_STATUS.OK,
+    "Approved. The member's personal details have been erased and they have been emailed.",
+  ).send(res);
+});
+
+// POST /api/v1/admin/deletion-requests/:id/reject   { note }
+export const rejectDeletionRequest = asyncHandler(async (req, res) => {
+  await rejectRequest(req.params.id, req.user.userId, req.body?.note);
+  return new ApiResponse(HTTP_STATUS.OK, "Rejected. The member has been emailed the reason.").send(res);
 });

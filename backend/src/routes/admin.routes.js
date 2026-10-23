@@ -20,6 +20,9 @@ import {
   getRefunds,
   unlockMemberIdEntry,
   revealMemberIdNumber,
+  getDeletionRequests,
+  approveDeletionRequest,
+  rejectDeletionRequest,
 } from "../controllers/admin.controller.js";
 import { idRevealLimiter } from "../middleware/rateLimiter.middleware.js";
 
@@ -54,6 +57,11 @@ router.post("/subscriptions/:id/collect", collectOutstandingBalance);
 // Payments / refunds
 router.get("/refunds", getRefunds);
 router.post("/payments/:id/refund", refundDuplicatePayment);
+
+// Account deletion requests (member asks, admin approves or rejects)
+router.get("/deletion-requests", getDeletionRequests);
+router.post("/deletion-requests/:id/approve", approveDeletionRequest);
+router.post("/deletion-requests/:id/reject", rejectDeletionRequest);
 
 // Installments
 router.patch("/installments/:id", markInstallmentPaid);

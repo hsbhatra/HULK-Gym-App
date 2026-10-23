@@ -144,24 +144,33 @@ export const deleteProfilePicture = async (userId) => {
 };
 
 // =============================================================================
-// deleteAccount
+// Account deletion (DPDP "right to erasure")
 // =============================================================================
-// Member-initiated account deletion (DPDP "right to erasure").
+// A member REQUESTS deletion (see accountDeletion.service.js); the gym admin
+// approves it, and only then does eraseAccount() run.
 // Personal details are erased; payment, receipt and membership records stay
 // (tax/accounting law) but no longer point to anything identifying.
 // Blocked while money is still in play: an active membership, unpaid
 // installments, or a refund the gym still owes this member.
 // =============================================================================
-export const deleteAccount = async (userId, password) => {
-  const user = await User.findById(userId).select("+passwordHash");
-  if (!user || !user.isActive) throw ApiError.notFound("Account not found.");
-  if (user.role === USER_ROLES.ADMIN) {
-    throw ApiError.forbidden("Admin accounts can't be deleted from here.");
-  }
 
-  const passwordOk = await user.comparePassword(password || "");
-  if (!passwordOk) throw ApiError.badRequest("Incorrect password.");
+export const DELETION_BLOCKERS = {
+  membership: {
+    member: "You have an active membership. Please contact the gym to end it before deleting your account.",
+    admin: "This member has an active membership. Cancel it first (Members → Cancel membership), or reject the request.",
+  },
+  installments: {
+    member: "You have unpaid installments. Please clear them with the gym before deleting your account.",
+    admin: "This member has unpaid installments. Collect or waive them first, or reject the request.",
+  },
+  refund: {
+    member: "The gym still owes you a refund. We'll process it first — please contact the gym.",
+    admin: "The gym still owes this member a refund. Refund it first (Refunds page), or reject the request.",
+  },
+};
 
+// Which of the three things still need sorting out for this member?
+export const getDeletionBlockers = async (userId) => {
   const [liveMembership, unpaid, refundDue] = await Promise.all([
     Subscription.exists({
       userId,
@@ -174,21 +183,27 @@ export const deleteAccount = async (userId, password) => {
     Payment.exists({ userId, status: PAYMENT_STATUS.REFUND_DUE }),
   ]);
 
-  if (liveMembership) {
-    throw ApiError.conflict(
-      "You have an active membership. Please contact the gym to end it before deleting your account.",
-    );
+  const blockers = [];
+  if (liveMembership) blockers.push("membership");
+  if (unpaid) blockers.push("installments");
+  if (refundDue) blockers.push("refund");
+  return blockers;
+};
+
+// Erases the member's personal data (no password check — the caller has
+// already verified the member or the admin approval). Returns the contact
+// details held before erasure so the caller can send a last email.
+export const eraseAccount = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user || !user.isActive) throw ApiError.notFound("Account not found.");
+  if (user.role === USER_ROLES.ADMIN) {
+    throw ApiError.forbidden("Admin accounts can't be deleted from here.");
   }
-  if (unpaid) {
-    throw ApiError.conflict(
-      "You have unpaid installments. Please clear them with the gym before deleting your account.",
-    );
-  }
-  if (refundDue) {
-    throw ApiError.conflict(
-      "The gym still owes you a refund. We'll process it first — please contact the gym.",
-    );
-  }
+
+  const blockers = await getDeletionBlockers(user._id);
+  if (blockers.length) throw ApiError.conflict(DELETION_BLOCKERS[blockers[0]].admin);
+
+  const contact = { email: user.email, firstName: user.firstName };
 
   // Remove the profile photo from Cloudinary (best effort)
   if (user.profilePicturePublicId) {
@@ -235,4 +250,6 @@ export const deleteAccount = async (userId, password) => {
 
   // Log out everywhere
   await Session.updateMany({ userId: user._id, isActive: true }, { isActive: false });
+
+  return contact;
 };
