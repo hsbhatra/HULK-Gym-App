@@ -50,8 +50,8 @@ export default function DeleteAccountSection() {
     <section aria-labelledby="danger-title" className="danger-zone">
       <h3 id="danger-title" className="danger-title">Delete account</h3>
       <p className="danger-copy">
-        This permanently removes your name, email, phone, photo and profile details, and logs you
-        out everywhere. Your payment receipts are kept for the gym's tax records, without your
+        This permanently removes your name, email, phone, photo, government ID details and profile
+        details, and logs you out everywhere. Your payment receipts are kept for the gym's tax records, without your
         personal details.
       </p>
       <button type="button" className="btn-danger" onClick={() => setOpen(true)}>
