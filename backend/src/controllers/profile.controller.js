@@ -13,6 +13,7 @@ import {
   deleteProfilePicture,
   deleteAccount,
 } from "../services/profile.service.js";
+import { saveMyId } from "../services/idProof.service.js";
 import { clearRefreshTokenCookie } from "../services/auth/token.service.js";
 import ApiError from "../utils/apiError.js";
 
@@ -103,4 +104,28 @@ export const deleteMyAccount = asyncHandler(async (req, res) => {
     HTTP_STATUS.OK,
     "Your account has been deleted. Payment records are kept as required by law.",
   ).send(res);
+});
+
+// =============================================================================
+// saveMyIdProof
+// POST /api/v1/profile/id   { docType, number, consent }
+// Protected: authenticate + sessionGuard. Works once, only after the front desk
+// has unlocked ID entry for this member. The number is never sent back.
+// =============================================================================
+
+export const saveMyIdProof = asyncHandler(async (req, res) => {
+  const { docType, number, consent } = req.body || {};
+  const user = await saveMyId(
+    req.user.userId,
+    {
+      docType: typeof docType === "string" ? docType : "",
+      number: typeof number === "string" ? number : "",
+      consent: consent === true,
+    },
+    req.ip,
+  );
+
+  return new ApiResponse(HTTP_STATUS.OK, "Your ID has been saved.", {
+    user: user.toJSON(),
+  }).send(res);
 });

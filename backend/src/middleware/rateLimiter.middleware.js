@@ -44,6 +44,13 @@ export const otpLimiter = make({
   perEmail: true,
 });
 
+// Viewing a member's government ID number (admin "Show ID number")
+export const idRevealLimiter = make({
+  minutes: 15,
+  max: 30,
+  message: "Too many ID lookups. Please wait a few minutes and try again.",
+});
+
 // Backstop for the whole API (per IP). Generous: a gym's Wi-Fi is shared.
 export const generalLimiter = make({
   minutes: 15,

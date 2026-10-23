@@ -28,7 +28,8 @@ import ProfileSection from "../../components/profile/ProfileSection.jsx";
 import SessionsSection from "../../components/profile/SessionsSection.jsx";
 import ChangePasswordSection from "../../components/profile/ChangePasswordSection.jsx";
 import MembershipSection from "../../components/profile/MembershipSection.jsx";
-import { BadgeCheck, House, Lock, MonitorSmartphone, User } from "lucide-react";
+import IdProofSection from "../../components/profile/IdProofSection.jsx";
+import { BadgeCheck, House, IdCard, Lock, MonitorSmartphone, User } from "lucide-react";
 
 // =============================================================================
 // ProfilePage — Main Component
@@ -71,6 +72,7 @@ export default function ProfilePage() {
   const navItems = [
     { id: "profile", label: "Profile", icon: <User size={18} aria-hidden="true" /> },
     { id: "membership", label: "Membership", icon: <BadgeCheck size={18} aria-hidden="true" /> },
+    { id: "idproof", label: "ID Proof", icon: <IdCard size={18} aria-hidden="true" /> },
     { id: "sessions", label: "Active Sessions", icon: <MonitorSmartphone size={18} aria-hidden="true" /> },
     { id: "password", label: "Change Password", icon: <Lock size={18} aria-hidden="true" /> },
   ];
@@ -342,6 +344,9 @@ export default function ProfilePage() {
                   <ProfileSection user={user} onUpdate={setUser} />
                 )}
                 {activeTab === "membership" && <MembershipSection />}
+                {activeTab === "idproof" && (
+                  <IdProofSection user={user} onUpdate={setUser} />
+                )}
                 {activeTab === "sessions" && (
                   <SessionsSection onLogout={() => navigate("/")} />
                 )}

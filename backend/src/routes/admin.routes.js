@@ -18,7 +18,10 @@ import {
   collectOutstandingBalance,
   refundDuplicatePayment,
   getRefunds,
+  unlockMemberIdEntry,
+  revealMemberIdNumber,
 } from "../controllers/admin.controller.js";
+import { idRevealLimiter } from "../middleware/rateLimiter.middleware.js";
 
 const router = Router();
 
@@ -37,6 +40,10 @@ router.get("/dashboard", getDashboardStats);
 // Members
 router.get("/members", searchMembers);
 router.get("/members/:id", getMemberProfile);
+
+// Government ID: desk unlock (once, 30 min) and "Show ID number"
+router.post("/members/:id/id/unlock", unlockMemberIdEntry);
+router.post("/members/:id/id/reveal", idRevealLimiter, revealMemberIdNumber);
 
 // Subscriptions
 router.get("/subscriptions", getAllSubscriptions);

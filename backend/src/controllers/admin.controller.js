@@ -25,6 +25,7 @@ import {
   sendRefundInitiatedEmail,
 } from "../services/email/receiptEmail.service.js";
 import razorpay from "../config/razorpay.js";
+import { unlockMemberId, revealMemberId, ID_UNLOCK_MINUTES } from "../services/idProof.service.js";
 
 // =============================================================================
 // searchMembers
@@ -33,6 +34,7 @@ import razorpay from "../config/razorpay.js";
 
 export const searchMembers = asyncHandler(async (req, res) => {
   const { q = "" } = req.query;
+  const idMissing = req.query.idMissing === "true";
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
   const skip = (page - 1) * limit;
@@ -45,6 +47,7 @@ export const searchMembers = asyncHandler(async (req, res) => {
 
   // Members only — not the admin account, not deleted (anonymised) accounts
   let filter = { role: "member", deletedAt: null }; // empty search → every member
+  if (idMissing) filter["idProof.savedAt"] = null;   // members without a saved ID
   if (trimmed) {
     const orConditions = [
       { firstName: rx(trimmed) },
@@ -79,7 +82,7 @@ export const searchMembers = asyncHandler(async (req, res) => {
   const [members, total] = await Promise.all([
     User.find(filter)
       .select(
-        "firstName lastName email phoneNumber userId role isActive profilePicture",
+        "firstName lastName email phoneNumber userId role isActive profilePicture idProof.savedAt idProof.unlockedUntil",
       )
       .skip(skip)
       .limit(limit)
@@ -889,4 +892,36 @@ export const refundDuplicatePayment = asyncHandler(async (req, res) => {
   return new ApiResponse(HTTP_STATUS.OK, "Refund initiated. The member has been emailed.", {
     payment: { _id: payment._id, status: payment.status, refund: payment.refund },
   }).send(res);
+});
+
+// =============================================================================
+// unlockMemberIdEntry
+// POST /api/v1/admin/members/:id/id/unlock
+// =============================================================================
+// Front desk has checked the member's original ID and lets the member type it
+// into their own profile — once, within ID_UNLOCK_MINUTES.
+// =============================================================================
+
+export const unlockMemberIdEntry = asyncHandler(async (req, res) => {
+  const member = await unlockMemberId(req.params.id, req.user.userId, req.ip);
+
+  return new ApiResponse(
+    HTTP_STATUS.OK,
+    `ID entry unlocked for ${ID_UNLOCK_MINUTES} minutes. Ask the member to open Profile → ID Proof.`,
+    { idStatus: member.toJSON().idStatus },
+  ).send(res);
+});
+
+// =============================================================================
+// revealMemberIdNumber
+// POST /api/v1/admin/members/:id/id/reveal
+// =============================================================================
+// Decrypts and returns the number for one admin click. Every call is logged.
+// =============================================================================
+
+export const revealMemberIdNumber = asyncHandler(async (req, res) => {
+  const result = await revealMemberId(req.params.id, req.user.userId, req.ip);
+  res.set("Cache-Control", "no-store");
+
+  return new ApiResponse(HTTP_STATUS.OK, "ID number retrieved.", result).send(res);
 });
