@@ -138,6 +138,22 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // --- GOVERNMENT ID (any ID except Aadhaar) ---
+    // The number is stored ENCRYPTED (see utils/idCrypto.js) and never leaves
+    // the server except through the admin "Show ID number" endpoint.
+    // Once savedAt is set nobody can change it.
+    idProof: {
+      docType: { type: String, enum: ["pan", "driving_licence", "voter_id", "passport", "other", null], default: null },
+      last4: { type: String, default: null },
+      savedAt: { type: Date, default: null },
+      enc: { type: String, default: null, select: false },
+      hash: { type: String, default: null, select: false },
+      // Desk unlock: one save, valid until unlockedUntil
+      unlockedUntil: { type: Date, default: null },
+      unlockedAt: { type: Date, default: null },
+      unlockedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    },
+
     // Set when the member deletes their account (personal data erased)
     deletedAt: { type: Date, default: null },
   },
@@ -149,6 +165,18 @@ const userSchema = new mongoose.Schema(
       transform: function (doc, ret) {
         delete ret.passwordHash;
         delete ret.__v;
+
+        // Government ID: expose a safe status only — never the number
+        const p = ret.idProof || {};
+        const unlocked = !!(p.unlockedUntil && new Date(p.unlockedUntil) > new Date());
+        ret.idStatus = {
+          state: p.savedAt ? "saved" : unlocked ? "unlocked" : "locked",
+          docType: p.docType || null,
+          last4: p.last4 || null,
+          savedAt: p.savedAt || null,
+          unlockedUntil: !p.savedAt && unlocked ? p.unlockedUntil : null,
+        };
+        delete ret.idProof;
         return ret;
       },
     },
@@ -189,6 +217,12 @@ userSchema.virtual("fullName").get(function () {
 });
 
 userSchema.index({ role: 1, isActive: 1 });
+
+// The same ID number can't sit on two accounts (the fingerprint is one-way)
+userSchema.index(
+  { "idProof.hash": 1 },
+  { unique: true, partialFilterExpression: { "idProof.hash": { $type: "string" } } },
+);
 
 const User = mongoose.model("User", userSchema);
 

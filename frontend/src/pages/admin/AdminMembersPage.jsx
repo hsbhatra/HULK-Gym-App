@@ -8,6 +8,7 @@ import { useParams } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import api from "../../services/api.js";
 import ReceiptsList from "../../components/ui/ReceiptsList.jsx";
+import MemberIdPanel from "../../components/admin/MemberIdPanel.jsx";
 import { Search, TriangleAlert } from "lucide-react";
 import { Tip, InfoTip } from "../../components/ui/Tip.jsx";
 
@@ -705,6 +706,7 @@ export default function AdminMembersPage() {
   const [totalMembers, setTotalMembers] = useState(0);
   const [page, setPage] = useState(1);
   const [searching, setSearching] = useState(false);
+  const [idMissingOnly, setIdMissingOnly] = useState(false); // only members with no ID saved
 
   // ── Detail panel state ──────────────────────────────────────────────────────
   const [selectedMember, setSelectedMember] = useState(null);
@@ -732,13 +734,13 @@ export default function AdminMembersPage() {
   }, []);
 
   // ── Search ──────────────────────────────────────────────────────────────────
-  const searchMembers = useCallback(async (q, pageNum = 1) => {
+  const searchMembers = useCallback(async (q, pageNum = 1, missingOnly = false) => {
     setSearching(true);
     try {
       // Empty query → backend lists all members
       const effectiveQuery = q.trim();
       const res = await api.get(
-        `/admin/members?q=${encodeURIComponent(effectiveQuery)}&page=${pageNum}&limit=${ITEMS_PER_PAGE}`,
+        `/admin/members?q=${encodeURIComponent(effectiveQuery)}&page=${pageNum}&limit=${ITEMS_PER_PAGE}${missingOnly ? "&idMissing=true" : ""}`,
       );
       setMembers(res.data.data.members);
       setTotalMembers(res.data.data.total || 0);
@@ -756,12 +758,19 @@ export default function AdminMembersPage() {
   const handleQueryChange = (value) => {
     setQuery(value);
     setPage(1);
-    searchMembers(value || "", 1);
+    searchMembers(value || "", 1, idMissingOnly);
+  };
+
+  const toggleIdMissing = () => {
+    const next = !idMissingOnly;
+    setIdMissingOnly(next);
+    setPage(1);
+    searchMembers(query || "", 1, next);
   };
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
-    searchMembers(query || "", newPage);
+    searchMembers(query || "", newPage, idMissingOnly);
   };
 
   // ── Member detail ────────────────────────────────────────────────────────────
@@ -1057,6 +1066,27 @@ export default function AdminMembersPage() {
             )}
           </div>
 
+          {/* Filter: members whose ID is not saved yet */}
+          <div style={{ marginBottom: "12px" }}>
+            <button
+              type="button"
+              onClick={toggleIdMissing}
+              aria-pressed={idMissingOnly}
+              style={{
+                padding: "7px 14px",
+                borderRadius: "999px",
+                fontSize: "14px",
+                fontWeight: "600",
+                cursor: "pointer",
+                border: `1px solid ${idMissingOnly ? "var(--yellow)" : "rgba(255,255,255,0.12)"}`,
+                background: idMissingOnly ? "rgba(243,212,0,0.12)" : "transparent",
+                color: idMissingOnly ? "var(--yellow)" : "rgba(255,255,255,0.7)",
+              }}
+            >
+              {idMissingOnly ? "Showing: ID not added" : "Show only: ID not added"}
+            </button>
+          </div>
+
           {/* Count */}
           <p
             style={{
@@ -1157,6 +1187,11 @@ export default function AdminMembersPage() {
                       >
                         {m.userId} · {m.phoneNumber}
                       </p>
+                      {m.idStatus?.state !== "saved" && (
+                        <p style={{ fontSize: "13px", color: "#e5482b", fontWeight: "600" }}>
+                          ID not added
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1317,6 +1352,9 @@ export default function AdminMembersPage() {
                     + New Membership
                   </button></Tip>
                 </div>
+
+                {/* Government ID (hidden until "Show ID number") */}
+                <MemberIdPanel key={memberDetail.user._id} member={memberDetail.user} />
 
                 {/* Active Subscription */}
                 <div style={{ marginBottom: "20px" }}>

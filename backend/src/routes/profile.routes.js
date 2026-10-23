@@ -15,6 +15,7 @@ import {
   updateMyProfilePicture,
   deleteMyProfilePicture,
   deleteMyAccount,
+  saveMyIdProof,
 } from "../controllers/profile.controller.js";
 import { sensitiveActionLimiter } from "../middleware/rateLimiter.middleware.js";
 
@@ -28,5 +29,6 @@ router.patch ("/",        validateUpdateProfile, updateMyProfile);
 router.patch ("/picture", uploadProfilePictureMiddleware, updateMyProfilePicture);
 router.delete("/picture", deleteMyProfilePicture);
 router.post  ("/delete",  sensitiveActionLimiter, deleteMyAccount);
+router.post  ("/id",      sensitiveActionLimiter, saveMyIdProof);
 
 export default router;

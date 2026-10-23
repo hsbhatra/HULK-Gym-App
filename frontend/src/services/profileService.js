@@ -21,3 +21,7 @@ export const deleteProfilePicture = () =>
 // Member deletes their own account (password required)
 export const deleteMyAccount = (password) =>
   api.post("/profile/delete", { password });
+
+// Member saves their government ID — only works after the front desk unlocks it
+export const saveMyId = ({ docType, number, consent }) =>
+  api.post("/profile/id", { docType, number, consent });
