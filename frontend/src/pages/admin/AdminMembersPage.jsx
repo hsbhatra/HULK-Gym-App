@@ -2,15 +2,29 @@
 // src/pages/admin/AdminMembersPage.jsx
 // =============================================================================
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import toast from "react-hot-toast";
 import { useParams } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import api from "../../services/api.js";
 import ReceiptsList from "../../components/ui/ReceiptsList.jsx";
+import Paged from "../../components/ui/Paged.jsx";
 import MemberIdPanel from "../../components/admin/MemberIdPanel.jsx";
 import { Search, TriangleAlert } from "lucide-react";
 import { Tip, InfoTip } from "../../components/ui/Tip.jsx";
+import {
+  GAP_OPTIONS,
+  addGap,
+  buildSchedule,
+  effectiveTierPricePaise,
+  localISODate,
+  maxInstallmentsFor,
+  paiseToRupeeString,
+  sortByDueDate,
+  sumPaise,
+  toPaise,
+  validateSchedule,
+} from "../../utils/installmentPlan.js";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -226,22 +240,49 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
     durationDays: "30",
     paymentMode: "cash",
     amountPaid: "",
-    startDate: new Date().toISOString().split("T")[0],
+    startDate: localISODate(),
     isComplimentary: false,
     notes: "",
   });
   const [useInstallments, setUseInstallments] = useState(false);
-  const [installments, setInstallments] = useState([
-    { amountDue: "", dueDate: "" },
-    { amountDue: "", dueDate: "" },
-  ]);
+  // Installment auto-calculator: the admin picks how many parts, how far apart
+  // and (optionally) the first due date; amounts and dates fill themselves.
+  const [instCount, setInstCount] = useState("2");
+  const [instGap, setInstGap] = useState("30");
+  const [firstDueOverride, setFirstDueOverride] = useState("");
+  // Hand edits to single rows; dropped automatically when the calculator
+  // inputs change (the signature no longer matches).
+  const [edits, setEdits] = useState({ sig: "", map: {} });
   const [saving, setSaving] = useState(false);
 
   const selectedPlan = plans.find((p) => p._id === form.planId);
   const selectedTier = selectedPlan?.pricingTiers?.find(
     (t) => t.durationDays === Number(form.durationDays),
   );
-  const planPrice = selectedTier ? selectedTier.price / 100 : 0;
+  // The server charges the offer price while an offer is valid
+  const planPricePaise = effectiveTierPricePaise(selectedTier);
+  const planPrice = planPricePaise / 100;
+
+  // What is still unpaid after today's payment → what the installments split
+  const receivedPaise = form.amountPaid === "" ? NaN : toPaise(form.amountPaid);
+  const balancePaise =
+    !form.isComplimentary && planPricePaise > 0 && Number.isFinite(receivedPaise) && receivedPaise >= 0 && receivedPaise < planPricePaise
+      ? planPricePaise - receivedPaise
+      : 0;
+  const maxCount = maxInstallmentsFor(balancePaise);
+  const count = Math.min(Number(instCount), maxCount);
+  const firstDueAuto = addGap(form.startDate, instGap, 1);
+  const firstDue = firstDueOverride || firstDueAuto;
+  const sig = `${balancePaise}|${count}|${instGap}|${firstDue}`;
+
+  const generatedRows = useMemo(
+    () => (balancePaise > 0 && count >= 1 ? buildSchedule({ balancePaise, count, gap: instGap, firstDue }) : []),
+    [balancePaise, count, instGap, firstDue],
+  );
+  const rows = generatedRows.map((row, i) => (edits.sig === sig && edits.map[i] ? { ...row, ...edits.map[i] } : row));
+  const hasEdits = edits.sig === sig && Object.keys(edits.map).length > 0;
+  const diffPaise = balancePaise - sumPaise(rows);
+  const inr = (paise) => `₹${(paise / 100).toLocaleString("en-IN")}`;
 
   const durationOptions = [
     { days: "30", label: "Monthly (30 days)" },
@@ -250,14 +291,17 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
     { days: "365", label: "Annual (365 days)" },
   ];
 
-  const addInstallment = () =>
-    setInstallments([...installments, { amountDue: "", dueDate: "" }]);
-  const removeInstallment = (i) =>
-    setInstallments(installments.filter((_, idx) => idx !== i));
-  const updateInstallment = (i, field, value) => {
-    const updated = [...installments];
-    updated[i][field] = value;
-    setInstallments(updated);
+  const editRow = (i, field, value) =>
+    setEdits((prev) => {
+      const current = prev.sig === sig ? prev.map : {};
+      return { sig, map: { ...current, [i]: { ...current[i], [field]: value } } };
+    });
+  const resetRows = () => setEdits({ sig: "", map: {} });
+  // Puts whatever is left over (or too much) into the last installment
+  const fixLastRow = () => {
+    const last = rows.length - 1;
+    const lastPaise = toPaise(rows[last].amountDue) || 0;
+    editRow(last, "amountDue", paiseToRupeeString(Math.max(0, lastPaise + diffPaise)));
   };
 
   const handleSubmit = async (e) => {
@@ -279,10 +323,13 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
         notes: form.notes,
       };
 
-      if (useInstallments && !form.isComplimentary) {
-        const valid = installments.filter((i) => i.amountDue && i.dueDate);
-        if (!valid.length) return toast.error("Add at least one installment.");
-        payload.installments = valid;
+      if (useInstallments && !form.isComplimentary && balancePaise > 0) {
+        const problem = validateSchedule(rows, balancePaise);
+        if (problem) return toast.error(problem);
+        payload.installments = sortByDueDate(rows).map((row) => ({
+          amountDue: Number(row.amountDue),
+          dueDate: row.dueDate,
+        }));
       }
 
       const res = await api.post("/admin/subscriptions/offline", payload);
@@ -330,7 +377,7 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "24px",
+        padding: "clamp(10px, 3vw, 24px)",
       }}
     >
       <div
@@ -338,7 +385,7 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
           background: "var(--iron-850)",
           border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: "20px",
-          padding: "32px",
+          padding: "clamp(18px, 5vw, 32px)",
           maxWidth: "560px",
           width: "100%",
           maxHeight: "90vh",
@@ -375,6 +422,7 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
               color: "rgba(255,255,255,0.62)",
               fontSize: "20px",
               cursor: "pointer",
+              padding: "8px 12px",
             }}
           >
             ✕
@@ -574,7 +622,7 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
                   style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)" }}
                 >
                   Create installment schedule{" "}
-                  <InfoTip text="Split what is still unpaid into parts, each with a due date. The member sees what is due, and late parts are flagged as overdue." />
+                  <InfoTip text="Splits what is still unpaid into equal parts (the last one takes any odd rupees). Choose how many parts and how far apart; you can still change any amount or date. The member sees what is due, and late parts are flagged as overdue." />
                 </span>
               </label>
 
@@ -590,71 +638,131 @@ function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
                   <p style={{ ...labelStyle, marginBottom: "12px" }}>
                     Installment Schedule
                   </p>
-                  {installments.map((inst, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        gap: "8px",
-                        marginBottom: "10px",
-                        alignItems: "center",
-                      }}
-                    >
-                      <input
-                        type="number"
-                        style={{ ...inputStyle, padding: "8px 12px" }}
-                        placeholder="Amount ₹"
-                        value={inst.amountDue}
-                        onChange={(e) =>
-                          updateInstallment(i, "amountDue", e.target.value)
-                        }
-                      />
-                      <input
-                        type="date"
+
+                  {balancePaise <= 0 ? (
+                    <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.62)", lineHeight: 1.5 }}>
+                      Enter the amount received today (less than the plan price).
+                      The balance that is left is split into installments for you.
+                    </p>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: "15px", color: "#f3d400", marginBottom: "14px" }}>
+                        Balance to split: {inr(balancePaise)}
+                      </p>
+
+                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px" }}>
+                        <div style={{ flex: "1 1 130px" }}>
+                          <label htmlFor="inst-count" style={labelStyle}>Installments</label>
+                          <select
+                            id="inst-count"
+                            style={{ ...inputStyle, appearance: "none", padding: "8px 12px" }}
+                            value={String(count)}
+                            onChange={(e) => setInstCount(e.target.value)}
+                          >
+                            {Array.from({ length: maxCount }, (_, k) => k + 1).map((n) => (
+                              <option key={n} value={n}>
+                                {n} {n === 1 ? "installment" : "installments"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div style={{ flex: "1 1 130px" }}>
+                          <label htmlFor="inst-gap" style={labelStyle}>Gap between</label>
+                          <select
+                            id="inst-gap"
+                            style={{ ...inputStyle, appearance: "none", padding: "8px 12px" }}
+                            value={instGap}
+                            onChange={(e) => setInstGap(e.target.value)}
+                          >
+                            {GAP_OPTIONS.map((g) => (
+                              <option key={g.value} value={g.value}>{g.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {rows.map((row, i) => (
+                        <div key={i} style={{ marginBottom: "10px" }}>
+                          <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.62)", marginBottom: "4px" }}>
+                            Installment {i + 1}
+                            {i === 0 && (
+                              <>
+                                {" "}
+                                <InfoTip text="Starts one gap after the start date. Pick another date if you like — the later installments follow from it." />
+                              </>
+                            )}
+                          </p>
+                          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              min="0"
+                              step="0.01"
+                              aria-label={`Installment ${i + 1} amount in rupees`}
+                              style={{ ...inputStyle, padding: "8px 12px", flex: "1 1 100px", width: "auto" }}
+                              placeholder="Amount ₹"
+                              value={row.amountDue}
+                              onChange={(e) => editRow(i, "amountDue", e.target.value)}
+                            />
+                            <input
+                              type="date"
+                              aria-label={`Installment ${i + 1} due date`}
+                              style={{ ...inputStyle, padding: "8px 12px", colorScheme: "dark", flex: "1 1 140px", width: "auto" }}
+                              value={row.dueDate}
+                              onChange={(e) =>
+                                i === 0 ? setFirstDueOverride(e.target.value) : editRow(i, "dueDate", e.target.value)
+                              }
+                            />
+                          </div>
+                          {i === 0 && firstDueOverride && (
+                            <button
+                              type="button"
+                              onClick={() => setFirstDueOverride("")}
+                              style={{ background: "transparent", border: "none", color: "#f3d400", fontSize: "14px", cursor: "pointer", padding: "6px 0 0" }}
+                            >
+                              Use automatic date
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      <p
+                        role="status"
                         style={{
-                          ...inputStyle,
-                          padding: "8px 12px",
-                          colorScheme: "dark",
+                          fontSize: "14px",
+                          marginTop: "4px",
+                          color: diffPaise === 0 ? "#22c55e" : "#f97316",
                         }}
-                        value={inst.dueDate}
-                        onChange={(e) =>
-                          updateInstallment(i, "dueDate", e.target.value)
-                        }
-                      />
-                      {installments.length > 1 && (
-                        <button aria-label="Remove installment"
-                          type="button"
-                          onClick={() => removeInstallment(i)}
-                          style={{
-                            background: "rgba(239,68,68,0.1)",
-                            border: "1px solid rgba(239,68,68,0.2)",
-                            color: "#ef4444",
-                            borderRadius: "8px",
-                            padding: "8px 12px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addInstallment}
-                    style={{
-                      background: "transparent",
-                      border: "1px dashed rgba(255,255,255,0.15)",
-                      color: "rgba(255,255,255,0.62)",
-                      borderRadius: "8px",
-                      padding: "8px 16px",
-                      fontSize: "14px",
-                      cursor: "pointer",
-                      width: "100%",
-                    }}
-                  >
-                    + Add Installment
-                  </button>
+                      >
+                        {diffPaise === 0
+                          ? `Total ${inr(sumPaise(rows))} matches the balance ✓`
+                          : diffPaise > 0
+                            ? `${inr(diffPaise)} of the balance is not assigned yet.`
+                            : `${inr(-diffPaise)} more than the balance.`}
+                      </p>
+
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "10px" }}>
+                        {diffPaise !== 0 && (
+                          <button
+                            type="button"
+                            onClick={fixLastRow}
+                            style={{ background: "transparent", border: "1px dashed rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", borderRadius: "8px", padding: "8px 14px", fontSize: "14px", cursor: "pointer" }}
+                          >
+                            Put the difference in the last installment
+                          </button>
+                        )}
+                        {hasEdits && (
+                          <button
+                            type="button"
+                            onClick={resetRows}
+                            style={{ background: "transparent", border: "1px dashed rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.7)", borderRadius: "8px", padding: "8px 14px", fontSize: "14px", cursor: "pointer" }}
+                          >
+                            Recalculate automatically
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </>
@@ -1846,7 +1954,7 @@ export default function AdminMembersPage() {
                     >
                       Payments &amp; Receipts
                     </p>
-                    <ReceiptsList receipts={memberDetail.receipts} />
+                    <ReceiptsList key={memberDetail.user?._id} receipts={memberDetail.receipts} />
                   </div>
                 )}
 
@@ -1865,16 +1973,12 @@ export default function AdminMembersPage() {
                     >
                       Subscription History
                     </p>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "8px",
-                      }}
+                    <Paged
+                      key={memberDetail.user?._id}
+                      items={memberDetail.subscriptionHistory}
                     >
-                      {memberDetail.subscriptionHistory.map((sub) => (
+                      {(sub) => (
                         <div
-                          key={sub._id}
                           style={{
                             display: "flex",
                             justifyContent: "space-between",
@@ -1927,8 +2031,8 @@ export default function AdminMembersPage() {
                             {sub.status}
                           </span>
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </Paged>
                   </div>
                 )}
               </>

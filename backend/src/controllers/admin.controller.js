@@ -87,7 +87,7 @@ export const searchMembers = asyncHandler(async (req, res) => {
       )
       .skip(skip)
       .limit(limit)
-      .sort({ createdAt: 1 }),
+      .sort({ createdAt: -1, _id: -1 }), // newest member first
     User.countDocuments(filter),
   ]);
 
@@ -122,7 +122,7 @@ export const getMemberProfile = asyncHandler(async (req, res) => {
     status: { $ne: SUBSCRIPTION_STATUS.PENDING },
   })
     .sort({ createdAt: -1 })
-    .limit(10)
+    .limit(50)
     .populate("planId", "name slug");
 
   // Get payment history

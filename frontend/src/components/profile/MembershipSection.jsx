@@ -11,6 +11,7 @@ import {
   getMyReceipts,
 } from "../../services/subscriptionService.js";
 import ReceiptsList from "../ui/ReceiptsList.jsx";
+import Paged from "../ui/Paged.jsx";
 import { Dumbbell, TriangleAlert } from "lucide-react";
 
 function PaymentsSection({ receipts }) {
@@ -45,12 +46,12 @@ function SubscriptionHistory({ history, formatDate }) {
       <p style={{ fontSize: "14px", fontWeight: "700", color: "rgba(255,255,255,0.62)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "14px" }}>
         Subscription History
       </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        {history.map((sub) => {
+      <Paged items={history}>
+        {(sub) => {
           const isCancelled = sub.status === "cancelled";
           const color = statusColors[sub.status] || "rgba(255,255,255,0.4)";
           return (
-            <div key={sub._id} style={{ padding: "14px 16px", borderRadius: "10px", background: "var(--iron-850)", border: `1px solid ${isCancelled ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)"}` }}>
+            <div style={{ padding: "14px 16px", borderRadius: "10px", background: "var(--iron-850)", border: `1px solid ${isCancelled ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)"}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <p style={{ fontSize: "16px", fontWeight: "600" }}>
@@ -76,8 +77,8 @@ function SubscriptionHistory({ history, formatDate }) {
               </div>
             </div>
           );
-        })}
-      </div>
+        }}
+      </Paged>
     </div>
   );
 }

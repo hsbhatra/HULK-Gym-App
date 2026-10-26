@@ -23,16 +23,17 @@ const TYPE = {
   balance: "Balance payment",
 };
 
+import Paged from "./Paged.jsx";
+
 export default function ReceiptsList({ receipts = [], emptyText = "No payments yet." }) {
   if (!receipts.length) {
     return <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)" }}>{emptyText}</p>;
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      {receipts.map((r) => (
+    <Paged items={receipts}>
+      {(r) => (
         <div
-          key={r._id}
           style={{
             display: "flex", justifyContent: "space-between", alignItems: "flex-start",
             gap: "12px", flexWrap: "wrap",
@@ -59,7 +60,7 @@ export default function ReceiptsList({ receipts = [], emptyText = "No payments y
             </p>
           </div>
         </div>
-      ))}
-    </div>
+      )}
+    </Paged>
   );
 }

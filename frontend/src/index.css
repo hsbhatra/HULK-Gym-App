@@ -1332,3 +1332,14 @@ a.contact-card:hover { border-color: var(--yellow); }
 }
 .tip-bubble--below { transform: translate(-50%, 0); }
 @keyframes tipIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* =============================================================================
+   Mobile polish (Oct 2026 audit)
+============================================================================= */
+/* Five admin tabs on a 2-column phone grid: the lone last tab takes the full row */
+.admin-mobile-nav .admin-nav-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
+/* Bigger tap targets for the plan reorder arrows on phones */
+@media (max-width: 520px) {
+  .plan-arrows { gap: 6px; }
+  .plan-arrows button { width: 44px; height: 34px; }
+}
