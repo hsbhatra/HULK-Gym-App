@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
+import AnalyticsPanel from "../../components/admin/AnalyticsPanel.jsx";
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import api from "../../services/api.js";
 import toast from "react-hot-toast";
@@ -134,6 +135,7 @@ export default function AdminDashboardPage() {
   const navigate      = useNavigate();
   const [data, setData]     = useState(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab]         = useState("overview");
 
 
   const fetchDashboard = async () => {
@@ -188,6 +190,18 @@ export default function AdminDashboardPage() {
         </button>
       )}
 
+      {/* Tabs: Overview is the original dashboard, the rest are analytics */}
+      <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 20 }}>
+        {[["overview", "Overview"], ["revenue", "Revenue"], ["members", "Members"], ["dues", "Dues"], ["renewals", "Renewals"]].map(([id, text]) => (
+          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+            className={tab === id ? "btn-gold btn-sm" : "btn-ghost btn-sm"} style={{ flexShrink: 0 }}>{text}</button>
+        ))}
+      </div>
+
+      {tab !== "overview" ? (
+        <AnalyticsPanel tab={tab} />
+      ) : (
+      <>
       {/* ── KPI Cards ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))", gap: "12px", marginBottom: "28px" }}>
         <KpiCard
@@ -366,6 +380,8 @@ export default function AdminDashboardPage() {
         </div>
 
       </div>
+      </>
+      )}
     </AdminLayout>
   );
-}
+}

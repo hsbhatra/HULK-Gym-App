@@ -2,9 +2,9 @@
 // src/pages/admin/AdminMembersPage.jsx
 // =============================================================================
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import toast from "react-hot-toast";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import Modal from "../../components/ui/Modal.jsx";
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
@@ -15,8 +15,12 @@ import MemberIdPanel from "../../components/admin/MemberIdPanel.jsx";
 import MarkInstallmentModal from "../../components/admin/MarkInstallmentModal.jsx";
 import CollectBalanceForm from "../../components/admin/CollectBalanceForm.jsx";
 import RecordPaymentForm from "../../components/admin/RecordPaymentForm.jsx";
+import MemberFilterBar, { readFilters, writeParams, apiParams } from "../../components/admin/MemberFilterBar.jsx";
 import { Search, TriangleAlert } from "lucide-react";
-import { Tip } from "../../components/ui/Tip.jsx";
+import { Tip, InfoTip } from "../../components/ui/Tip.jsx";
+import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
+import { useAuthStore } from "../../store/authStore.js";
+import { isAdminUser, roleLabel } from "../../utils/roles.js";
 import { inr, formatDate, subscriptionStatusColor } from "../../utils/format.js";
 
 const ITEMS_PER_PAGE = 10;
@@ -26,13 +30,24 @@ const ITEMS_PER_PAGE = 10;
 // =============================================================================
 
 export default function AdminMembersPage() {
+  // Who is using this page. The server enforces every limit again; this only
+  // hides what a receptionist can't do (cancel, complimentary, ID number, roles).
+  const me = useAuthStore((s) => s.user);
+  const isAdmin = isAdminUser(me);
+  const [roleDialog, setRoleDialog] = useState(null); // "receptionist" | "member" while confirming
+  const [roleBusy, setRoleBusy] = useState(false);
+
   // ── Search state ────────────────────────────────────────────────────────────
-  const [query, setQuery] = useState("");
+  // Filters, sort and the search text live in the page URL (?status=…&sort=…),
+  // so a refresh or the Back button keeps the same view.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { filters, sort, query: urlQuery } = useMemo(() => readFilters(searchParams), [searchParams]);
+  const [query, setQuery] = useState(urlQuery); // what is typed in the box
   const [members, setMembers] = useState([]);
   const [totalMembers, setTotalMembers] = useState(0);
   const [page, setPage] = useState(1);
   const [searching, setSearching] = useState(false);
-  const [idMissingOnly, setIdMissingOnly] = useState(false); // only members with no ID saved
+  const [filterPlans, setFilterPlans] = useState([]); // every plan, for the plan filter
 
   // ── Detail panel state ──────────────────────────────────────────────────────
   const [selectedMember, setSelectedMember] = useState(null);
@@ -60,44 +75,47 @@ export default function AdminMembersPage() {
   }, []);
 
   // ── Search ──────────────────────────────────────────────────────────────────
-  const searchMembers = useCallback(async (q, pageNum = 1, missingOnly = false) => {
-    setSearching(true);
-    try {
-      // Empty query → backend lists all members
-      const effectiveQuery = q.trim();
-      const res = await api.get(
-        `/admin/members?q=${encodeURIComponent(effectiveQuery)}&page=${pageNum}&limit=${ITEMS_PER_PAGE}${missingOnly ? "&idMissing=true" : ""}`,
-      );
-      setMembers(res.data.data.members);
-      setTotalMembers(res.data.data.total || 0);
-    } catch {
-      toast.error("Search failed.");
-    } finally {
-      setSearching(false);
-    }
-  }, []);
+  const updateView = (next) => {
+    setPage(1);
+    setSearchParams(writeParams({ filters, sort, query: urlQuery, ...next }), { replace: true });
+  };
+
+  // Typing waits a moment before searching; the URL follows the typed text
+  useEffect(() => {
+    if (query === urlQuery) return undefined;
+    const t = setTimeout(() => updateView({ query }), 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   useEffect(() => {
-    searchMembers("", 1);
+    api.get("/admin/plans").then((res) => setFilterPlans(res.data.data.plans || [])).catch(() => {});
   }, []);
 
-  const handleQueryChange = (value) => {
-    setQuery(value);
-    setPage(1);
-    searchMembers(value || "", 1, idMissingOnly);
+  // One request per change; an older, slower answer never overwrites a newer one
+  const requestId = useRef(0);
+  const viewKey = `${urlQuery}|${filters.status}|${filters.plan}|${filters.dues}|${filters.idMissing}|${sort}|${page}`;
+  const loadMembers = async () => {
+    const mine = ++requestId.current;
+    setSearching(true);
+    try {
+      const res = await api.get(`/admin/members?${apiParams({ filters, sort, query: urlQuery, page, limit: ITEMS_PER_PAGE })}`);
+      if (mine !== requestId.current) return;
+      setMembers(res.data.data.members);
+      setTotalMembers(res.data.data.total || 0);
+    } catch (err) {
+      if (mine === requestId.current) toast.error(err.response?.data?.message || "Search failed.");
+    } finally {
+      if (mine === requestId.current) setSearching(false);
+    }
   };
+  useEffect(() => {
+    loadMembers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewKey]);
 
-  const toggleIdMissing = () => {
-    const next = !idMissingOnly;
-    setIdMissingOnly(next);
-    setPage(1);
-    searchMembers(query || "", 1, next);
-  };
-
-  const handlePageChange = (newPage) => {
-    setPage(newPage);
-    searchMembers(query || "", newPage, idMissingOnly);
-  };
+  const handleQueryChange = (value) => setQuery(value);
+  const handlePageChange = (newPage) => setPage(newPage);
 
   // ── Member detail ────────────────────────────────────────────────────────────
   // /admin/members/:id opens that member directly (used by dashboard links)
@@ -126,6 +144,23 @@ export default function AdminMembersPage() {
     }
   };
 
+  // ── Receptionist role (admin only) ───────────────────────────────────────────
+  const changeRole = async () => {
+    if (roleBusy) return;
+    setRoleBusy(true);
+    try {
+      const res = await api.patch(`/admin/members/${memberDetail.user._id}/role`, { role: roleDialog });
+      toast.success(res.data.message);
+      setRoleDialog(null);
+      loadMemberDetail(selectedMember);
+      loadMembers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Could not change the role.");
+    } finally {
+      setRoleBusy(false);
+    }
+  };
+
   // ── Cancel subscription ──────────────────────────────────────────────────────
   const handleCancelSubscription = async () => {
     try {
@@ -149,6 +184,9 @@ export default function AdminMembersPage() {
 
   const totalPages = Math.ceil(totalMembers / ITEMS_PER_PAGE);
 
+  // A receptionist can't record money on their own membership (server refuses too)
+  const ownAccount = !isAdmin && !!memberDetail && memberDetail.user?._id === me?._id;
+
   return (
     <AdminLayout>
       {/* Modals */}
@@ -157,8 +195,23 @@ export default function AdminMembersPage() {
         <RecordPaymentForm
           member={selectedMember}
           plans={plans}
+          canComplimentary={isAdmin}
           onSuccess={() => loadMemberDetail(selectedMember)}
           onCancel={() => setShowPaymentForm(false)}
+        />
+      )}
+
+      {roleDialog && memberDetail && (
+        <ConfirmDialog
+          message={
+            roleDialog === "receptionist"
+              ? `Make ${memberDetail.user.firstName} ${memberDetail.user.lastName} a receptionist? They will be signed out and must sign in again to see the staff panel.`
+              : `Remove ${memberDetail.user.firstName}'s receptionist role? They will be signed out and lose staff access immediately.`
+          }
+          confirmLabel={roleDialog === "receptionist" ? "Yes, make receptionist" : "Yes, remove role"}
+          danger={roleDialog !== "receptionist"}
+          onConfirm={changeRole}
+          onCancel={() => setRoleDialog(null)}
         />
       )}
 
@@ -339,26 +392,14 @@ export default function AdminMembersPage() {
             )}
           </div>
 
-          {/* Filter: members whose ID is not saved yet */}
-          <div style={{ marginBottom: "12px" }}>
-            <button
-              type="button"
-              onClick={toggleIdMissing}
-              aria-pressed={idMissingOnly}
-              style={{
-                padding: "7px 14px",
-                borderRadius: "999px",
-                fontSize: "14px",
-                fontWeight: "600",
-                cursor: "pointer",
-                border: `1px solid ${idMissingOnly ? "var(--yellow)" : "rgba(255,255,255,0.12)"}`,
-                background: idMissingOnly ? "rgba(243,212,0,0.12)" : "transparent",
-                color: idMissingOnly ? "var(--yellow)" : "rgba(255,255,255,0.7)",
-              }}
-            >
-              {idMissingOnly ? "Showing: ID not added" : "Show only: ID not added"}
-            </button>
-          </div>
+          <MemberFilterBar
+            filters={filters}
+            sort={sort}
+            plans={filterPlans}
+            total={totalMembers}
+            onFilters={(f) => updateView({ filters: f })}
+            onSort={(v) => updateView({ sort: v })}
+          />
 
           {/* Count */}
           <p
@@ -459,7 +500,25 @@ export default function AdminMembersPage() {
                         }}
                       >
                         {m.userId} · {m.phoneNumber}
+                        {m.role === "receptionist" && (
+                          <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.8px", textTransform: "uppercase", padding: "2px 8px", borderRadius: "999px", background: "rgba(167,139,250,0.15)", color: "#a78bfa" }}>
+                            Receptionist
+                          </span>
+                        )}
                       </p>
+                      {m.membership && (
+                        <p style={{ fontSize: "13px", display: "flex", flexWrap: "wrap", gap: "4px 10px", alignItems: "center", marginTop: "2px" }}>
+                          <span style={{ fontWeight: 700, color: statusColor(m.membership.status), textTransform: "capitalize" }}>
+                            {m.membership.status === "none" ? "No membership" : m.membership.status}
+                          </span>
+                          {m.membership.planName && <span style={{ color: "rgba(255,255,255,0.62)" }}>{m.membership.planName}</span>}
+                          {m.membership.endDate && m.membership.status !== "none" && (
+                            <span style={{ color: "rgba(255,255,255,0.62)" }}>till {formatDate(m.membership.endDate)}</span>
+                          )}
+                          {m.duesPaise > 0 && <span style={{ color: "#f97316", fontWeight: 700 }}>{inr(m.duesPaise)} due</span>}
+                          {m.overdueCount > 0 && <span style={{ color: "var(--ember)", fontWeight: 700 }}>Overdue</span>}
+                        </p>
+                      )}
                       {m.idStatus?.state !== "saved" && (
                         <p style={{ fontSize: "13px", color: "#e5482b", fontWeight: "600" }}>
                           ID not added
@@ -605,29 +664,72 @@ export default function AdminMembersPage() {
                       >
                         {memberDetail.user.userId} · {memberDetail.user.email}
                       </p>
+                      {memberDetail.user.role === "receptionist" && (
+                        <span style={{ display: "inline-block", marginTop: "4px", fontSize: "12px", fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase", padding: "3px 10px", borderRadius: "999px", background: "rgba(167,139,250,0.15)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.35)" }}>
+                          Receptionist
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <Tip text={memberDetail.activeSubscription ? "This member already has an active plan. Collect any balance, or cancel the plan first." : null}><button
+                  <Tip text={ownAccount ? "You can't record payments on your own membership. Ask the admin." : memberDetail.activeSubscription ? "This member already has an active plan. Collect any balance, or cancel the plan first." : null}><button
                     onClick={() => setShowPaymentForm(true)}
                     className="btn-gold"
                     // One active plan per member (backend enforces it) — say so
                     // up front instead of after the admin fills the whole form.
-                    disabled={!!memberDetail.activeSubscription}
+                    disabled={!!memberDetail.activeSubscription || ownAccount}
                     style={{
                       width: "auto",
                       padding: "10px 20px",
                       fontSize: "15px",
                       flexShrink: 0,
-                      opacity: memberDetail.activeSubscription ? 0.45 : 1,
-                      cursor: memberDetail.activeSubscription ? "not-allowed" : "pointer",
+                      opacity: memberDetail.activeSubscription || ownAccount ? 0.45 : 1,
+                      cursor: memberDetail.activeSubscription || ownAccount ? "not-allowed" : "pointer",
                     }}
                   >
                     + New Membership
                   </button></Tip>
                 </div>
 
+                {/* Receptionist access — admin only */}
+                {isAdmin && memberDetail.user._id !== me?._id && ["member", "receptionist"].includes(memberDetail.user.role) && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "12px",
+                      flexWrap: "wrap",
+                      padding: "14px 16px",
+                      marginBottom: "20px",
+                      borderRadius: "14px",
+                      background: "rgba(255,255,255,0.02)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+                      <p style={{ fontSize: "15px", fontWeight: "700" }}>
+                        Receptionist access{" "}
+                        <InfoTip text="A receptionist can sign in to the staff panel to search members, record desk payments and unlock ID entry. They can't cancel memberships, give free memberships, see ID numbers, change plans or see revenue." />
+                      </p>
+                      <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.62)", marginTop: "2px" }}>
+                        {memberDetail.user.role === "receptionist"
+                          ? "This member works at the front desk."
+                          : "Give desk access to this member."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setRoleDialog(memberDetail.user.role === "receptionist" ? "member" : "receptionist")}
+                      className={memberDetail.user.role === "receptionist" ? "btn-ghost btn-sm" : "btn-gold btn-sm"}
+                      style={{ width: "auto", minHeight: "44px", padding: "8px 16px", flexShrink: 0 }}
+                    >
+                      {memberDetail.user.role === "receptionist" ? "Remove receptionist role" : "Make receptionist"}
+                    </button>
+                  </div>
+                )}
+
                 {/* Government ID (hidden until "Show ID number") */}
-                <MemberIdPanel key={memberDetail.user._id} member={memberDetail.user} />
+                <MemberIdPanel key={memberDetail.user._id} member={memberDetail.user} canReveal={isAdmin} />
 
                 {/* Active Subscription */}
                 <div style={{ marginBottom: "20px" }}>
@@ -717,7 +819,7 @@ export default function AdminMembersPage() {
                                 memberDetail.activeSubscription._id?.toString(),
                             );
                             const hasBalance =
-                              payment && payment.status === "partial";
+                              payment && payment.status === "partial" && !ownAccount;
                             return hasBalance ? (
                               <Tip text="Record money this member still owes on their plan. It goes to the earliest unpaid installments and a receipt is emailed to them."><button
                                 onClick={() =>
@@ -742,7 +844,7 @@ export default function AdminMembersPage() {
                             ) : null;
                           })()}
                           
-                          <Tip text="Ends this membership now and drops any unpaid installments. Money already paid is not refunded by this button."><button
+                          {isAdmin && <Tip text="Ends this membership now and drops any unpaid installments. Money already paid is not refunded by this button."><button
                             onClick={() => setCancelDialog(true)}
                             style={{
                               padding: "6px 12px",
@@ -755,7 +857,7 @@ export default function AdminMembersPage() {
                             }}
                           >
                             Cancel membership
-                          </button></Tip>
+                          </button></Tip>}
                         </div>
                       </div>
 
@@ -981,7 +1083,7 @@ export default function AdminMembersPage() {
                                             {inst.status}
                                           </span>
                                         </div>
-                                        {!isPaid && inst.status !== "waived" && (
+                                        {!isPaid && inst.status !== "waived" && !ownAccount && (
                                           <Tip text="Record that what is left of this installment was paid at the desk. You see a summary first; then a receipt is emailed to the member."><button
                                             onClick={() =>
                                               setMarkingInstallment(inst)

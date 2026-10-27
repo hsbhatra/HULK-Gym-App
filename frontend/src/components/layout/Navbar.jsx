@@ -6,6 +6,7 @@
 // Becomes solid on scroll when transparent prop is true.
 // =============================================================================
 
+import { isStaffUser, isAdminUser, homePathFor } from "../../utils/roles.js";
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Logo from "../ui/Logo.jsx";
@@ -99,10 +100,10 @@ export default function Navbar({
               <span style={{ fontSize: "15px", color: "#bdbdb6" }}>
                 Hi, <span style={{ color: "#f3d400", fontWeight: "600" }}>{user?.firstName}</span>
               </span>
-              {user?.role === "admin" && (
-                <button onClick={() => navigate("/admin")} className="btn-ghost"
+              {isStaffUser(user) && (
+                <button onClick={() => navigate(homePathFor(user))} className="btn-ghost"
                   style={{ padding: "9px 20px", fontSize: "15px" }}>
-                  Dashboard
+                  {isAdminUser(user) ? "Dashboard" : "Staff Panel"}
                 </button>
               )}
               <button onClick={() => navigate("/profile")} className="btn-gold"
@@ -189,10 +190,10 @@ export default function Navbar({
           <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
             {isAuthenticated ? (
               <>
-                {user?.role === "admin" && (
-                  <button onClick={() => { navigate("/admin"); setMenuOpen(false); }}
+                {isStaffUser(user) && (
+                  <button onClick={() => { navigate(homePathFor(user)); setMenuOpen(false); }}
                     className="btn-ghost" style={{ flex: 1, padding: "12px", fontSize: "16px" }}>
-                    Dashboard
+                    {isAdminUser(user) ? "Dashboard" : "Staff Panel"}
                   </button>
                 )}
                 <button onClick={() => { navigate("/profile"); setMenuOpen(false); }}

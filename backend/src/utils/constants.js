@@ -52,8 +52,14 @@ export const RATE_LIMIT_CONFIG = {
 export const USER_ROLES = {
   MEMBER: "member",
   TRAINER: "trainer",
+  RECEPTIONIST: "receptionist",
   ADMIN: "admin",
 };
+
+// Roles that can sign in to the staff panel, and roles that are gym members
+// (a receptionist is still a member of the gym with their own membership)
+export const STAFF_ROLES = [USER_ROLES.ADMIN, USER_ROLES.RECEPTIONIST];
+export const MEMBER_ROLES = [USER_ROLES.MEMBER, USER_ROLES.RECEPTIONIST];
 
 export const USER_ROLES_ARRAY = Object.values(USER_ROLES);
 

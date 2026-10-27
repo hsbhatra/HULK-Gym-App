@@ -220,7 +220,7 @@ function AppContent() {
           <Route
             path="/admin"
             element={
-              <AdminRoute>
+              <AdminRoute adminOnly>
                 <AdminDashboardPage />
               </AdminRoute>
             }
@@ -228,7 +228,7 @@ function AppContent() {
           <Route
             path="/admin/plans"
             element={
-              <AdminRoute>
+              <AdminRoute adminOnly>
                 <AdminPlansPage />
               </AdminRoute>
             }
@@ -244,7 +244,7 @@ function AppContent() {
           <Route
             path="/admin/refunds"
             element={
-              <AdminRoute>
+              <AdminRoute adminOnly>
                 <AdminRefundsPage />
               </AdminRoute>
             }
@@ -252,7 +252,7 @@ function AppContent() {
           <Route
             path="/admin/deletion-requests"
             element={
-              <AdminRoute>
+              <AdminRoute adminOnly>
                 <AdminDeletionRequestsPage />
               </AdminRoute>
             }

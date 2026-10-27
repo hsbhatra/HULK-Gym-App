@@ -17,7 +17,7 @@
 import User from "../models/user.model.js";
 import IdAuditLog, { ID_AUDIT_ACTION } from "../models/idAuditLog.model.js";
 import ApiError from "../utils/apiError.js";
-import { USER_ROLES } from "../utils/constants.js";
+import { USER_ROLES, MEMBER_ROLES } from "../utils/constants.js";
 import { encryptId, decryptId, fingerprintId } from "../utils/idCrypto.js";
 
 export const ID_UNLOCK_MINUTES = 30;
@@ -93,7 +93,7 @@ const audit = (memberId, actor, action, ip) =>
   }).catch((err) => console.error("[ID AUDIT] could not write log:", err.message));
 
 const loadActor = async (actorId) => {
-  const actor = await User.findById(actorId).select("firstName lastName");
+  const actor = await User.findById(actorId).select("firstName lastName role");
   if (!actor) throw ApiError.unauthorized();
   return actor;
 };
@@ -102,9 +102,13 @@ const loadActor = async (actorId) => {
 export const unlockMemberId = async (memberId, actorId, ip) => {
   const [actor, member] = await Promise.all([
     loadActor(actorId),
-    User.findOne({ _id: memberId, role: USER_ROLES.MEMBER, isActive: true, deletedAt: null }),
+    User.findOne({ _id: memberId, role: { $in: MEMBER_ROLES }, isActive: true, deletedAt: null }),
   ]);
   if (!member) throw ApiError.notFound("Member not found.");
+  // A receptionist can't unlock their own ID entry (the admin can)
+  if (actor.role !== USER_ROLES.ADMIN && String(actor._id) === String(member._id)) {
+    throw ApiError.forbidden("Ask the admin to unlock your own ID entry.");
+  }
   if (member.idProof?.savedAt) {
     throw ApiError.conflict("This member's ID is already saved. It can't be changed.");
   }
@@ -190,7 +194,7 @@ export const saveMyId = async (userId, { docType, number, consent }, ip) => {
 export const revealMemberId = async (memberId, actorId, ip) => {
   const [actor, member] = await Promise.all([
     loadActor(actorId),
-    User.findOne({ _id: memberId, role: USER_ROLES.MEMBER, deletedAt: null }).select("+idProof.enc"),
+    User.findOne({ _id: memberId, role: { $in: MEMBER_ROLES }, deletedAt: null }).select("+idProof.enc"),
   ]);
   if (!member) throw ApiError.notFound("Member not found.");
   if (!member.idProof?.savedAt || !member.idProof.enc) {

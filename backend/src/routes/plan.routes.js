@@ -4,7 +4,7 @@
 
 import { Router } from "express";
 import authenticate from "../middleware/auth/authenticate.middleware.js";
-import authorize from "../middleware/auth/authorize.middleware.js";
+import { loadStaff, adminOnly } from "../middleware/auth/staff.middleware.js";
 import sessionGuard from "../middleware/auth/sessionGuard.middleware.js";
 import {
   validateCreatePlan,
@@ -40,13 +40,15 @@ export default router;
 
 export const adminPlanRouter = Router();
 
-adminPlanRouter.use(authenticate, sessionGuard, authorize("admin"));
+// Staff (admin + receptionist) may LIST plans to give a membership at the desk;
+// every change to a plan is admin only.
+adminPlanRouter.use(authenticate, sessionGuard, loadStaff);
 
 adminPlanRouter.get   ("/",           getAllPlansAdminController);
-adminPlanRouter.post  ("/",           validateCreatePlan,       createPlanAdmin);
+adminPlanRouter.post  ("/",           adminOnly, validateCreatePlan,       createPlanAdmin);
 // Must be declared before "/:id" so "reorder" isn't read as a plan id
-adminPlanRouter.patch ("/reorder",    validateReorderPlans,     reorderPlansAdmin);
-adminPlanRouter.patch ("/:id",        validateUpdatePlan,       updatePlanAdmin);
-adminPlanRouter.patch ("/:id/status", validateUpdatePlanStatus, updatePlanStatusAdmin);
-adminPlanRouter.patch ("/:id/landing", validateLandingVisibility, setLandingVisibilityAdmin);
-adminPlanRouter.delete("/:id",        archivePlanAdmin);
+adminPlanRouter.patch ("/reorder",    adminOnly, validateReorderPlans,     reorderPlansAdmin);
+adminPlanRouter.patch ("/:id",        adminOnly, validateUpdatePlan,       updatePlanAdmin);
+adminPlanRouter.patch ("/:id/status", adminOnly, validateUpdatePlanStatus, updatePlanStatusAdmin);
+adminPlanRouter.patch ("/:id/landing", adminOnly, validateLandingVisibility, setLandingVisibilityAdmin);
+adminPlanRouter.delete("/:id",        adminOnly, archivePlanAdmin);

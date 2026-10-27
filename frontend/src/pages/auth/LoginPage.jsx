@@ -2,6 +2,7 @@
 // src/pages/auth/LoginPage.jsx
 // =============================================================================
 
+import { homePathFor } from "../../utils/roles.js";
 import { useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
@@ -43,7 +44,7 @@ export default function LoginPage() {
         redirect && redirect.startsWith("/") && !redirect.startsWith("//")
           ? redirect
           : null;
-      navigate(safeRedirect || (user.role === "admin" ? "/admin" : "/"), {
+      navigate(safeRedirect || homePathFor(user), {
         replace: true,
       });
     } catch (err) {

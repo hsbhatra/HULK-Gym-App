@@ -196,8 +196,8 @@ export const getDeletionBlockers = async (userId) => {
 export const eraseAccount = async (userId) => {
   const user = await User.findById(userId);
   if (!user || !user.isActive) throw ApiError.notFound("Account not found.");
-  if (user.role === USER_ROLES.ADMIN) {
-    throw ApiError.forbidden("Admin accounts can't be deleted from here.");
+  if (user.role !== USER_ROLES.MEMBER) {
+    throw ApiError.forbidden("Staff accounts can't be deleted from here. Change this account back to a regular member first.");
   }
 
   const blockers = await getDeletionBlockers(user._id);
