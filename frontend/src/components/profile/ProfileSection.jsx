@@ -1,3 +1,4 @@
+import DateInput from "../ui/DateInput";
 import { useState, useRef } from "react";
 import { useAuthStore } from "../../store/authStore.js";
 import {
@@ -520,22 +521,13 @@ export default function ProfileSection({ user, onUpdate }) {
             {/* Date of Birth */}
             <div>
               <label style={labelStyle}>Date of Birth</label>
-              <input
-                type="date"
-                name="dateOfBirth"
+              <DateInput
+                ariaLabel="Date of birth"
                 max={today}
                 value={form.dateOfBirth}
-                onChange={handleChange}
+                onChange={(v) => setForm((f) => ({ ...f, dateOfBirth: v }))}
                 disabled={!editing}
-                style={{ ...inputStyle(!editing), colorScheme: "dark" }}
-                onFocus={(e) => {
-                  if (editing) e.target.style.borderColor = "#f3d400";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = editing
-                    ? "rgba(255,255,255,0.1)"
-                    : "rgba(255,255,255,0.05)";
-                }}
+                style={inputStyle(!editing)}
               />
             </div>
             {/* Gender */}

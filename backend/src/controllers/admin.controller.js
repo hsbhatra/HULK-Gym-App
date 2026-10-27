@@ -789,6 +789,14 @@ export const collectOutstandingBalance = asyncHandler(async (req, res) => {
     if (outstanding <= 0) {
       throw ApiError.conflict("Nothing is outstanding on this membership.");
     }
+    // Same amount again within 20 s of the last collection = double click.
+    // A different amount is allowed straight away.
+    const last = payment.lastCollect;
+    if (last?.at && last.amount === paidInPaise && now - new Date(last.at) < 20000) {
+      throw ApiError.conflict(
+        "This looks like a double click — the same amount was just recorded. Wait 20 seconds, or enter a different amount.",
+      );
+    }
     if (paidInPaise > outstanding) {
       throw ApiError.badRequest(
         `Payment of ₹${paidInPaise / 100} exceeds the outstanding balance of ₹${outstanding / 100}.`,
@@ -835,6 +843,7 @@ export const collectOutstandingBalance = asyncHandler(async (req, res) => {
         ? PAYMENT_STATUS.COMPLETED
         : PAYMENT_STATUS.PARTIAL;
     if (notes) payment.notes = notes;
+    payment.lastCollect = { amount: paidInPaise, at: new Date() };
     await payment.save();
 
     const receipt = await issueReceipt({

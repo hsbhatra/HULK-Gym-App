@@ -1391,3 +1391,14 @@ a.contact-card:hover { border-color: var(--yellow); }
   .plan-arrows { gap: 6px; }
   .plan-arrows button { width: 44px; height: 34px; }
 }
+
+
+/* Dropdowns: the open list was white-on-white (native popup ignored our dark
+   theme). Tell the browser the page is dark and colour the options too. */
+select { color-scheme: dark; }
+select option,
+select optgroup {
+  background-color: var(--iron-850);
+  color: var(--text-1);
+}
+select option:disabled { color: var(--text-3); }
