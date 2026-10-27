@@ -124,6 +124,13 @@ const paymentSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    // Last balance collection (paise + time) — used to refuse an identical
+    // amount re-entered within 20 s (a double click)
+    lastCollect: {
+      amount: { type: Number, default: null },
+      at: { type: Date, default: null },
+    },
   },
   {
     timestamps: true,
@@ -133,6 +140,7 @@ const paymentSchema = new mongoose.Schema(
         if (ret.razorpay) delete ret.razorpay.signature;
         delete ret.__v;
         delete ret.lockedUntil;
+        delete ret.lastCollect;
         return ret;
       },
     },

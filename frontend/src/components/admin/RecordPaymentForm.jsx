@@ -8,6 +8,7 @@ import { AnimatePresence } from "framer-motion";
 import Modal from "../ui/Modal.jsx";
 import SummaryDialog from "../ui/SummaryDialog.jsx";
 import PaymentModePicker from "./PaymentModePicker.jsx";
+import DateInput, { isoToDmy } from "../ui/DateInput";
 import { inputStyle as baseInput, labelStyleTight } from "../ui/formStyles.js";
 import { useState, useMemo } from "react";
 import toast from "react-hot-toast";
@@ -323,13 +324,12 @@ export default function RecordPaymentForm({ member, plans, onSuccess, onCancel }
           {/* Start Date */}
           <div>
             <label style={labelStyle}>Start Date</label>
-            <input
-              type="date"
-              style={{ ...inputStyle, colorScheme: "dark" }}
+            <DateInput
+              ariaLabel="Start date"
               value={form.startDate}
-              onChange={(e) => {
+              onChange={(v) => {
                 resetCalculator();
-                setForm({ ...form, startDate: e.target.value });
+                setForm({ ...form, startDate: v });
               }}
             />
           </div>
@@ -419,14 +419,14 @@ export default function RecordPaymentForm({ member, plans, onSuccess, onCancel }
                         Balance to split: {inr(balancePaise)}
                       </p>
                       <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.62)", marginBottom: "14px", lineHeight: 1.5 }}>
-                        Membership: {form.startDate || "—"} → {endDate || "—"}. Every installment must be on or before{" "}
-                        <strong style={{ color: "rgba(255,255,255,0.85)" }}>{lastAllowed || "—"}</strong>{" "}
+                        Membership: {isoToDmy(form.startDate) || "—"} → {isoToDmy(endDate) || "—"}. Every installment must be on or before{" "}
+                        <strong style={{ color: "rgba(255,255,255,0.85)" }}>{isoToDmy(lastAllowed) || "—"}</strong>{" "}
                         ({LAST_DUE_LEAD_DAYS} days before it ends).
                       </p>
 
                       {maxCount < 1 && (
                         <p role="alert" style={{ fontSize: "14px", color: "#f97316", marginBottom: "12px", lineHeight: 1.5 }}>
-                          No installment fits before {lastAllowed || "the membership ends"} with this gap and first date.
+                          No installment fits before {isoToDmy(lastAllowed) || "the membership ends"} with this gap and first date.
                           Pick a shorter gap or an earlier first date, or collect the full amount.
                         </p>
                       )}
@@ -493,15 +493,14 @@ export default function RecordPaymentForm({ member, plans, onSuccess, onCancel }
                               value={row.amountDue}
                               onChange={(e) => editRow(i, "amountDue", e.target.value)}
                             />
-                            <input
-                              type="date"
-                              aria-label={`Installment ${i + 1} due date`}
-                              style={{ ...inputStyle, padding: "8px 12px", colorScheme: "dark", flex: "1 1 140px", width: "auto" }}
-                              value={row.dueDate}
-                              onChange={(e) =>
-                                i === 0 ? setFirstDueOverride(e.target.value) : editRow(i, "dueDate", e.target.value)
-                              }
-                            />
+                            <div style={{ flex: "1 1 160px" }}>
+                              <DateInput
+                                ariaLabel={`Installment ${i + 1} due date`}
+                                style={{ padding: "8px 12px" }}
+                                value={row.dueDate}
+                                onChange={(v) => (i === 0 ? setFirstDueOverride(v) : editRow(i, "dueDate", v))}
+                              />
+                            </div>
                           </div>
                           {rowIssues[i] && (
                             <p role="alert" style={{ fontSize: "14px", color: "#ef4444", margin: "6px 0 0", lineHeight: 1.4 }}>
@@ -605,7 +604,7 @@ export default function RecordPaymentForm({ member, plans, onSuccess, onCancel }
           <SummaryDialog
             subtitle={`${member.firstName} ${member.lastName} · ${selectedPlan?.name} · ${durationOptions.find((d) => d.days === form.durationDays)?.label}`}
             rows={[
-              ["Membership", `${form.startDate} → ${endDate}`],
+              ["Membership", `${isoToDmy(form.startDate)} → ${isoToDmy(endDate)}`],
               ["Plan price", inr(planPricePaise)],
               form.isComplimentary
                 ? ["Payment", "Free — complimentary"]
@@ -632,7 +631,7 @@ export default function RecordPaymentForm({ member, plans, onSuccess, onCancel }
                 </p>
                 {sortByDueDate(rows).map((row, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "15px", padding: "6px 0" }}>
-                    <span>{i + 1}. {row.dueDate}</span>
+                    <span>{i + 1}. {isoToDmy(row.dueDate)}</span>
                     <span style={{ fontWeight: 600, color: "#f3d400" }}>{inr(toPaise(row.amountDue))}</span>
                   </div>
                 ))}

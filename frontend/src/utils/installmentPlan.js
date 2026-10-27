@@ -45,6 +45,12 @@ const parseYMD = (value) => {
   return { y, m, d };
 };
 
+// "2026-10-27" → "27-10-2026" (how dates are shown to people)
+export const dmy = (ymd) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || "");
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : String(ymd ?? "");
+};
+
 export const isValidDate = (value) => parseYMD(value) !== null;
 
 export const addDays = (value, days) => {
@@ -174,7 +180,7 @@ export const rowProblem = (row, ctx) => {
   if (!isValidDate(row.dueDate)) return "Pick a valid due date.";
   if (ctx?.today && row.dueDate < ctx.today) return "This date has already passed — pick today or later.";
   if (ctx?.lastAllowed && row.dueDate > ctx.lastAllowed) {
-    return `Too late — it must be on or before ${ctx.lastAllowed} (membership ends ${ctx.end}; the last installment is kept ${LAST_DUE_LEAD_DAYS} days before that).`;
+    return `Too late — it must be on or before ${dmy(ctx.lastAllowed)} (membership ends ${dmy(ctx.end)}; the last installment is kept ${LAST_DUE_LEAD_DAYS} days before that).`;
   }
   return "";
 };
@@ -187,7 +193,7 @@ export const validateSchedule = (rows, balancePaise, ctx) => {
     if (problem) return `Installment ${i + 1}: ${problem}`;
   }
   const same = duplicateDates(rows);
-  if (same.length) return `Two installments fall on ${same.join(", ")}. Give each installment its own date.`;
+  if (same.length) return `Two installments fall on ${same.map(dmy).join(", ")}. Give each installment its own date.`;
   const diff = balancePaise - sumPaise(rows);
   if (diff !== 0) {
     const rupees = paiseToRupeeString(Math.abs(diff));
