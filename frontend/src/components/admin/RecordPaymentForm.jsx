@@ -37,7 +37,7 @@ import {
 } from "../../utils/installmentPlan.js";
 import { inr } from "../../utils/format.js";
 
-export default function RecordPaymentForm({ member, plans, onSuccess, onCancel }) {
+export default function RecordPaymentForm({ member, plans, onSuccess, onCancel, canComplimentary = true }) {
   const [form, setForm] = useState({
     planId: "",
     durationDays: "30",
@@ -231,8 +231,8 @@ export default function RecordPaymentForm({ member, plans, onSuccess, onCancel }
           onSubmit={handleSubmit}
           style={{ display: "flex", flexDirection: "column", gap: "16px" }}
         >
-          {/* Complimentary */}
-          <label
+          {/* Complimentary (admin only — the server refuses it for a receptionist) */}
+          {canComplimentary && <label
             style={{
               display: "flex",
               alignItems: "center",
@@ -273,7 +273,7 @@ export default function RecordPaymentForm({ member, plans, onSuccess, onCancel }
                 Free — for staff, partners, compensation
               </p>
             </div>
-          </label>
+          </label>}
 
           {/* Plan */}
           <div>

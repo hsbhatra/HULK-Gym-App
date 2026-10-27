@@ -6,6 +6,7 @@
 // by env (src/utils/gymConfig.js). Plans come live from the API.
 // =============================================================================
 
+import { isStaffUser, isAdminUser, homePathFor } from "../utils/roles.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -189,7 +190,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const authUser = useAuthStore((s) => s.user);
-  const isAdmin = authUser?.role === "admin";
+  const isStaff = isStaffUser(authUser);
   const y = useScrollY();
   const status = useOpenStatus();
 
@@ -254,7 +255,7 @@ export default function LandingPage() {
     ? { label: "See plans", onClick: scrollToPricing }
     : { label: "Join now", onClick: () => navigate("/register") };
   const accountCta = isAuthenticated
-    ? { label: isAdmin ? "Admin dashboard" : "My membership", to: isAdmin ? "/admin" : "/profile" }
+    ? { label: isStaff ? (isAdminUser(authUser) ? "Admin dashboard" : "Staff panel") : "My membership", to: isStaff ? homePathFor(authUser) : "/profile" }
     : null;
 
   const mapEmbed = GYM.mapEmbedSrc;

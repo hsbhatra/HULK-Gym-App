@@ -31,7 +31,7 @@ const smallBtn = {
 
 const timeOf = (d) => new Date(d).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
 
-export default function MemberIdPanel({ member }) {
+export default function MemberIdPanel({ member, canReveal = true }) {
   const [status, setStatus] = useState(member.idStatus || { state: "locked" });
   const [revealed, setRevealed] = useState(null); // { number } while visible
   const [busy, setBusy] = useState(false);
@@ -103,16 +103,16 @@ export default function MemberIdPanel({ member }) {
                 </p>
               </div>
             </div>
-            <button type="button" onClick={revealed ? hide : show} disabled={busy}
+            {canReveal && <button type="button" onClick={revealed ? hide : show} disabled={busy}
               style={{ ...smallBtn, border: "1px solid rgba(243,212,0,0.25)", background: "rgba(243,212,0,0.08)", color: "#f3d400" }}>
               {revealed ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
               {revealed ? "Hide ID number" : busy ? "Loading…" : "Show ID number"}
-            </button>
+            </button>}
           </div>
         )}
         {status.state === "saved" && (
           <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginTop: "10px" }}>
-            Saved{status.savedAt ? ` on ${new Date(status.savedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""}. It can't be edited. Each time the number is shown, it is logged.
+            Saved{status.savedAt ? ` on ${new Date(status.savedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : ""}. It can't be edited. Each time the number is shown, it is logged.{!canReveal ? " Only the admin can view the number." : ""}
           </p>
         )}
 

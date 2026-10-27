@@ -12,18 +12,21 @@ import { logoutUser } from "../../services/authService.js";
 import toast from "react-hot-toast";
 import { LayoutDashboard, Package, RotateCcw, UserX, Users } from "lucide-react";
 import api from "../../services/api.js";
+import { isAdminUser } from "../../utils/roles.js";
 
 export default function AdminLayout({ children }) {
   const navigate  = useNavigate();
   const location  = useLocation();
   const user      = useAuthStore((s) => s.user);
   const logout    = useAuthStore((s) => s.logout);
+  const isAdmin   = isAdminUser(user); // a receptionist only gets the Members page
 
   // Pending-refund count for the sidebar badge. Refreshes on every admin page
   // change and right after a refund is issued.
   const [refundsPending, setRefundsPending] = useState(0);
   useEffect(() => {
     let alive = true;
+    if (!isAdmin) return undefined;
     const load = () =>
       api.get("/admin/refunds")
         .then((res) => alive && setRefundsPending(res.data?.data?.due?.length || 0))
@@ -43,6 +46,7 @@ export default function AdminLayout({ children }) {
   const [deletionsPending, setDeletionsPending] = useState(0);
   useEffect(() => {
     let alive = true;
+    if (!isAdmin) return undefined;
     const load = () =>
       api.get("/admin/deletion-requests")
         .then((res) => alive && setDeletionsPending(res.data?.data?.pending?.length || 0))
@@ -57,13 +61,14 @@ export default function AdminLayout({ children }) {
     };
   }, [location.pathname]);
 
-  const navItems = [
-    { path: "/admin",         label: "Dashboard", icon: <LayoutDashboard size={18} aria-hidden="true" /> },
-    { path: "/admin/plans",   label: "Plans",     icon: <Package size={18} aria-hidden="true" /> },
+  const allNavItems = [
+    { path: "/admin",         label: "Dashboard", icon: <LayoutDashboard size={18} aria-hidden="true" />, adminOnly: true },
+    { path: "/admin/plans",   label: "Plans",     icon: <Package size={18} aria-hidden="true" />, adminOnly: true },
     { path: "/admin/members", label: "Members",   icon: <Users size={18} aria-hidden="true" /> },
-    { path: "/admin/refunds", label: "Refunds",   icon: <RotateCcw size={18} aria-hidden="true" />, badge: refundsPending },
-    { path: "/admin/deletion-requests", label: "Deletions", icon: <UserX size={18} aria-hidden="true" />, badge: deletionsPending },
+    { path: "/admin/refunds", label: "Refunds",   icon: <RotateCcw size={18} aria-hidden="true" />, badge: refundsPending, adminOnly: true },
+    { path: "/admin/deletion-requests", label: "Deletions", icon: <UserX size={18} aria-hidden="true" />, badge: deletionsPending, adminOnly: true },
   ];
+  const navItems = allNavItems.filter((item) => isAdmin || !item.adminOnly);
 
   // Must revoke the server session too — clearing local state alone left the
   // refresh cookie valid, so a page reload logged the admin straight back in.
@@ -108,7 +113,7 @@ export default function AdminLayout({ children }) {
             fontSize: "13px", padding: "4px 10px", borderRadius: "999px",
             background: "var(--ember)", color: "#ffffff", fontWeight: "800", letterSpacing: "1.5px",
           }}>
-            ADMIN
+            {isAdmin ? "ADMIN" : "RECEPTIONIST"}
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -116,7 +121,7 @@ export default function AdminLayout({ children }) {
             {user?.firstName} {user?.lastName}
           </span>
           <button type="button" onClick={() => navigate("/")} className="btn-ghost btn-sm admin-exit-btn">
-            Exit Admin
+            Exit Panel
           </button>
           <button type="button" onClick={handleLogout} className="btn-ghost btn-sm">
             Logout
@@ -179,4 +184,4 @@ export default function AdminLayout({ children }) {
       </div>
     </div>
   );
-}
+}

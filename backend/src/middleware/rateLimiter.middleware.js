@@ -51,6 +51,14 @@ export const idRevealLimiter = make({
   message: "Too many ID lookups. Please wait a few minutes and try again.",
 });
 
+// Money-recording desk actions (offline payment, collect balance, mark paid).
+// Far above real desk use; it only stops a script running on a stolen staff login.
+export const staffWriteLimiter = make({
+  minutes: 15,
+  max: 60,
+  message: "Too many payment entries in a short time. Please wait a few minutes and try again.",
+});
+
 // Backstop for the whole API (per IP). Generous: a gym's Wi-Fi is shared.
 export const generalLimiter = make({
   minutes: 15,

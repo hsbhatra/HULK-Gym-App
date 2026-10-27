@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: {
         values: USER_ROLES_ARRAY,
-        message: "Role must be one of: member, trainer, admin",
+        message: "Role must be one of: member, trainer, receptionist, admin",
       },
       default: USER_ROLES.MEMBER,
     },

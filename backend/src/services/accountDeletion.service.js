@@ -31,8 +31,8 @@ const fullName = (u) => `${u.firstName || ""} ${u.lastName || ""}`.trim();
 export const requestDeletion = async (userId, password, reason) => {
   const user = await User.findById(userId).select("+passwordHash");
   if (!user || !user.isActive) throw ApiError.notFound("Account not found.");
-  if (user.role === USER_ROLES.ADMIN) {
-    throw ApiError.forbidden("Admin accounts can't be deleted from here.");
+  if (user.role !== USER_ROLES.MEMBER) {
+    throw ApiError.forbidden("Staff accounts can't be deleted from here. The admin must first change this account back to a regular member.");
   }
 
   const passwordOk = await user.comparePassword(password || "");

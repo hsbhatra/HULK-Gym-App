@@ -1,3 +1,4 @@
+import { homePathFor } from "../../utils/roles.js";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore.js";
 
@@ -32,7 +33,7 @@ export function PublicRoute({ children }) {
     // (otherwise it races the page's own navigate() and wins with "/").
     const target =
       safePath(searchParams.get("redirect")) ||
-      (user?.role === "admin" ? "/admin" : "/");
+      homePathFor(user);
     return <Navigate to={target} replace />;
   }
   return children;

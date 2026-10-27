@@ -5,7 +5,7 @@
 import { Router } from "express";
 import authenticate from "../middleware/auth/authenticate.middleware.js";
 import sessionGuard from "../middleware/auth/sessionGuard.middleware.js";
-import authorize from "../middleware/auth/authorize.middleware.js";
+import { loadStaff, adminOnly } from "../middleware/auth/staff.middleware.js";
 
 import {
   searchMembers,
@@ -23,8 +23,10 @@ import {
   getDeletionRequests,
   approveDeletionRequest,
   rejectDeletionRequest,
+  setMemberRole,
 } from "../controllers/admin.controller.js";
-import { idRevealLimiter } from "../middleware/rateLimiter.middleware.js";
+import { revenueAnalytics, memberAnalytics, duesAnalytics, renewalAnalytics } from "../controllers/analytics.controller.js";
+import { idRevealLimiter, staffWriteLimiter } from "../middleware/rateLimiter.middleware.js";
 
 const router = Router();
 
@@ -34,11 +36,19 @@ const router = Router();
 //   res.json({ success: true });
 // });
 
-// All admin routes require authentication + session guard + admin role
-router.use(authenticate, sessionGuard, authorize("admin"));
+// Everything here needs a signed-in staff member (admin or receptionist); the
+// role is checked against the database. Routes marked adminOnly are for the
+// admin alone — a receptionist gets 403 from the server, not just a hidden button.
+router.use(authenticate, sessionGuard, loadStaff);
 
 // Dashboard
-router.get("/dashboard", getDashboardStats);
+router.get("/dashboard", adminOnly, getDashboardStats);
+
+// Analytics (admin only; ?from=YYYY-MM-DD&to=YYYY-MM-DD, default last 30 days)
+router.get("/analytics/revenue", adminOnly, revenueAnalytics);
+router.get("/analytics/members", adminOnly, memberAnalytics);
+router.get("/analytics/dues", adminOnly, duesAnalytics);
+router.get("/analytics/renewals", adminOnly, renewalAnalytics);
 
 // Members
 router.get("/members", searchMembers);
@@ -46,24 +56,27 @@ router.get("/members/:id", getMemberProfile);
 
 // Government ID: desk unlock (once, 30 min) and "Show ID number"
 router.post("/members/:id/id/unlock", unlockMemberIdEntry);
-router.post("/members/:id/id/reveal", idRevealLimiter, revealMemberIdNumber);
+router.post("/members/:id/id/reveal", adminOnly, idRevealLimiter, revealMemberIdNumber);
+
+// Receptionist role (admin only)
+router.patch("/members/:id/role", adminOnly, setMemberRole);
 
 // Subscriptions
-router.get("/subscriptions", getAllSubscriptions);
-router.post("/subscriptions/offline", recordOfflinePayment);
-router.patch("/subscriptions/:id/cancel", cancelSubscription);
-router.post("/subscriptions/:id/collect", collectOutstandingBalance);
+router.get("/subscriptions", adminOnly, getAllSubscriptions);
+router.post("/subscriptions/offline", staffWriteLimiter, recordOfflinePayment);
+router.patch("/subscriptions/:id/cancel", adminOnly, cancelSubscription);
+router.post("/subscriptions/:id/collect", staffWriteLimiter, collectOutstandingBalance);
 
 // Payments / refunds
-router.get("/refunds", getRefunds);
-router.post("/payments/:id/refund", refundDuplicatePayment);
+router.get("/refunds", adminOnly, getRefunds);
+router.post("/payments/:id/refund", adminOnly, refundDuplicatePayment);
 
 // Account deletion requests (member asks, admin approves or rejects)
-router.get("/deletion-requests", getDeletionRequests);
-router.post("/deletion-requests/:id/approve", approveDeletionRequest);
-router.post("/deletion-requests/:id/reject", rejectDeletionRequest);
+router.get("/deletion-requests", adminOnly, getDeletionRequests);
+router.post("/deletion-requests/:id/approve", adminOnly, approveDeletionRequest);
+router.post("/deletion-requests/:id/reject", adminOnly, rejectDeletionRequest);
 
 // Installments
-router.patch("/installments/:id", markInstallmentPaid);
+router.patch("/installments/:id", staffWriteLimiter, markInstallmentPaid);
 
 export default router;

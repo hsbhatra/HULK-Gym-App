@@ -8,6 +8,8 @@ import ApiResponse from "../utils/apiResponse.js";
 import ApiError from "../utils/apiError.js";
 import {
   HTTP_STATUS,
+  USER_ROLES,
+  MEMBER_ROLES,
   SUBSCRIPTION_STATUS,
   PAYMENT_STATUS,
   PAYMENT_MODE,
@@ -19,6 +21,8 @@ import Subscription from "../models/subscription.model.js";
 import Payment from "../models/payment.model.js";
 import Installment from "../models/installment.model.js";
 import MembershipPlan from "../models/membershipPlan.model.js";
+import RoleChangeLog from "../models/roleChangeLog.model.js";
+import { revokeAllSessions } from "../services/auth/session.service.js";
 import Receipt, { RECEIPT_TYPE } from "../models/receipt.model.js";
 import { issueReceipt } from "../services/receipt.service.js";
 import {
@@ -28,6 +32,7 @@ import {
 import razorpay from "../config/razorpay.js";
 import { unlockMemberId, revealMemberId, ID_UNLOCK_MINUTES } from "../services/idProof.service.js";
 import { listRequests, approveRequest, rejectRequest } from "../services/accountDeletion.service.js";
+import { listMembers, parseMemberQuery } from "../services/memberList.service.js";
 import { rupeesToPaise, parseDateOnly, toYMD, todayIST, addDaysYMD } from "../utils/money.js";
 
 // Ways a desk payment can be taken (online/Razorpay and complimentary are not "desk" modes)
@@ -43,6 +48,21 @@ const resolveDeskMode = (mode) => {
   return m;
 };
 
+// A receptionist can never take or record money on their OWN membership (they
+// could otherwise mark themselves as paid). The admin can.
+const assertNotOwnAccount = (req, targetUserId) => {
+  if (req.actor.role !== USER_ROLES.ADMIN && String(targetUserId) === req.actor.id) {
+    throw ApiError.forbidden("You can't record payments on your own membership. Ask the admin to do it.");
+  }
+};
+
+// Receptionists work with members only — admin accounts are not theirs to touch
+const assertTargetVisible = (req, target) => {
+  if (req.actor.role !== USER_ROLES.ADMIN && target.role === USER_ROLES.ADMIN) {
+    throw ApiError.notFound("Member not found.");
+  }
+};
+
 // =============================================================================
 // searchMembers
 // GET /api/v1/admin/members?q=search_term
@@ -54,7 +74,7 @@ export const searchMembers = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
   const skip = (page - 1) * limit;
-  const trimmed = String(q).trim();
+  const trimmed = String(q).trim().slice(0, 100);
 
   // User input goes into $regex — escape it, or "(" / "*" / "+91…" throw a
   // 500 and "." matches everyone.
@@ -62,7 +82,7 @@ export const searchMembers = asyncHandler(async (req, res) => {
   const rx = (s) => ({ $regex: esc(s), $options: "i" });
 
   // Members only — not the admin account, not deleted (anonymised) accounts
-  let filter = { role: "member", deletedAt: null }; // empty search → every member
+  let filter = { role: { $in: MEMBER_ROLES }, deletedAt: null }; // empty search → every member
   if (idMissing) filter["idProof.savedAt"] = null;   // members without a saved ID
   if (trimmed) {
     const orConditions = [
@@ -95,16 +115,8 @@ export const searchMembers = asyncHandler(async (req, res) => {
     filter = { ...filter, $or: orConditions };
   }
 
-  const [members, total] = await Promise.all([
-    User.find(filter)
-      .select(
-        "firstName lastName email phoneNumber userId role isActive profilePicture idProof.savedAt idProof.unlockedUntil",
-      )
-      .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1, _id: -1 }), // newest member first
-    User.countDocuments(filter),
-  ]);
+  const parsed = parseMemberQuery(req.query);
+  const { members, total } = await listMembers(filter, parsed, { skip, limit });
 
   return new ApiResponse(HTTP_STATUS.OK, "Members retrieved.", {
     members,
@@ -124,6 +136,7 @@ export const getMemberProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id).select("-passwordHash");
 
   if (!user) throw ApiError.notFound("Member not found.");
+  assertTargetVisible(req, user);
 
   // Get active subscription
   const activeSubscription = await Subscription.findActiveSubscription(
@@ -195,6 +208,11 @@ export const recordOfflinePayment = asyncHandler(async (req, res) => {
   if (!mongoose.isValidObjectId(planId)) throw ApiError.badRequest("Choose a valid plan.");
   const user = await User.findById(userId);
   if (!user) throw ApiError.notFound("Member not found.");
+  assertTargetVisible(req, user);
+  assertNotOwnAccount(req, user._id);
+  if (isComplimentary && req.actor.role !== USER_ROLES.ADMIN) {
+    throw ApiError.forbidden("Only the admin can give a complimentary membership.");
+  }
   if (user.isActive === false) {
     throw ApiError.badRequest("This member's account is deactivated. Reactivate it before giving a membership.");
   }
@@ -406,6 +424,7 @@ export const markInstallmentPaid = asyncHandler(async (req, res) => {
 
   const installment = await Installment.findById(req.params.id);
   if (!installment) throw ApiError.notFound("Installment not found.");
+  assertNotOwnAccount(req, installment.userId);
 
   if (installment.status === INSTALLMENT_STATUS.PAID) {
     throw ApiError.conflict("This installment is already marked as paid.");
@@ -497,7 +516,12 @@ export const markInstallmentPaid = asyncHandler(async (req, res) => {
 // =============================================================================
 
 export const getAllSubscriptions = asyncHandler(async (req, res) => {
-  const { status, page = 1, limit = 20 } = req.query;
+  // Query values are strings only (an object like status[$ne]=x is ignored),
+  // and paging is clamped so one request can't pull the whole collection.
+  const status = typeof req.query.status === "string" ? req.query.status : "";
+  if (status && !Object.values(SUBSCRIPTION_STATUS).includes(status)) throw ApiError.badRequest(`Unknown status "${status}".`);
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
   const query = {};
   if (status) query.status = status;
 
@@ -505,7 +529,7 @@ export const getAllSubscriptions = asyncHandler(async (req, res) => {
     Subscription.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(Number(limit))
+      .limit(limit)
       .populate("userId", "firstName lastName email phoneNumber userId")
       .populate("planId", "name slug"),
     Subscription.countDocuments(query),
@@ -515,8 +539,8 @@ export const getAllSubscriptions = asyncHandler(async (req, res) => {
     subscriptions,
     pagination: {
       total,
-      page: Number(page),
-      limit: Number(limit),
+      page,
+      limit,
       pages: Math.ceil(total / limit),
     },
   }).send(res);
@@ -757,6 +781,7 @@ export const collectOutstandingBalance = asyncHandler(async (req, res) => {
 
   const subscription = await Subscription.findById(req.params.id);
   if (!subscription) throw ApiError.notFound("Subscription not found.");
+  assertNotOwnAccount(req, subscription.userId);
   if (subscription.status === SUBSCRIPTION_STATUS.CANCELLED) {
     throw ApiError.conflict("Cannot collect payment on a cancelled membership.");
   }
@@ -1041,4 +1066,64 @@ export const approveDeletionRequest = asyncHandler(async (req, res) => {
 export const rejectDeletionRequest = asyncHandler(async (req, res) => {
   await rejectRequest(req.params.id, req.user.userId, req.body?.note);
   return new ApiResponse(HTTP_STATUS.OK, "Rejected. The member has been emailed the reason.").send(res);
+});
+
+
+// =============================================================================
+// setMemberRole
+// PATCH /api/v1/admin/members/:id/role   { role: "receptionist" | "member" }
+// =============================================================================
+// Admin only. Makes an existing member a receptionist, or takes it away.
+// Their sign-in sessions are ended so the next login carries the new role.
+// =============================================================================
+
+export const setMemberRole = asyncHandler(async (req, res) => {
+  const { role } = req.body || {};
+  if (![USER_ROLES.RECEPTIONIST, USER_ROLES.MEMBER].includes(role)) {
+    throw ApiError.badRequest('Role must be "receptionist" or "member".');
+  }
+  if (!mongoose.isValidObjectId(req.params.id)) throw ApiError.badRequest("Invalid member.");
+
+  const target = await User.findById(req.params.id);
+  if (!target || target.deletedAt) throw ApiError.notFound("Member not found.");
+  if (String(target._id) === req.actor.id) throw ApiError.forbidden("You can't change your own role.");
+  if (target.role === USER_ROLES.ADMIN) throw ApiError.forbidden("An admin's role can't be changed here.");
+  if (![USER_ROLES.MEMBER, USER_ROLES.RECEPTIONIST].includes(target.role)) {
+    throw ApiError.badRequest("This account's role can't be changed here.");
+  }
+  if (target.role === role) {
+    throw ApiError.conflict(role === USER_ROLES.RECEPTIONIST ? "This member is already a receptionist." : "This account is already a regular member.");
+  }
+  if (role === USER_ROLES.RECEPTIONIST) {
+    if (target.isActive === false) throw ApiError.badRequest("This account is deactivated.");
+    if (!target.isEmailVerified) throw ApiError.badRequest("This member hasn't verified their email yet.");
+  }
+
+  // Atomic: only change if the role is still what we just read
+  const updated = await User.findOneAndUpdate(
+    { _id: target._id, role: target.role },
+    { $set: { role } },
+    { returnDocument: "after" },
+  );
+  if (!updated) throw ApiError.conflict("This account changed just now. Refresh and try again.");
+
+  await RoleChangeLog.create({
+    targetId: target._id,
+    targetName: `${target.firstName} ${target.lastName}`.trim(),
+    actorId: req.actor.id,
+    actorName: req.actor.name,
+    fromRole: target.role,
+    toRole: role,
+    ip: req.ip || "",
+  }).catch((err) => console.error("[ROLE LOG] could not write log:", err.message));
+
+  await revokeAllSessions(target._id);
+
+  return new ApiResponse(
+    HTTP_STATUS.OK,
+    role === USER_ROLES.RECEPTIONIST
+      ? `${target.firstName} is now a receptionist. They must sign in again to see the staff panel.`
+      : `${target.firstName} is a regular member again. They have been signed out.`,
+    { role },
+  ).send(res);
 });

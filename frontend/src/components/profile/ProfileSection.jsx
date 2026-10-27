@@ -656,7 +656,7 @@ export default function ProfileSection({ user, onUpdate }) {
         </div>
       </div>
 
-      {user.role !== "admin" && <DeleteAccountSection />}
+      {user.role === "member" && <DeleteAccountSection />}
     </div>
   );
 }
