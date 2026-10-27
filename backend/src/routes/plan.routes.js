@@ -11,6 +11,7 @@ import {
   validateUpdatePlan,
   validateUpdatePlanStatus,
   validateReorderPlans,
+  validateLandingVisibility,
 } from "../middleware/validation/plan.validation.js";
 
 import {
@@ -22,6 +23,7 @@ import {
   archivePlanAdmin,
   getAllPlansAdminController,
   reorderPlansAdmin,
+  setLandingVisibilityAdmin,
 } from "../controllers/plan.controller.js";
 
 const router = Router();
@@ -46,4 +48,5 @@ adminPlanRouter.post  ("/",           validateCreatePlan,       createPlanAdmin)
 adminPlanRouter.patch ("/reorder",    validateReorderPlans,     reorderPlansAdmin);
 adminPlanRouter.patch ("/:id",        validateUpdatePlan,       updatePlanAdmin);
 adminPlanRouter.patch ("/:id/status", validateUpdatePlanStatus, updatePlanStatusAdmin);
+adminPlanRouter.patch ("/:id/landing", validateLandingVisibility, setLandingVisibilityAdmin);
 adminPlanRouter.delete("/:id",        archivePlanAdmin);

@@ -5,6 +5,7 @@ import { changePassword } from "../../services/authService.js";
 import ConfirmDialog from "../ui/ConfirmDialog.jsx";
 import toast from "react-hot-toast";
 import { Eye, EyeOff } from "lucide-react";
+import { inputStyle as baseInput, labelStyle } from "../ui/formStyles.js";
 
 export default function ChangePasswordSection() {
   const navigate = useNavigate();
@@ -71,26 +72,7 @@ export default function ChangePasswordSection() {
     }
   };
 
-  const inputStyle = {
-    width: "100%",
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: "10px",
-    padding: "11px 44px 11px 14px",
-    color: "#fff",
-    fontSize: "16px",
-    outline: "none",
-    transition: "border-color 0.2s",
-  };
-  const labelStyle = {
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.62)",
-    letterSpacing: "0.5px",
-    textTransform: "uppercase",
-    display: "block",
-    marginBottom: "8px",
-  };
+  const inputStyle = { ...baseInput, border: "1px solid rgba(255,255,255,0.08)", padding: "11px 44px 11px 14px", transition: "border-color 0.2s" };
 
   const EyeBtn = ({ show, toggle }) => (
     <button

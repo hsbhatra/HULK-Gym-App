@@ -15,9 +15,8 @@ import {
   requestAccountDeletion,
   cancelDeletionRequest,
 } from "../../services/profileService.js";
+import { formatDate } from "../../utils/format.js";
 
-const formatDate = (d) =>
-  new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 export default function DeleteAccountSection() {
   const [request, setRequest] = useState(null); // pending, or a recent rejection

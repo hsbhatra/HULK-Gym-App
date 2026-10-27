@@ -8,6 +8,7 @@ import {
 import toast from "react-hot-toast";
 import { Camera } from "lucide-react";
 import DeleteAccountSection from "./DeleteAccountSection.jsx";
+import { labelStyle } from "../ui/formStyles.js";
 
 export default function ProfileSection({ user, onUpdate }) {
   const [editing, setEditing] = useState(false);
@@ -132,15 +133,6 @@ export default function ProfileSection({ user, onUpdate }) {
     transition: "border-color 0.2s, background 0.2s",
   });
 
-  const labelStyle = {
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.62)",
-    letterSpacing: "0.5px",
-    textTransform: "uppercase",
-    display: "block",
-    marginBottom: "8px",
-  };
 
   return (
     <div>

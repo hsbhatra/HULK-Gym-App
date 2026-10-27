@@ -11,7 +11,10 @@ import {
   getMyReceipts,
 } from "../../services/subscriptionService.js";
 import ReceiptsList from "../ui/ReceiptsList.jsx";
+import Paged from "../ui/Paged.jsx";
 import { Dumbbell, TriangleAlert } from "lucide-react";
+import { labelStyleTight } from "../ui/formStyles.js";
+import { inr, formatDate as formatDateBase, subscriptionStatusColor } from "../../utils/format.js";
 
 function PaymentsSection({ receipts }) {
   if (!receipts.length) return null;
@@ -35,22 +38,18 @@ function PaymentsSection({ receipts }) {
 
 // Add this above the MembershipSection component:
 function SubscriptionHistory({ history, formatDate }) {
-  const statusColors = {
-    active: "#22c55e", grace: "#f97316", expired: "rgba(255,255,255,0.4)",
-    cancelled: "#ef4444", complimentary: "#a78bfa", pending: "#f3d400",
-  };
 
   return (
     <div style={{ marginTop: "28px" }}>
       <p style={{ fontSize: "14px", fontWeight: "700", color: "rgba(255,255,255,0.62)", letterSpacing: "1px", textTransform: "uppercase", marginBottom: "14px" }}>
         Subscription History
       </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        {history.map((sub) => {
+      <Paged items={history}>
+        {(sub) => {
           const isCancelled = sub.status === "cancelled";
-          const color = statusColors[sub.status] || "rgba(255,255,255,0.4)";
+          const color = subscriptionStatusColor(sub.status);
           return (
-            <div key={sub._id} style={{ padding: "14px 16px", borderRadius: "10px", background: "var(--iron-850)", border: `1px solid ${isCancelled ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)"}` }}>
+            <div style={{ padding: "14px 16px", borderRadius: "10px", background: "var(--iron-850)", border: `1px solid ${isCancelled ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)"}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <p style={{ fontSize: "16px", fontWeight: "600" }}>
@@ -76,8 +75,8 @@ function SubscriptionHistory({ history, formatDate }) {
               </div>
             </div>
           );
-        })}
-      </div>
+        }}
+      </Paged>
     </div>
   );
 }
@@ -127,25 +126,12 @@ export default function MembershipSection() {
     }
   };
 
-  const formatDate = (date) =>
-    new Date(date).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+  const formatDate = (date) => formatDateBase(date, { month: "long" });
 
   const getDaysRemaining = (endDate) =>
     Math.ceil((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24));
 
-  const labelStyle = {
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.62)",
-    letterSpacing: "0.5px",
-    textTransform: "uppercase",
-    display: "block",
-    marginBottom: "6px",
-  };
+  const labelStyle = labelStyleTight;
 
   if (loading) {
     return (
@@ -469,7 +455,7 @@ export default function MembershipSection() {
               {payment
                 ? payment.paymentMode === "complimentary"
                   ? "Complimentary"
-                  : `₹${(payment.amountPaid / 100).toLocaleString("en-IN")}`
+                  : inr(payment.amountPaid)
                 : "—"}
             </p>
           </div>
@@ -483,11 +469,7 @@ export default function MembershipSection() {
                   color: "#ef4444",
                 }}
               >
-                ₹
-                {(
-                  (payment.amountDue - payment.amountPaid) /
-                  100
-                ).toLocaleString("en-IN")}
+                {inr(payment.amountDue - payment.amountPaid)}
               </p>
             </div>
           )}
@@ -638,7 +620,7 @@ export default function MembershipSection() {
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <p style={{ fontSize: "16px", fontWeight: "700" }}>
-                        ₹{(inst.amountDue / 100).toLocaleString("en-IN")}
+                        {inr(inst.amountDue)}
                       </p>
                       <span
                         style={{

@@ -29,6 +29,10 @@ export const updatePlanStatus = (id, status) =>
 export const archivePlan = (id) =>
   api.delete(`/admin/plans/${id}`);
 
-// order = every plan id, top → bottom
-export const reorderPlans = (order) =>
-  api.patch("/admin/plans/reorder", { order });
+// order = the plan ids of ONE list, top → bottom; group = "landing" | "other"
+export const reorderPlans = (order, group) =>
+  api.patch("/admin/plans/reorder", { order, group });
+
+// Show a plan on the landing page (true) or move it to "Other plans" (false)
+export const setLandingVisibility = (id, show) =>
+  api.patch(`/admin/plans/${id}/landing`, { show });

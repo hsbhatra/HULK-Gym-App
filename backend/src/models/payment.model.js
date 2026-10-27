@@ -117,6 +117,13 @@ const paymentSchema = new mongoose.Schema(
       default: null,
       trim: true,
     },
+
+    // Short-lived lock while a balance collection is being recorded, so the
+    // same money can't be counted twice (see collectOutstandingBalance)
+    lockedUntil: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -125,6 +132,7 @@ const paymentSchema = new mongoose.Schema(
         // Never expose Razorpay signature in API responses
         if (ret.razorpay) delete ret.razorpay.signature;
         delete ret.__v;
+        delete ret.lockedUntil;
         return ret;
       },
     },

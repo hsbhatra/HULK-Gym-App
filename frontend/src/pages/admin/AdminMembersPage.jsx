@@ -5,695 +5,21 @@
 import { useState, useEffect, useCallback } from "react";
 import toast from "react-hot-toast";
 import { useParams } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import Modal from "../../components/ui/Modal.jsx";
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import api from "../../services/api.js";
 import ReceiptsList from "../../components/ui/ReceiptsList.jsx";
+import Paged from "../../components/ui/Paged.jsx";
 import MemberIdPanel from "../../components/admin/MemberIdPanel.jsx";
+import MarkInstallmentModal from "../../components/admin/MarkInstallmentModal.jsx";
+import CollectBalanceForm from "../../components/admin/CollectBalanceForm.jsx";
+import RecordPaymentForm from "../../components/admin/RecordPaymentForm.jsx";
 import { Search, TriangleAlert } from "lucide-react";
-import { Tip, InfoTip } from "../../components/ui/Tip.jsx";
+import { Tip } from "../../components/ui/Tip.jsx";
+import { inr, formatDate, subscriptionStatusColor } from "../../utils/format.js";
 
 const ITEMS_PER_PAGE = 10;
-
-// =============================================================================
-// MarkInstallmentModal
-// =============================================================================
-
-function MarkInstallmentModal({ installment, onClose, onSaved }) {
-  const [paymentMode, setPaymentMode] = useState("cash");
-  const [saving, setSaving] = useState(false);
-  // Pay only what's left — the backend adds to any earlier partial payment
-  const remainingPaise = installment.amountDue - (installment.amountPaid || 0);
-
-  const handleSubmit = async () => {
-    setSaving(true);
-    try {
-      const res = await api.patch(`/admin/installments/${installment._id}`, {
-        amountPaid: remainingPaise / 100,
-        paymentMode,
-      });
-      const rn = res.data.data?.receiptNumber;
-      toast.success(
-        `Installment ${installment.installmentNumber} marked as paid.${rn ? ` Receipt ${rn} emailed.` : ""}`,
-      );
-      onSaved();
-      onClose();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to mark installment as paid.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 300,
-        background: "rgba(0,0,0,0.8)",
-        backdropFilter: "blur(8px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px",
-      }}
-    >
-      <div
-        style={{
-          background: "var(--iron-850)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "20px",
-          padding: "32px",
-          maxWidth: "400px",
-          width: "100%",
-        }}
-      >
-        <h3
-          style={{ fontSize: "18px", fontWeight: "700", marginBottom: "6px" }}
-        >
-          Mark Installment Paid
-        </h3>
-        <p
-          style={{
-            fontSize: "15px",
-            color: "rgba(255,255,255,0.62)",
-            marginBottom: "24px",
-          }}
-        >
-          Installment {installment.installmentNumber} — ₹
-          {(remainingPaise / 100).toLocaleString("en-IN")}
-        </p>
-
-        <p
-          style={{
-            fontSize: "14px",
-            fontWeight: "600",
-            color: "rgba(255,255,255,0.62)",
-            letterSpacing: "0.5px",
-            textTransform: "uppercase",
-            marginBottom: "10px",
-          }}
-        >
-          Payment Mode
-        </p>
-        <div style={{ display: "flex", gap: "8px", marginBottom: "24px" }}>
-          {["cash", "upi", "card"].map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => setPaymentMode(mode)}
-              style={{
-                flex: 1,
-                padding: "10px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontSize: "15px",
-                fontWeight: "600",
-                textTransform: "capitalize",
-                border:
-                  paymentMode === mode
-                    ? "1px solid rgba(243,212,0,0.4)"
-                    : "1px solid rgba(255,255,255,0.1)",
-                background:
-                  paymentMode === mode ? "rgba(243,212,0,0.1)" : "transparent",
-                color:
-                  paymentMode === mode ? "#f3d400" : "rgba(255,255,255,0.5)",
-              }}
-            >
-              {mode === "cash"
-                ? "Cash"
-                : mode === "upi"
-                  ? "UPI"
-                  : "Card"}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: "flex", gap: "12px" }}>
-          <button
-            onClick={onClose}
-            className="btn-ghost"
-            style={{ flex: 1, padding: "12px" }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="btn-gold"
-            style={{ flex: 1 }}
-          >
-            {saving ? "Saving..." : "Confirm Payment"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// CollectBalanceForm
-// =============================================================================
-function CollectBalanceForm({ subscription, payment, onSuccess, onCancel }) {
-  const [amount, setAmount]         = useState("");
-  const [paymentMode, setPaymentMode] = useState("cash");
-  const [saving, setSaving]         = useState(false);
-  const maxBalance = (payment.amountDue - payment.amountPaid) / 100;
-  const fmt = (n) => n.toLocaleString("en-IN");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!amount || Number(amount) <= 0) return toast.error("Enter a valid amount.");
-    if (Number(amount) > maxBalance) return toast.error(`Amount exceeds balance of ₹${maxBalance}.`);
-    setSaving(true);
-    try {
-      const res = await api.post(`/admin/subscriptions/${subscription._id}/collect`, {
-        amountPaid : Number(amount),
-        paymentMode,
-      });
-      const rn = res.data.data?.receipt?.receiptNumber;
-      toast.success(`Payment recorded.${rn ? ` Receipt ${rn} emailed.` : ""}`);
-      onSuccess();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to record payment.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const inputStyle = { width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px", padding: "10px 14px", color: "#fff", fontSize: "16px", outline: "none" };
-
-  return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-      <div>
-        <label style={{ fontSize: "14px", fontWeight: "600", color: "rgba(255,255,255,0.62)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>
-          Amount (₹) — max ₹{fmt(maxBalance)}
-        </label>
-        <input type="number" style={inputStyle} placeholder={`Up to ₹${fmt(maxBalance)}`}
-          value={amount} onChange={(e) => setAmount(e.target.value)} max={maxBalance} />
-      </div>
-      <div>
-        <label style={{ fontSize: "14px", fontWeight: "600", color: "rgba(255,255,255,0.62)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "6px" }}>Payment Mode</label>
-        <div style={{ display: "flex", gap: "8px" }}>
-          {["cash", "upi", "card"].map((mode) => (
-            <button key={mode} type="button" onClick={() => setPaymentMode(mode)}
-              style={{ flex: 1, padding: "9px", borderRadius: "8px", cursor: "pointer", fontSize: "15px", fontWeight: "600",
-                border: paymentMode === mode ? "1px solid rgba(243,212,0,0.4)" : "1px solid rgba(255,255,255,0.1)",
-                background: paymentMode === mode ? "rgba(243,212,0,0.1)" : "transparent",
-                color: paymentMode === mode ? "#f3d400" : "rgba(255,255,255,0.5)" }}>
-              {mode === "cash" ? "Cash" : mode === "upi" ? "UPI" : "Card"}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
-        <button type="button" onClick={onCancel} className="btn-ghost" style={{ flex: 1, padding: "11px" }}>Cancel</button>
-        <button type="submit" className="btn-gold" disabled={saving} style={{ flex: 1 }}>
-          {saving ? "Recording..." : "Record Payment"}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-// =============================================================================
-// CashPaymentForm
-// =============================================================================
-
-function CashPaymentForm({ member, plans, onSuccess, onCancel }) {
-  const [form, setForm] = useState({
-    planId: "",
-    durationDays: "30",
-    paymentMode: "cash",
-    amountPaid: "",
-    startDate: new Date().toISOString().split("T")[0],
-    isComplimentary: false,
-    notes: "",
-  });
-  const [useInstallments, setUseInstallments] = useState(false);
-  const [installments, setInstallments] = useState([
-    { amountDue: "", dueDate: "" },
-    { amountDue: "", dueDate: "" },
-  ]);
-  const [saving, setSaving] = useState(false);
-
-  const selectedPlan = plans.find((p) => p._id === form.planId);
-  const selectedTier = selectedPlan?.pricingTiers?.find(
-    (t) => t.durationDays === Number(form.durationDays),
-  );
-  const planPrice = selectedTier ? selectedTier.price / 100 : 0;
-
-  const durationOptions = [
-    { days: "30", label: "Monthly (30 days)" },
-    { days: "90", label: "Quarterly (90 days)" },
-    { days: "180", label: "Half-Yearly (180 days)" },
-    { days: "365", label: "Annual (365 days)" },
-  ];
-
-  const addInstallment = () =>
-    setInstallments([...installments, { amountDue: "", dueDate: "" }]);
-  const removeInstallment = (i) =>
-    setInstallments(installments.filter((_, idx) => idx !== i));
-  const updateInstallment = (i, field, value) => {
-    const updated = [...installments];
-    updated[i][field] = value;
-    setInstallments(updated);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!form.planId) return toast.error("Please select a plan.");
-    if (!form.isComplimentary && !form.amountPaid)
-      return toast.error("Please enter amount paid.");
-
-    setSaving(true);
-    try {
-      const payload = {
-        userId: member._id,
-        planId: form.planId,
-        durationDays: Number(form.durationDays),
-        startDate: form.startDate,
-        paymentMode: form.paymentMode,
-        amountPaid: form.isComplimentary ? 0 : Number(form.amountPaid),
-        isComplimentary: form.isComplimentary,
-        notes: form.notes,
-      };
-
-      if (useInstallments && !form.isComplimentary) {
-        const valid = installments.filter((i) => i.amountDue && i.dueDate);
-        if (!valid.length) return toast.error("Add at least one installment.");
-        payload.installments = valid;
-      }
-
-      const res = await api.post("/admin/subscriptions/offline", payload);
-      toast.success(
-        `${res.data.message}${res.data.data?.receipt ? ` Receipt ${res.data.data.receipt.receiptNumber} emailed.` : ""}`,
-        { duration: 6000 },
-      );
-      onSuccess();
-      onCancel();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to record payment.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const inputStyle = {
-    width: "100%",
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "10px",
-    padding: "10px 14px",
-    color: "#fff",
-    fontSize: "16px",
-    outline: "none",
-  };
-  const labelStyle = {
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.62)",
-    letterSpacing: "0.5px",
-    textTransform: "uppercase",
-    display: "block",
-    marginBottom: "6px",
-  };
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 200,
-        background: "rgba(0,0,0,0.75)",
-        backdropFilter: "blur(8px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px",
-      }}
-    >
-      <div
-        style={{
-          background: "var(--iron-850)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "20px",
-          padding: "32px",
-          maxWidth: "560px",
-          width: "100%",
-          maxHeight: "90vh",
-          overflowY: "auto",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
-          <div>
-            <h2 style={{ fontSize: "19px", fontWeight: "700" }}>
-              Record Payment
-            </h2>
-            <p
-              style={{
-                fontSize: "15px",
-                color: "rgba(255,255,255,0.62)",
-                marginTop: "4px",
-              }}
-            >
-              {member.firstName} {member.lastName} · {member.userId}
-            </p>
-          </div>
-          <button aria-label="Close"
-            onClick={onCancel}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "rgba(255,255,255,0.62)",
-              fontSize: "20px",
-              cursor: "pointer",
-            }}
-          >
-            ✕
-          </button>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-        >
-          {/* Complimentary */}
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              cursor: "pointer",
-              padding: "12px 16px",
-              background: "rgba(243,212,0,0.05)",
-              borderRadius: "10px",
-              border: "1px solid rgba(243,212,0,0.1)",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={form.isComplimentary}
-              onChange={(e) =>
-                setForm({ ...form, isComplimentary: e.target.checked })
-              }
-              style={{ width: "16px", height: "16px", accentColor: "#f3d400" }}
-            />
-            <div>
-              <span
-                style={{
-                  fontSize: "16px",
-                  fontWeight: "600",
-                  color: "#f3d400",
-                }}
-              >
-                Complimentary Membership{" "}
-                <InfoTip text="A free membership. Nothing is charged, no receipt is made, and it adds nothing to revenue. The member gets a welcome email." />
-              </span>
-              <p
-                style={{
-                  fontSize: "14px",
-                  color: "rgba(255,255,255,0.62)",
-                  marginTop: "2px",
-                }}
-              >
-                Free — for staff, partners, compensation
-              </p>
-            </div>
-          </label>
-
-          {/* Plan */}
-          <div>
-            <label style={labelStyle}>Membership Plan</label>
-            <select
-              style={{ ...inputStyle, appearance: "none" }}
-              value={form.planId}
-              onChange={(e) => setForm({ ...form, planId: e.target.value })}
-            >
-              <option value="">Select a plan</option>
-              {plans.map((p) => (
-                <option key={p._id} value={p._id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Duration */}
-          <div>
-            <label style={labelStyle}>Duration</label>
-            <select
-              style={{ ...inputStyle, appearance: "none" }}
-              value={form.durationDays}
-              onChange={(e) =>
-                setForm({ ...form, durationDays: e.target.value })
-              }
-            >
-              {durationOptions.map((o) => (
-                <option key={o.days} value={o.days}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            {planPrice > 0 && (
-              <p
-                style={{ fontSize: "14px", color: "#f3d400", marginTop: "6px" }}
-              >
-                Plan price: ₹{planPrice.toLocaleString("en-IN")}
-              </p>
-            )}
-          </div>
-
-          {/* Start Date */}
-          <div>
-            <label style={labelStyle}>Start Date</label>
-            <input
-              type="date"
-              style={{ ...inputStyle, colorScheme: "dark" }}
-              value={form.startDate}
-              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-            />
-          </div>
-
-          {/* Payment details */}
-          {!form.isComplimentary && (
-            <>
-              <div>
-                <label style={labelStyle}>Payment Mode</label>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  {["cash", "upi", "card"].map((mode) => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setForm({ ...form, paymentMode: mode })}
-                      style={{
-                        flex: 1,
-                        padding: "10px",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        fontSize: "15px",
-                        fontWeight: "600",
-                        textTransform: "capitalize",
-                        border:
-                          form.paymentMode === mode
-                            ? "1px solid rgba(243,212,0,0.4)"
-                            : "1px solid rgba(255,255,255,0.1)",
-                        background:
-                          form.paymentMode === mode
-                            ? "rgba(243,212,0,0.1)"
-                            : "transparent",
-                        color:
-                          form.paymentMode === mode
-                            ? "#f3d400"
-                            : "rgba(255,255,255,0.5)",
-                      }}
-                    >
-                      {mode === "cash"
-                        ? "Cash"
-                        : mode === "upi"
-                          ? "UPI"
-                          : "Card"}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label style={labelStyle}>Amount Received (₹)</label>
-                <input
-                  type="number"
-                  style={inputStyle}
-                  placeholder={`Full amount: ₹${planPrice}`}
-                  value={form.amountPaid}
-                  onChange={(e) =>
-                    setForm({ ...form, amountPaid: e.target.value })
-                  }
-                />
-                {form.amountPaid && Number(form.amountPaid) < planPrice && (
-                  <p
-                    style={{
-                      fontSize: "14px",
-                      color: "#f97316",
-                      marginTop: "6px",
-                    }}
-                  >
-                    Partial — Balance: ₹
-                    {(planPrice - Number(form.amountPaid)).toLocaleString(
-                      "en-IN",
-                    )}
-                  </p>
-                )}
-              </div>
-
-              <label
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  cursor: "pointer",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={useInstallments}
-                  onChange={(e) => setUseInstallments(e.target.checked)}
-                  style={{
-                    width: "16px",
-                    height: "16px",
-                    accentColor: "#f3d400",
-                  }}
-                />
-                <span
-                  style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)" }}
-                >
-                  Create installment schedule{" "}
-                  <InfoTip text="Split what is still unpaid into parts, each with a due date. The member sees what is due, and late parts are flagged as overdue." />
-                </span>
-              </label>
-
-              {useInstallments && (
-                <div
-                  style={{
-                    background: "var(--iron-850)",
-                    borderRadius: "12px",
-                    padding: "16px",
-                    border: "1px solid #26262a",
-                  }}
-                >
-                  <p style={{ ...labelStyle, marginBottom: "12px" }}>
-                    Installment Schedule
-                  </p>
-                  {installments.map((inst, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        gap: "8px",
-                        marginBottom: "10px",
-                        alignItems: "center",
-                      }}
-                    >
-                      <input
-                        type="number"
-                        style={{ ...inputStyle, padding: "8px 12px" }}
-                        placeholder="Amount ₹"
-                        value={inst.amountDue}
-                        onChange={(e) =>
-                          updateInstallment(i, "amountDue", e.target.value)
-                        }
-                      />
-                      <input
-                        type="date"
-                        style={{
-                          ...inputStyle,
-                          padding: "8px 12px",
-                          colorScheme: "dark",
-                        }}
-                        value={inst.dueDate}
-                        onChange={(e) =>
-                          updateInstallment(i, "dueDate", e.target.value)
-                        }
-                      />
-                      {installments.length > 1 && (
-                        <button aria-label="Remove installment"
-                          type="button"
-                          onClick={() => removeInstallment(i)}
-                          style={{
-                            background: "rgba(239,68,68,0.1)",
-                            border: "1px solid rgba(239,68,68,0.2)",
-                            color: "#ef4444",
-                            borderRadius: "8px",
-                            padding: "8px 12px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addInstallment}
-                    style={{
-                      background: "transparent",
-                      border: "1px dashed rgba(255,255,255,0.15)",
-                      color: "rgba(255,255,255,0.62)",
-                      borderRadius: "8px",
-                      padding: "8px 16px",
-                      fontSize: "14px",
-                      cursor: "pointer",
-                      width: "100%",
-                    }}
-                  >
-                    + Add Installment
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-
-          <div>
-            <label style={labelStyle}>Notes (optional)</label>
-            <textarea
-              style={{ ...inputStyle, resize: "vertical" }}
-              rows={2}
-              placeholder="e.g. Paid at front desk..."
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: "12px" }}>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="btn-ghost"
-              style={{ flex: 1, padding: "12px" }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn-gold"
-              disabled={saving}
-              style={{ flex: 1 }}
-            >
-              {saving ? "Recording..." : "Activate Membership"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 // =============================================================================
 // AdminMembersPage
@@ -819,30 +145,16 @@ export default function AdminMembersPage() {
   };
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
-  const formatDate = (date) =>
-    new Date(date).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-
-  const statusColor = (status) =>
-    ({
-      active: "#22c55e",
-      grace: "#f97316",
-      expired: "#ef4444",
-      cancelled: "#8c8c86",
-      pending: "#f3d400",
-      complimentary: "#a78bfa",
-    })[status] || "#8c8c86";
+  const statusColor = (status) => subscriptionStatusColor(status, { admin: true });
 
   const totalPages = Math.ceil(totalMembers / ITEMS_PER_PAGE);
 
   return (
     <AdminLayout>
       {/* Modals */}
+      <AnimatePresence>
       {showPaymentForm && selectedMember && (
-        <CashPaymentForm
+        <RecordPaymentForm
           member={selectedMember}
           plans={plans}
           onSuccess={() => loadMemberDetail(selectedMember)}
@@ -859,27 +171,12 @@ export default function AdminMembersPage() {
       )}
 
       {collectBalanceModal && (
-        <div
-          onClick={() => setCollectBalanceModal(null)}
-          style={{
-            position: "fixed", inset: 0, zIndex: 300,
-            background: "rgba(0,0,0,0.8)", backdropFilter: "blur(8px)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "var(--iron-850)", border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: "20px", padding: "32px", maxWidth: "400px", width: "100%",
-            }}
-          >
+        <Modal label="Collect outstanding balance" zIndex={300} maxWidth="400px" backdrop="rgba(0,0,0,0.8)" onBackdropClick={() => setCollectBalanceModal(null)}>
             <h3 style={{ fontSize: "19px", fontWeight: "700", marginBottom: "6px" }}>
               Collect Outstanding Balance
             </h3>
             <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.62)", marginBottom: "20px" }}>
-              Paid ₹{(collectBalanceModal.payment.amountPaid / 100).toLocaleString("en-IN")} of ₹
-              {(collectBalanceModal.payment.amountDue / 100).toLocaleString("en-IN")}
+              Paid {inr(collectBalanceModal.payment.amountPaid)} of {inr(collectBalanceModal.payment.amountDue)}
             </p>
             <CollectBalanceForm
               subscription={collectBalanceModal.subscription}
@@ -890,35 +187,11 @@ export default function AdminMembersPage() {
               }}
               onCancel={() => setCollectBalanceModal(null)}
             />
-          </div>
-        </div>
+        </Modal>
       )}
 
       {cancelDialog && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 200,
-            background: "rgba(0,0,0,0.75)",
-            backdropFilter: "blur(8px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "24px",
-          }}
-        >
-          <div
-            style={{
-              background: "var(--iron-850)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: "20px",
-              padding: "36px",
-              maxWidth: "420px",
-              width: "100%",
-              textAlign: "center",
-            }}
-          >
+        <Modal label="Cancel membership" zIndex={200} maxWidth="420px" padding="clamp(20px, 6vw, 36px)" panelStyle={{ textAlign: "center" }}>
             <div style={{ marginBottom: "16px" }}><TriangleAlert size={36} color="var(--yellow)" aria-hidden="true" /></div>
             <h3
               style={{
@@ -986,9 +259,9 @@ export default function AdminMembersPage() {
                 Yes, cancel
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
+      </AnimatePresence>
 
       {/* Mobile: one column; when a member is open show only the detail */}
       <style>{`
@@ -1374,7 +647,7 @@ export default function AdminMembersPage() {
                   {memberDetail.activeSubscription ? (
                     <div
                       style={{
-                        padding: "20px",
+                        padding: "clamp(14px, 4vw, 20px)",
                         borderRadius: "14px",
                         background: "rgba(34,197,94,0.04)",
                         border: "1px solid rgba(34,197,94,0.15)",
@@ -1385,6 +658,8 @@ export default function AdminMembersPage() {
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "flex-start",
+                          flexWrap: "wrap",
+                          gap: "12px",
                           marginBottom: "16px",
                         }}
                       >
@@ -1416,6 +691,7 @@ export default function AdminMembersPage() {
                             display: "flex",
                             gap: "8px",
                             alignItems: "center",
+                            flexWrap: "wrap",
                           }}
                         >
                           <span
@@ -1529,7 +805,7 @@ export default function AdminMembersPage() {
                                   {payment?.paymentMode === "complimentary"
                                     ? "Complimentary"
                                     : payment
-                                      ? `₹${(payment.amountPaid / 100).toLocaleString("en-IN")}`
+                                      ? inr(payment.amountPaid)
                                       : "—"}
                                 </p>
                               </div>
@@ -1550,11 +826,7 @@ export default function AdminMembersPage() {
                                       color: "#ef4444",
                                     }}
                                   >
-                                    ₹
-                                    {(
-                                      (payment.amountDue - payment.amountPaid) /
-                                      100
-                                    ).toLocaleString("en-IN")}
+                                    {inr(payment.amountDue - payment.amountPaid)}
                                   </p>
                                 </div>
                               )}
@@ -1614,6 +886,8 @@ export default function AdminMembersPage() {
                                         display: "flex",
                                         justifyContent: "space-between",
                                         alignItems: "center",
+                                        flexWrap: "wrap",
+                                        gap: "8px 12px",
                                         padding: "10px 0",
                                         borderBottom:
                                           "1px solid rgba(255,255,255,0.04)",
@@ -1685,14 +959,11 @@ export default function AdminMembersPage() {
                                               fontWeight: "600",
                                             }}
                                           >
-                                            ₹
-                                            {(
-                                              inst.amountDue / 100
-                                            ).toLocaleString("en-IN")}
+                                            {inr(inst.amountDue)}
                                           </p>
                                           {!isPaid && inst.amountPaid > 0 && (
                                             <p style={{ fontSize: "13px", color: "#22c55e", margin: "2px 0" }}>
-                                              ₹{(inst.amountPaid / 100).toLocaleString("en-IN")} paid
+                                              {inr(inst.amountPaid)} paid
                                             </p>
                                           )}
                                           <span
@@ -1710,8 +981,8 @@ export default function AdminMembersPage() {
                                             {inst.status}
                                           </span>
                                         </div>
-                                        {!isPaid && (
-                                          <Tip text="Record that this installment was paid at the desk. You enter the amount (part payment is fine) and a receipt is emailed to the member."><button
+                                        {!isPaid && inst.status !== "waived" && (
+                                          <Tip text="Record that what is left of this installment was paid at the desk. You see a summary first; then a receipt is emailed to the member."><button
                                             onClick={() =>
                                               setMarkingInstallment(inst)
                                             }
@@ -1744,7 +1015,7 @@ export default function AdminMembersPage() {
                   ) : (
                     <div
                       style={{
-                        padding: "20px",
+                        padding: "clamp(14px, 4vw, 20px)",
                         borderRadius: "14px",
                         background: "var(--iron-850)",
                         border: "1px dashed rgba(255,255,255,0.1)",
@@ -1846,7 +1117,7 @@ export default function AdminMembersPage() {
                     >
                       Payments &amp; Receipts
                     </p>
-                    <ReceiptsList receipts={memberDetail.receipts} />
+                    <ReceiptsList key={memberDetail.user?._id} receipts={memberDetail.receipts} />
                   </div>
                 )}
 
@@ -1865,16 +1136,12 @@ export default function AdminMembersPage() {
                     >
                       Subscription History
                     </p>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "8px",
-                      }}
+                    <Paged
+                      key={memberDetail.user?._id}
+                      items={memberDetail.subscriptionHistory}
                     >
-                      {memberDetail.subscriptionHistory.map((sub) => (
+                      {(sub) => (
                         <div
-                          key={sub._id}
                           style={{
                             display: "flex",
                             justifyContent: "space-between",
@@ -1927,8 +1194,8 @@ export default function AdminMembersPage() {
                             {sub.status}
                           </span>
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </Paged>
                   </div>
                 )}
               </>

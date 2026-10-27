@@ -2,6 +2,7 @@
 // src/controllers/admin.controller.js
 // =============================================================================
 
+import mongoose from "mongoose";
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiResponse from "../utils/apiResponse.js";
 import ApiError from "../utils/apiError.js";
@@ -27,6 +28,20 @@ import {
 import razorpay from "../config/razorpay.js";
 import { unlockMemberId, revealMemberId, ID_UNLOCK_MINUTES } from "../services/idProof.service.js";
 import { listRequests, approveRequest, rejectRequest } from "../services/accountDeletion.service.js";
+import { rupeesToPaise, parseDateOnly, toYMD, todayIST, addDaysYMD } from "../utils/money.js";
+
+// Ways a desk payment can be taken (online/Razorpay and complimentary are not "desk" modes)
+const DESK_PAYMENT_MODES = [PAYMENT_MODE.CASH, PAYMENT_MODE.UPI, PAYMENT_MODE.CARD];
+const MAX_INSTALLMENTS = 12;
+const LAST_DUE_LEAD_DAYS = 7; // the last installment is due this many days before the membership ends
+
+const resolveDeskMode = (mode) => {
+  const m = mode || PAYMENT_MODE.CASH;
+  if (!DESK_PAYMENT_MODES.includes(m)) {
+    throw ApiError.badRequest("Payment mode must be cash, UPI or card.");
+  }
+  return m;
+};
 
 // =============================================================================
 // searchMembers
@@ -87,7 +102,7 @@ export const searchMembers = asyncHandler(async (req, res) => {
       )
       .skip(skip)
       .limit(limit)
-      .sort({ createdAt: 1 }),
+      .sort({ createdAt: -1, _id: -1 }), // newest member first
     User.countDocuments(filter),
   ]);
 
@@ -122,7 +137,7 @@ export const getMemberProfile = asyncHandler(async (req, res) => {
     status: { $ne: SUBSCRIPTION_STATUS.PENDING },
   })
     .sort({ createdAt: -1 })
-    .limit(10)
+    .limit(50)
     .populate("planId", "name slug");
 
   // Get payment history
@@ -169,18 +184,28 @@ export const recordOfflinePayment = asyncHandler(async (req, res) => {
     startDate,
     paymentMode, // cash | upi | card
     amountPaid, // actual amount received
-    isComplimentary, // boolean — free membership
+    isComplimentary: rawComplimentary, // boolean — free membership
     notes,
     installments, // optional array: [{ amountDue, dueDate }]
   } = req.body;
+  const isComplimentary = rawComplimentary === true || rawComplimentary === "true";
 
   // ── Validate member exists ─────────────────────────────────────────────────
+  if (!mongoose.isValidObjectId(userId)) throw ApiError.badRequest("Choose a valid member.");
+  if (!mongoose.isValidObjectId(planId)) throw ApiError.badRequest("Choose a valid plan.");
   const user = await User.findById(userId);
   if (!user) throw ApiError.notFound("Member not found.");
+  if (user.isActive === false) {
+    throw ApiError.badRequest("This member's account is deactivated. Reactivate it before giving a membership.");
+  }
 
   // ── Validate plan ──────────────────────────────────────────────────────────
   const plan = await MembershipPlan.findById(planId);
   if (!plan) throw ApiError.notFound("Plan not found.");
+
+  if (plan.status === "archived") {
+    throw ApiError.badRequest("This plan is archived and can't be given to members.");
+  }
 
   const tier = plan.getTier(Number(durationDays));
   if (!tier) throw ApiError.badRequest("Invalid plan duration.");
@@ -193,10 +218,10 @@ export const recordOfflinePayment = asyncHandler(async (req, res) => {
     );
   }
 
-  // ── Calculate dates ────────────────────────────────────────────────────────
-  const start = startDate ? new Date(startDate) : new Date();
-  const end = new Date(start);
-  end.setDate(end.getDate() + Number(durationDays));
+  // ── Calculate dates (plain calendar days; no time-zone drift) ─────────────
+  const startYMD = startDate ? toYMD(parseDateOnly(startDate, "Start date")) : todayIST();
+  const start = new Date(`${startYMD}T00:00:00.000Z`);
+  const end = new Date(`${addDaysYMD(startYMD, Number(durationDays))}T00:00:00.000Z`);
 
   const gracePeriodEnds = new Date(end);
   gracePeriodEnds.setDate(
@@ -206,14 +231,15 @@ export const recordOfflinePayment = asyncHandler(async (req, res) => {
   // ── Determine amounts ──────────────────────────────────────────────────────
   const planPrice = plan.getEffectivePrice(Number(durationDays)); // in paise
   const totalAmountDue = isComplimentary ? 0 : planPrice;
+  if (!Number.isFinite(totalAmountDue) || (!isComplimentary && totalAmountDue <= 0)) {
+    throw ApiError.badRequest("This plan has no valid price. Fix the plan before giving it to a member.");
+  }
+  // Received today: above ₹0 (a membership with nothing paid is a complimentary one)
   const totalAmountPaid = isComplimentary
     ? 0
-    : Math.round(Number(amountPaid) * 100); // ₹ → paise
+    : rupeesToPaise(amountPaid, "Amount received"); // ₹ → paise, strict
 
   if (!isComplimentary) {
-    if (!Number.isFinite(totalAmountPaid) || totalAmountPaid < 0) {
-      throw ApiError.badRequest("Enter a valid amount received.");
-    }
     if (totalAmountPaid > totalAmountDue) {
       throw ApiError.badRequest(
         `Amount received (₹${totalAmountPaid / 100}) is more than the plan price (₹${totalAmountDue / 100}).`,
@@ -229,27 +255,50 @@ export const recordOfflinePayment = asyncHandler(async (req, res) => {
   // membership with no installments behind.
   const wantsInstallments =
     Array.isArray(installments) && installments.length > 0 && isPartial;
+  if (Array.isArray(installments) && installments.length > 0 && !isPartial) {
+    throw ApiError.badRequest("Installments only apply when part of the price is still unpaid.");
+  }
+  let installmentPaise = []; // [{ amount (paise), due (YMD) }] sorted by date
   if (wantsInstallments) {
     const remainingBalance = totalAmountDue - totalAmountPaid;
-    let installmentSum = 0;
-    for (const inst of installments) {
-      const amt = Math.round(Number(inst.amountDue) * 100);
-      if (!amt || amt <= 0) throw ApiError.badRequest("Every installment needs an amount above ₹0.");
-      if (!inst.dueDate || isNaN(new Date(inst.dueDate))) {
-        throw ApiError.badRequest("Every installment needs a valid due date.");
-      }
-      installmentSum += amt;
+    if (installments.length > MAX_INSTALLMENTS) {
+      throw ApiError.badRequest(`At most ${MAX_INSTALLMENTS} installments are allowed.`);
     }
-    if (Math.abs(installmentSum - remainingBalance) > 1) {
+
+    const lastAllowedYMD = addDaysYMD(startYMD, Number(durationDays) - LAST_DUE_LEAD_DAYS);
+    const today = todayIST();
+    const seenDates = new Set();
+    let installmentSum = 0;
+
+    installments.forEach((inst, i) => {
+      const n = i + 1;
+      const amount = rupeesToPaise(inst?.amountDue, `Installment ${n} amount`);
+      const due = toYMD(parseDateOnly(inst?.dueDate, `Installment ${n} due date`));
+      if (due < today) throw ApiError.badRequest(`Installment ${n} due date ${due} has already passed.`);
+      if (due > lastAllowedYMD) {
+        throw ApiError.badRequest(
+          `Installment ${n} due date ${due} is too late. The last installment must be on or before ${lastAllowedYMD} (${LAST_DUE_LEAD_DAYS} days before the membership ends).`,
+        );
+      }
+      if (seenDates.has(due)) {
+        throw ApiError.badRequest(`Two installments fall on ${due}. Give each installment its own date.`);
+      }
+      seenDates.add(due);
+      installmentSum += amount;
+      installmentPaise.push({ amount, due });
+    });
+
+    if (installmentSum !== remainingBalance) {
       throw ApiError.badRequest(
         `Installment total (₹${installmentSum / 100}) must equal the remaining balance (₹${remainingBalance / 100}).`,
       );
     }
+    installmentPaise.sort((x, y) => (x.due < y.due ? -1 : x.due > y.due ? 1 : 0));
   }
 
   const finalPaymentMode = isComplimentary
     ? PAYMENT_MODE.COMPLIMENTARY
-    : paymentMode || PAYMENT_MODE.CASH;
+    : resolveDeskMode(paymentMode);
 
   // ── Create Subscription ────────────────────────────────────────────────────
   const subscription = await Subscription.create({
@@ -274,39 +323,50 @@ export const recordOfflinePayment = asyncHandler(async (req, res) => {
     notes,
   });
 
-  // ── Create Payment Record (receipt number is issued below, per payment) ───
-  const payment = await Payment.create({
-    userId,
-    subscriptionId: subscription._id,
-    planId,
-    amountDue: totalAmountDue,
-    amountPaid: totalAmountPaid,
-    downPayment: totalAmountPaid,
-    currency: "INR",
-    status: isFull ? PAYMENT_STATUS.COMPLETED : PAYMENT_STATUS.PARTIAL,
-    paymentMode: finalPaymentMode,
-    recordedBy: req.user.userId,
-    paidAt: new Date(),
-    notes,
-  });
-
-  // ── Create Installments (validated above) ──────────────────────────────────
+  // ── Payment record + installments ──────────────────────────────────────────
+  // If anything below fails, remove what was created so an active membership
+  // is never left without its payment record.
+  let payment;
   let createdInstallments = [];
-  if (wantsInstallments) {
-    const installmentDocs = installments.map((inst, i) => ({
-      paymentId: payment._id,
-      subscriptionId: subscription._id,
+  try {
+    // Receipt number is issued below, per payment
+    payment = await Payment.create({
       userId,
-      installmentNumber: i + 1,
-      amountDue: Math.round(Number(inst.amountDue) * 100),
-      amountPaid: 0,
-      dueDate: new Date(inst.dueDate),
-      status: INSTALLMENT_STATUS.PENDING,
-      paymentMode: null,
+      subscriptionId: subscription._id,
+      planId,
+      amountDue: totalAmountDue,
+      amountPaid: totalAmountPaid,
+      downPayment: totalAmountPaid,
+      currency: "INR",
+      status: isFull ? PAYMENT_STATUS.COMPLETED : PAYMENT_STATUS.PARTIAL,
+      paymentMode: finalPaymentMode,
       recordedBy: req.user.userId,
-      paidAt: null,
-    }));
-    createdInstallments = await Installment.insertMany(installmentDocs);
+      paidAt: new Date(),
+      notes,
+    });
+
+    if (wantsInstallments) {
+      createdInstallments = await Installment.insertMany(
+        installmentPaise.map((inst, i) => ({
+          paymentId: payment._id,
+          subscriptionId: subscription._id,
+          userId,
+          installmentNumber: i + 1,
+          amountDue: inst.amount,
+          amountPaid: 0,
+          dueDate: new Date(`${inst.due}T00:00:00.000Z`),
+          status: INSTALLMENT_STATUS.PENDING,
+          paymentMode: null,
+          recordedBy: req.user.userId,
+          paidAt: null,
+        })),
+      );
+    }
+  } catch (err) {
+    await Installment.deleteMany({ subscriptionId: subscription._id }).catch(() => {});
+    if (payment) await Payment.deleteOne({ _id: payment._id }).catch(() => {});
+    await Subscription.deleteOne({ _id: subscription._id }).catch(() => {});
+    throw err;
   }
 
   // ── Receipt + email (money received) / welcome email (complimentary) ──────
@@ -354,10 +414,8 @@ export const markInstallmentPaid = asyncHandler(async (req, res) => {
     throw ApiError.conflict("This installment was waived (membership cancelled).");
   }
 
-  const paidAmount = Math.round(Number(amountPaid) * 100); // ₹ → paise
-  if (!paidAmount || paidAmount <= 0) {
-    throw ApiError.badRequest("Enter a valid amount.");
-  }
+  const paidAmount = rupeesToPaise(amountPaid, "Amount"); // ₹ → paise, strict
+  const mode = resolveDeskMode(paymentMode);
 
   const remaining = installment.amountDue - (installment.amountPaid || 0);
   if (paidAmount > remaining) {
@@ -381,7 +439,7 @@ export const markInstallmentPaid = asyncHandler(async (req, res) => {
       $set: {
         amountPaid: newPaid,
         status: newPaid >= installment.amountDue ? INSTALLMENT_STATUS.PAID : INSTALLMENT_STATUS.PENDING,
-        paymentMode: paymentMode || PAYMENT_MODE.CASH,
+        paymentMode: mode,
         recordedBy: req.user.userId,
         paidAt: new Date(),
         ...(notes && { notes }),
@@ -416,7 +474,7 @@ export const markInstallmentPaid = asyncHandler(async (req, res) => {
     subscription,
     amount: paidAmount,
     type: RECEIPT_TYPE.INSTALLMENT,
-    paymentMode: paymentMode || PAYMENT_MODE.CASH,
+    paymentMode: mode,
     installment: updated,
     recordedBy: req.user.userId,
     note: `Installment #${updated.installmentNumber}${updated.status === INSTALLMENT_STATUS.PAID ? "" : " (part payment)"}`,
@@ -703,77 +761,100 @@ export const collectOutstandingBalance = asyncHandler(async (req, res) => {
     throw ApiError.conflict("Cannot collect payment on a cancelled membership.");
   }
 
-  const payment = await Payment.findOne({ subscriptionId: subscription._id });
-  if (!payment) throw ApiError.notFound("Payment record not found.");
+  const found = await Payment.findOne({ subscriptionId: subscription._id });
+  if (!found) throw ApiError.notFound("Payment record not found.");
 
-  const paidInPaise = Math.round(Number(amountPaid) * 100);
-  if (!paidInPaise || paidInPaise <= 0) {
-    throw ApiError.badRequest("Enter a valid amount.");
+  const paidInPaise = rupeesToPaise(amountPaid, "Amount");
+  const mode = resolveDeskMode(paymentMode);
+
+  // One collection at a time per membership: a double click or two admins at
+  // once must never record the same money twice. The lock expires on its own
+  // after 20 s in case the server dies mid-way.
+  const now = new Date();
+  const payment = await Payment.findOneAndUpdate(
+    {
+      _id: found._id,
+      $or: [{ lockedUntil: null }, { lockedUntil: { $exists: false } }, { lockedUntil: { $lt: now } }],
+    },
+    { $set: { lockedUntil: new Date(now.getTime() + 20000) } },
+    { returnDocument: "after" },
+  );
+  if (!payment) {
+    throw ApiError.conflict("Another payment is being recorded for this membership. Wait a moment and refresh.");
   }
 
-  if (payment.amountPaid + paidInPaise > payment.amountDue) {
-    throw ApiError.badRequest(
-      `Payment of ₹${amountPaid} exceeds the outstanding balance of ₹${(payment.amountDue - payment.amountPaid) / 100}.`,
-    );
-  }
-
-  // If an installment schedule exists, allocate the money to pending
-  // installments (earliest first). payment.amountPaid is always derived as
-  // downPayment + Σ installment.amountPaid — bumping it directly would be
-  // wiped out the next time markInstallmentPaid recomputes the total.
-  const pending = await Installment.find({
-    paymentId: payment._id,
-    status: { $in: [INSTALLMENT_STATUS.PENDING, INSTALLMENT_STATUS.OVERDUE] },
-  }).sort({ installmentNumber: 1 });
-
-  let newAmountPaid;
-  const appliedTo = [];
-  if (pending.length > 0) {
-    let left = paidInPaise;
-    for (const inst of pending) {
-      if (left <= 0) break;
-      const due = inst.amountDue - (inst.amountPaid || 0);
-      const apply = Math.min(due, left);
-      inst.amountPaid = (inst.amountPaid || 0) + apply;
-      inst.paymentMode = paymentMode || PAYMENT_MODE.CASH;
-      inst.recordedBy = req.user.userId;
-      inst.paidAt = new Date();
-      if (inst.amountPaid >= inst.amountDue) inst.status = INSTALLMENT_STATUS.PAID;
-      await inst.save();
-      appliedTo.push(`#${inst.installmentNumber}`);
-      left -= apply;
+  try {
+    // Re-read the figures under the lock so the balance check is current
+    const outstanding = payment.amountDue - payment.amountPaid;
+    if (outstanding <= 0) {
+      throw ApiError.conflict("Nothing is outstanding on this membership.");
     }
-    const all = await Installment.find({ paymentId: payment._id });
-    newAmountPaid =
-      (payment.downPayment || 0) +
-      all.reduce((sum, i) => sum + (i.amountPaid || 0), 0);
-  } else {
-    newAmountPaid = payment.amountPaid + paidInPaise;
+    if (paidInPaise > outstanding) {
+      throw ApiError.badRequest(
+        `Payment of ₹${paidInPaise / 100} exceeds the outstanding balance of ₹${outstanding / 100}.`,
+      );
+    }
+
+    // If an installment schedule exists, allocate the money to pending
+    // installments (earliest first). payment.amountPaid is always derived as
+    // downPayment + Σ installment.amountPaid — bumping it directly would be
+    // wiped out the next time markInstallmentPaid recomputes the total.
+    const pending = await Installment.find({
+      paymentId: payment._id,
+      status: { $in: [INSTALLMENT_STATUS.PENDING, INSTALLMENT_STATUS.OVERDUE] },
+    }).sort({ installmentNumber: 1 });
+
+    let newAmountPaid;
+    const appliedTo = [];
+    if (pending.length > 0) {
+      let left = paidInPaise;
+      for (const inst of pending) {
+        if (left <= 0) break;
+        const due = inst.amountDue - (inst.amountPaid || 0);
+        const apply = Math.min(due, left);
+        inst.amountPaid = (inst.amountPaid || 0) + apply;
+        inst.paymentMode = mode;
+        inst.recordedBy = req.user.userId;
+        inst.paidAt = new Date();
+        if (inst.amountPaid >= inst.amountDue) inst.status = INSTALLMENT_STATUS.PAID;
+        await inst.save();
+        appliedTo.push(`#${inst.installmentNumber}`);
+        left -= apply;
+      }
+      const all = await Installment.find({ paymentId: payment._id });
+      newAmountPaid =
+        (payment.downPayment || 0) +
+        all.reduce((sum, i) => sum + (i.amountPaid || 0), 0);
+    } else {
+      newAmountPaid = payment.amountPaid + paidInPaise;
+    }
+
+    payment.amountPaid = newAmountPaid;
+    payment.status =
+      newAmountPaid >= payment.amountDue
+        ? PAYMENT_STATUS.COMPLETED
+        : PAYMENT_STATUS.PARTIAL;
+    if (notes) payment.notes = notes;
+    await payment.save();
+
+    const receipt = await issueReceipt({
+      payment,
+      subscription,
+      amount: paidInPaise,
+      type: RECEIPT_TYPE.BALANCE,
+      paymentMode: mode,
+      recordedBy: req.user.userId,
+      note: appliedTo.length ? `Applied to installment ${appliedTo.join(", ")}` : "Balance payment",
+    });
+
+    return new ApiResponse(
+      HTTP_STATUS.OK,
+      `Payment of ₹${paidInPaise / 100} recorded (receipt ${receipt?.receiptNumber}). ${newAmountPaid >= payment.amountDue ? "Balance fully cleared." : `Balance remaining: ₹${(payment.amountDue - newAmountPaid) / 100}`}`,
+      { payment, receipt },
+    ).send(res);
+  } finally {
+    await Payment.updateOne({ _id: payment._id }, { $set: { lockedUntil: null } }).catch(() => {});
   }
-
-  payment.amountPaid = newAmountPaid;
-  payment.status =
-    newAmountPaid >= payment.amountDue
-      ? PAYMENT_STATUS.COMPLETED
-      : PAYMENT_STATUS.PARTIAL;
-  if (notes) payment.notes = notes;
-  await payment.save();
-
-  const receipt = await issueReceipt({
-    payment,
-    subscription,
-    amount: paidInPaise,
-    type: RECEIPT_TYPE.BALANCE,
-    paymentMode: paymentMode || PAYMENT_MODE.CASH,
-    recordedBy: req.user.userId,
-    note: appliedTo.length ? `Applied to installment ${appliedTo.join(", ")}` : "Balance payment",
-  });
-
-  return new ApiResponse(
-    HTTP_STATUS.OK,
-    `Payment of ₹${amountPaid} recorded (receipt ${receipt?.receiptNumber}). ${newAmountPaid >= payment.amountDue ? "Balance fully cleared." : `Balance remaining: ₹${(payment.amountDue - newAmountPaid) / 100}`}`,
-    { payment, receipt },
-  ).send(res);
 });
 
 // =============================================================================

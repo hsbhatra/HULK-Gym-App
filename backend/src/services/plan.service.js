@@ -14,6 +14,23 @@ import { PLAN_STATUS } from "../utils/constants.js";
 // Validates that slug is unique and pricing tiers are complete (done by schema).
 // =============================================================================
 
+// Landing-page rule: at least one active plan must stay visible on the landing
+// page, otherwise its Plans section would be empty.
+const assertNotLastLandingPlan = async (plan, action) => {
+  const isLanding = plan.status === PLAN_STATUS.ACTIVE && plan.showOnLanding !== false;
+  if (!isLanding) return;
+  const others = await MembershipPlan.countDocuments({
+    _id: { $ne: plan._id },
+    status: PLAN_STATUS.ACTIVE,
+    showOnLanding: { $ne: false },
+  });
+  if (others === 0) {
+    throw ApiError.conflict(
+      `"${plan.name}" is the only active plan on the landing page, so it can't be ${action}. Put another active plan on the landing page first.`,
+    );
+  }
+};
+
 export const createPlan = async (planData, adminId) => {
   const existingSlug = await MembershipPlan.findOne({ slug: planData.slug });
   if (existingSlug) {
@@ -25,6 +42,8 @@ export const createPlan = async (planData, adminId) => {
 
   const plan = await MembershipPlan.create({
     ...planData,
+    // A new plan stays off the landing page unless the admin switches it on
+    showOnLanding: planData.showOnLanding === true,
     displayOrder: (last?.displayOrder || 0) + 1,
     createdBy: adminId,
   });
@@ -44,6 +63,8 @@ export const createPlan = async (planData, adminId) => {
 export const updatePlan = async (planId, updateData) => {
   // Order is changed only through reorderPlans — keeps numbers 1..n consistent
   delete updateData.displayOrder;
+  // Landing-page visibility has its own endpoint (it has safety checks)
+  delete updateData.showOnLanding;
 
   // If slug is being changed, ensure new slug isn't taken by another plan
   if (updateData.slug) {
@@ -83,15 +104,19 @@ export const updatePlanStatus = async (planId, newStatus) => {
     throw ApiError.badRequest("Invalid plan status.");
   }
 
+  const current = await MembershipPlan.findById(planId);
+  if (!current) {
+    throw ApiError.notFound("Membership plan not found.");
+  }
+  if (newStatus !== PLAN_STATUS.ACTIVE) {
+    await assertNotLastLandingPlan(current, newStatus === PLAN_STATUS.ARCHIVED ? "archived" : "deactivated");
+  }
+
   const plan = await MembershipPlan.findByIdAndUpdate(
     planId,
     { $set: { status: newStatus } },
     { returnDocument: "after" }
   );
-
-  if (!plan) {
-    throw ApiError.notFound("Membership plan not found.");
-  }
 
   return plan;
 };
@@ -106,6 +131,12 @@ export const updatePlanStatus = async (planId, newStatus) => {
 // =============================================================================
 
 export const archivePlan = async (planId) => {
+  const current = await MembershipPlan.findById(planId);
+  if (!current) {
+    throw ApiError.notFound("Membership plan not found.");
+  }
+  await assertNotLastLandingPlan(current, "archived");
+
   const activeSubscriberCount = await Subscription.countDocuments({
     planId,
     status: { $in: ["active", "grace"] },
@@ -138,31 +169,61 @@ export const getAllPlansAdmin = async () => {
 // =============================================================================
 // reorderPlans
 // =============================================================================
-// Receives every plan id in the order the admin arranged them (top → bottom)
-// and saves displayOrder 1, 2, 3… The list must contain each plan exactly once
-// so a stale tab can't leave gaps or duplicate positions.
+// The admin reorders ONE list at a time: "landing" (plans shown on the
+// landing page) or "other". `orderedIds` must be exactly that list's plans,
+// each once. They take over the slots that list already occupies in the
+// overall sequence, so the other list's order is untouched; then every plan
+// is renumbered 1..n so there are never gaps or duplicate positions.
 // =============================================================================
 
-export const reorderPlans = async (orderedIds) => {
+const inGroup = (plan, group) => (group === "landing" ? plan.showOnLanding !== false : plan.showOnLanding === false);
+
+export const reorderPlans = async (orderedIds, group) => {
   if (new Set(orderedIds).size !== orderedIds.length) {
     throw ApiError.badRequest("Each plan can appear only once.");
   }
 
-  const [total, found] = await Promise.all([
-    MembershipPlan.countDocuments(),
-    MembershipPlan.countDocuments({ _id: { $in: orderedIds } }),
-  ]);
-  if (found !== orderedIds.length || total !== orderedIds.length) {
+  const all = await getAllPlansAdmin(); // sorted by displayOrder, createdAt
+  const groupIds = all.filter((p) => inGroup(p, group)).map((p) => String(p._id));
+  const sameSet =
+    groupIds.length === orderedIds.length && orderedIds.every((id) => groupIds.includes(String(id)));
+  if (!sameSet) {
     throw ApiError.conflict("The plan list has changed. Refresh the page and try again.");
   }
 
+  const queue = orderedIds.map(String);
+  const finalOrder = all.map((p) => (inGroup(p, group) ? queue.shift() : String(p._id)));
+
   await MembershipPlan.bulkWrite(
-    orderedIds.map((id, i) => ({
+    finalOrder.map((id, i) => ({
       updateOne: { filter: { _id: id }, update: { $set: { displayOrder: i + 1 } } },
     })),
   );
 
   return getAllPlansAdmin();
+};
+
+// =============================================================================
+// setLandingVisibility
+// =============================================================================
+// Moves a plan between "Landing page plans" and "Other plans". The plan goes
+// to the end of the list it joins. The last active landing plan can't leave.
+// =============================================================================
+
+export const setLandingVisibility = async (planId, show) => {
+  const plan = await MembershipPlan.findById(planId);
+  if (!plan) throw ApiError.notFound("Membership plan not found.");
+
+  const currentlyShown = plan.showOnLanding !== false;
+  if (currentlyShown === show) return plan; // nothing to change
+
+  if (!show) await assertNotLastLandingPlan(plan, "moved off the landing page");
+
+  const last = await MembershipPlan.findOne().sort({ displayOrder: -1 }).select("displayOrder");
+  plan.showOnLanding = show;
+  plan.displayOrder = (last?.displayOrder || 0) + 1;
+  await plan.save();
+  return plan;
 };
 
 // =============================================================================
@@ -172,7 +233,8 @@ export const reorderPlans = async (orderedIds) => {
 // =============================================================================
 
 export const getActivePlans = async () => {
-  return await MembershipPlan.findActivePlans();
+  // Landing page only lists plans the admin chose to show
+  return await MembershipPlan.findActivePlans({ landingOnly: true });
 };
 
 // =============================================================================

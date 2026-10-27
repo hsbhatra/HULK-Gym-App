@@ -3,6 +3,7 @@
 // =============================================================================
 
 import { TriangleAlert } from "lucide-react";
+import Modal from "./Modal.jsx";
 
 export default function ConfirmDialog({
   message,
@@ -13,31 +14,7 @@ export default function ConfirmDialog({
   onCancel,
 }) {
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 200,
-        background: "rgba(0,0,0,0.75)",
-        backdropFilter: "blur(8px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px",
-      }}
-    >
-      <div
-        style={{
-          background: "var(--iron-850)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "20px",
-          padding: "36px",
-          maxWidth: "400px",
-          width: "100%",
-          textAlign: "center",
-        }}
-        // className="page-enter"
-      >
+    <Modal label="Please confirm" zIndex={400} maxWidth="400px" padding="clamp(20px, 6vw, 36px)" panelStyle={{ textAlign: "center" }}>
         {/* Icon */}
         <div style={{ marginBottom: "16px" }}><TriangleAlert size={40} color="var(--yellow)" aria-hidden="true" /></div>
 
@@ -97,7 +74,6 @@ export default function ConfirmDialog({
             {confirmLabel}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

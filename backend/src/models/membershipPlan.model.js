@@ -138,6 +138,15 @@ const membershipPlanSchema = new mongoose.Schema(
       default: false,
     },
 
+    // Shown in the "Plans" section of the landing page? false = "Other plans":
+    // still active (can be given at the desk, opened by link, bought online)
+    // but not listed on the landing page. Existing plans default to true.
+    showOnLanding: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+
     // Controls the order plans appear on the pricing page
     // Lower number = appears first
     displayOrder: {
@@ -220,8 +229,11 @@ membershipPlanSchema.methods.getTier = function (durationDays) {
 // Used for the public pricing page.
 // =============================================================================
 
-membershipPlanSchema.statics.findActivePlans = async function () {
-  return await this.find({ status: PLAN_STATUS.ACTIVE }).sort({
+membershipPlanSchema.statics.findActivePlans = async function ({ landingOnly = false } = {}) {
+  const filter = { status: PLAN_STATUS.ACTIVE };
+  // `$ne: false` also matches older plans saved before this field existed
+  if (landingOnly) filter.showOnLanding = { $ne: false };
+  return await this.find(filter).sort({
     displayOrder: 1,
     createdAt: 1, // stable order when numbers tie
   });

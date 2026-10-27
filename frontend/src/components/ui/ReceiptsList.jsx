@@ -5,7 +5,6 @@
 // Used on the member's Membership tab and the admin's member detail.
 // =============================================================================
 
-const inr = (paise) => `₹${(paise / 100).toLocaleString("en-IN")}`;
 const when = (d) =>
   new Date(d).toLocaleString("en-IN", {
     day: "numeric", month: "short", year: "numeric",
@@ -23,16 +22,18 @@ const TYPE = {
   balance: "Balance payment",
 };
 
+import Paged from "./Paged.jsx";
+import { inr } from "../../utils/format.js";
+
 export default function ReceiptsList({ receipts = [], emptyText = "No payments yet." }) {
   if (!receipts.length) {
     return <p style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)" }}>{emptyText}</p>;
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      {receipts.map((r) => (
+    <Paged items={receipts}>
+      {(r) => (
         <div
-          key={r._id}
           style={{
             display: "flex", justifyContent: "space-between", alignItems: "flex-start",
             gap: "12px", flexWrap: "wrap",
@@ -59,7 +60,7 @@ export default function ReceiptsList({ receipts = [], emptyText = "No payments y
             </p>
           </div>
         </div>
-      ))}
-    </div>
+      )}
+    </Paged>
   );
 }

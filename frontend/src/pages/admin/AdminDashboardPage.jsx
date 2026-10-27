@@ -13,11 +13,11 @@ import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import api from "../../services/api.js";
 import toast from "react-hot-toast";
 import { ArrowRight, CalendarClock, IndianRupee, RefreshCw, TriangleAlert, UserPlus, Users } from "lucide-react";
+import { inr, formatDate } from "../../utils/format.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const formatCurrency = (paise) =>
-  `₹${(paise / 100).toLocaleString("en-IN")}`;
+const formatCurrency = inr;
 
 // Chart values are in paise → show compact rupees: ₹500, ₹12k, ₹1.5L
 const formatAxisRupees = (paise) => {
@@ -27,10 +27,6 @@ const formatAxisRupees = (paise) => {
   return `₹${Math.round(r)}`;
 };
 
-const formatDate = (date) =>
-  new Date(date).toLocaleDateString("en-IN", {
-    day: "numeric", month: "short", year: "numeric",
-  });
 
 const getDaysLeft = (endDate) =>
   Math.ceil((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24));
@@ -372,4 +368,4 @@ export default function AdminDashboardPage() {
       </div>
     </AdminLayout>
   );
-}
+}
