@@ -58,6 +58,8 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
         orderId          : paymentEntity.order_id,
         razorpayPaymentId: paymentEntity.id,
         method           : paymentEntity.method,
+        paidAmount       : paymentEntity.amount,
+        currency         : paymentEntity.currency,
       });
     } catch (err) {
       // Unknown order (e.g. created by another app on the same account)

@@ -15,6 +15,7 @@ import {
   getActivePlans,
   getPlanBySlug,
   reorderPlans,
+  setLandingVisibility,
 } from "../services/plan.service.js";
 
 // =============================================================================
@@ -93,9 +94,20 @@ export const archivePlanAdmin = asyncHandler(async (req, res) => {
 
 // PATCH /api/v1/admin/plans/reorder   body: { order: [planId, planId, …] }
 export const reorderPlansAdmin = asyncHandler(async (req, res) => {
-  const plans = await reorderPlans(req.body.order);
+  const plans = await reorderPlans(req.body.order, req.body.group);
 
   return new ApiResponse(HTTP_STATUS.OK, "Plan order saved.", { plans }).send(res);
+});
+
+// PATCH /api/v1/admin/plans/:id/landing   body: { show: true | false }
+export const setLandingVisibilityAdmin = asyncHandler(async (req, res) => {
+  const plan = await setLandingVisibility(req.params.id, req.body.show);
+
+  return new ApiResponse(
+    HTTP_STATUS.OK,
+    plan.showOnLanding ? "Plan is now shown on the landing page." : "Plan moved to Other plans (not on the landing page).",
+    { plan },
+  ).send(res);
 });
 
 // GET /api/v1/admin/plans

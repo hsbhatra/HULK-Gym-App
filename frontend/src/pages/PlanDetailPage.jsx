@@ -18,6 +18,8 @@ import {
 } from "../services/subscriptionService.js";
 import { scaleIn } from "../utils/animations.js";
 import { Info, Lock } from "lucide-react";
+import { labelStyleTight } from "../components/ui/formStyles.js";
+import { inr } from "../utils/format.js";
 
 const DURATION_OPTIONS = [
   { days: 30, label: "Monthly" },
@@ -200,21 +202,13 @@ export default function PlanDetailPage() {
 
   const tier = getActiveTier();
   const displayPrice = tier
-    ? `₹${(tier.effectivePrice / 100).toLocaleString("en-IN")}`
+    ? inr(tier.effectivePrice)
     : "—";
   const originalPrice = tier?.originalPrice
-    ? `₹${(tier.originalPrice / 100).toLocaleString("en-IN")}`
+    ? inr(tier.originalPrice)
     : null;
 
-  const labelStyle = {
-    fontSize: "14px",
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.62)",
-    letterSpacing: "0.5px",
-    textTransform: "uppercase",
-    display: "block",
-    marginBottom: "6px",
-  };
+  const labelStyle = labelStyleTight;
 
   return (
     <div
@@ -445,7 +439,7 @@ export default function PlanDetailPage() {
                               marginRight: "6px",
                             }}
                           >
-                            ₹{(t.price / 100).toLocaleString("en-IN")}
+                            {inr(t.price)}
                           </span>
                         )}
                         <span
@@ -455,7 +449,7 @@ export default function PlanDetailPage() {
                             color: isActive ? "#f3d400" : "#fff",
                           }}
                         >
-                          ₹{(price / 100).toLocaleString("en-IN")}
+                          {inr(price)}
                         </span>
                       </div>
                     </button>

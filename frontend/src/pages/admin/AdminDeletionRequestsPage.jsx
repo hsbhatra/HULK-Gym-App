@@ -15,9 +15,8 @@ import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
 import api from "../../services/api.js";
 import { Tip } from "../../components/ui/Tip.jsx";
+import { formatDate } from "../../utils/format.js";
 
-const formatDate = (date) =>
-  date ? new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
 const daysWaiting = (date) => Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86400000));
 

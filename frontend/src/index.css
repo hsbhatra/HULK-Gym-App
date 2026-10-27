@@ -1233,6 +1233,12 @@ a.contact-card:hover { border-color: var(--yellow); }
   font-size: 15px; color: var(--text-2); margin-bottom: 16px;
 }
 .plan-saving { color: var(--yellow); font-weight: 600; }
+.plan-hint-wide { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.plan-hint-narrow { display: none; }
+@media (max-width: 520px) {
+  .plan-hint-wide { display: none; }
+  .plan-hint-narrow { display: inline; }
+}
 .plan-row {
   display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
   padding: 18px 20px; border-radius: 16px;
@@ -1263,6 +1269,48 @@ a.contact-card:hover { border-color: var(--yellow); }
 @media (max-width: 520px) {
   .plan-handle { display: none; } /* phones: use the arrows */
   .plan-row { padding: 16px; }
+}
+
+/* Plans — Landing page / Other tabs */
+.plan-tabs {
+  display: flex; gap: 6px; padding: 5px; margin-bottom: 14px;
+  background: var(--iron-850); border: 1px solid var(--iron-700); border-radius: 14px;
+  width: 100%; max-width: 520px;
+}
+.plan-tab {
+  position: relative; flex: 1 1 0; min-height: 44px; padding: 8px 10px;
+  border: none; background: transparent; color: var(--text-2);
+  font-size: 15px; font-weight: 600; border-radius: 10px; cursor: pointer;
+  transition: color .2s ease;
+}
+.plan-tab[data-active="true"] { color: var(--iron-950); }
+.plan-tab-pill { position: absolute; inset: 0; border-radius: 10px; background: var(--yellow); }
+.plan-tab-text { position: relative; z-index: 1; }
+.plan-tab-count {
+  display: inline-block; min-width: 22px; padding: 0 6px; margin-left: 4px; border-radius: 999px;
+  font-size: 13px; background: rgba(0,0,0,0.18);
+}
+.plan-tab[data-active="false"] .plan-tab-count { background: rgba(255,255,255,0.08); }
+
+/* Plans — "On landing page" switch */
+.plan-switch {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 10px;
+  background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+  color: rgba(255,255,255,0.7); font-size: 14px; cursor: pointer;
+}
+.plan-switch:disabled { opacity: .5; cursor: not-allowed; }
+.plan-switch-track {
+  position: relative; width: 36px; height: 20px; border-radius: 999px;
+  background: rgba(255,255,255,0.18); transition: background .2s ease; flex-shrink: 0;
+}
+.plan-switch[data-on="true"] .plan-switch-track { background: var(--yellow); }
+.plan-switch-knob {
+  position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; transition: transform .2s ease;
+}
+.plan-switch[data-on="true"] .plan-switch-knob { transform: translateX(16px); background: var(--iron-950); }
+@media (prefers-reduced-motion: reduce) {
+  .plan-tab, .plan-switch-track, .plan-switch-knob { transition: none; }
 }
 
 

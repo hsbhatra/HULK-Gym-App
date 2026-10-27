@@ -6,7 +6,7 @@ import Joi from "joi";
 import ApiError from "../../utils/apiError.js";
 
 const validate = (schema) => (req, res, next) => {
-  const { error } = schema.validate(req.body, {
+  const { error, value } = schema.validate(req.body, {
     abortEarly: false,
     stripUnknown: true,
   });
@@ -16,6 +16,8 @@ const validate = (schema) => (req, res, next) => {
     return next(ApiError.badRequest(messages[0] || "Validation failed", messages));
   }
 
+  // Keep only the fields the schema knows (no stray status/createdBy/etc.)
+  req.body = value;
   next();
 };
 
@@ -31,12 +33,20 @@ const pricingTierSchema = Joi.object({
     }),
   label: Joi.string().trim().required()
     .messages({ "any.required": "Label is required for each pricing tier" }),
-  price: Joi.number().min(100).required()
+  // Prices are whole paise (₹1 = 100). Never fractions, never below ₹1.
+  price: Joi.number().integer().min(100).max(1000000000).required()
     .messages({
       "number.min": "Price must be at least ₹1",
+      "number.integer": "Price must be a whole number of paise",
       "any.required": "Price is required for each pricing tier",
     }),
-  offerPrice: Joi.number().min(0).allow(null),
+  // An offer must be a real price (≥ ₹1) and cheaper than the normal price
+  offerPrice: Joi.number().integer().min(100).less(Joi.ref("price")).allow(null)
+    .messages({
+      "number.min": "Offer price must be at least ₹1",
+      "number.less": "Offer price must be lower than the regular price",
+      "number.integer": "Offer price must be a whole number of paise",
+    }),
   offerValidUntil: Joi.date().allow(null),
 });
 
@@ -66,6 +76,7 @@ const createPlanSchema = Joi.object({
     }),
 
   isFeatured: Joi.boolean(),
+  showOnLanding: Joi.boolean(), // default false for a new plan (set in plan.service)
   displayOrder: Joi.number(),
   gracePeriodDays: Joi.number().min(0).max(30),
 });
@@ -83,7 +94,14 @@ const updatePlanSchema = Joi.object({
   gracePeriodDays: Joi.number().min(0).max(30),
 });
 
+const landingVisibilitySchema = Joi.object({
+  show: Joi.boolean().required()
+    .messages({ "any.required": "Say whether the plan should show on the landing page" }),
+});
+
 const reorderPlansSchema = Joi.object({
+  group: Joi.string().valid("landing", "other").required()
+    .messages({ "any.required": "Say which list is being reordered (landing or other)" }),
   order: Joi.array()
     .items(Joi.string().hex().length(24))
     .min(1)
@@ -108,3 +126,4 @@ export const validateCreatePlan       = validate(createPlanSchema);
 export const validateUpdatePlan       = validate(updatePlanSchema);
 export const validateUpdatePlanStatus = validate(updatePlanStatusSchema);
 export const validateReorderPlans     = validate(reorderPlansSchema);
+export const validateLandingVisibility = validate(landingVisibilitySchema);

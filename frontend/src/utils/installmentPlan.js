@@ -73,6 +73,10 @@ export const addGap = (value, gap, steps) =>
 
 export const toPaise = (rupees) => Math.round(Number(rupees) * 100);
 
+// A rupee amount typed by hand: digits with at most 2 decimals ("500", "500.5", "500.55").
+// The server applies the same rule; this lets the form say so before sending.
+export const isMoneyInput = (value) => /^\d+(\.\d{1,2})?$/.test(String(value ?? "").trim());
+
 // 33300 → "333"   33333 → "333.33"
 export const paiseToRupeeString = (paise) =>
   paise % 100 === 0 ? String(paise / 100) : (paise / 100).toFixed(2);
@@ -116,16 +120,74 @@ export const sumPaise = (rows) =>
     return total + (Number.isFinite(paise) && paise > 0 ? paise : 0);
   }, 0);
 
+// -----------------------------------------------------------------------------
+// Fitting the schedule inside the membership
+// -----------------------------------------------------------------------------
+// The membership runs from the start date for `durationDays` days. Every
+// installment must be paid before that ends — the last one at least
+// LAST_DUE_LEAD_DAYS days early, so there is time to chase a missed payment.
+export const LAST_DUE_LEAD_DAYS = 7;
+
+export const membershipEndDate = (startDate, durationDays) => addDays(startDate, durationDays);
+
+// Latest date an installment may be due ("" when the start date is invalid)
+export const lastAllowedDueDate = (startDate, durationDays) =>
+  addDays(startDate, durationDays - LAST_DUE_LEAD_DAYS);
+
+// How many installments fit when the first is due on `firstDue` and the rest
+// follow every `gap`, without going past `limitDate` (0 = none fit)
+export const fitCount = (firstDue, gap, limitDate) => {
+  if (!isValidDate(firstDue) || !isValidDate(limitDate)) return 0;
+  let n = 0;
+  while (n < MAX_INSTALLMENTS && addGap(firstDue, gap, n) <= limitDate) n += 1;
+  return n;
+};
+
+// Calculator defaults for a plan: the longest gap that still fits (30 → 15 → 7
+// days) and about one installment per month of the plan, minus the month that
+// today's payment covers.  90 days → 2 × 30 days; 180 → 5; 365 → 11;
+// 30 days → 1 × 15 days.
+export const suggestSchedule = (startDate, durationDays) => {
+  const limit = lastAllowedDueDate(startDate, durationDays);
+  const wanted = Math.max(1, Math.round(durationDays / 30) - 1);
+  for (const gap of ["30", "15", "7"]) {
+    const fit = fitCount(addGap(startDate, gap, 1), gap, limit);
+    if (fit >= 1) return { gap, count: Math.min(fit, wanted) };
+  }
+  return { gap: "7", count: 0 };
+};
+
+// Dates that appear on more than one installment (sorted, unique)
+export const duplicateDates = (rows) => {
+  const seen = {};
+  rows.forEach((r) => {
+    if (isValidDate(r.dueDate)) seen[r.dueDate] = (seen[r.dueDate] || 0) + 1;
+  });
+  return Object.keys(seen).filter((d) => seen[d] > 1).sort();
+};
+
+// Problem with a single row ("" when fine). ctx = { today, lastAllowed, end }
+export const rowProblem = (row, ctx) => {
+  if (String(row.amountDue ?? "").trim() !== "" && !isMoneyInput(row.amountDue)) return "Enter the amount in rupees (up to 2 decimals).";
+  const paise = toPaise(row.amountDue);
+  if (!Number.isFinite(paise) || paise <= 0) return "Enter an amount above ₹0.";
+  if (!isValidDate(row.dueDate)) return "Pick a valid due date.";
+  if (ctx?.today && row.dueDate < ctx.today) return "This date has already passed — pick today or later.";
+  if (ctx?.lastAllowed && row.dueDate > ctx.lastAllowed) {
+    return `Too late — it must be on or before ${ctx.lastAllowed} (membership ends ${ctx.end}; the last installment is kept ${LAST_DUE_LEAD_DAYS} days before that).`;
+  }
+  return "";
+};
+
 // Returns an error message, or "" when the schedule can be saved
-export const validateSchedule = (rows, balancePaise) => {
+export const validateSchedule = (rows, balancePaise, ctx) => {
   if (!rows.length) return "Choose the number of installments and a first due date.";
   for (let i = 0; i < rows.length; i += 1) {
-    const paise = toPaise(rows[i].amountDue);
-    if (!Number.isFinite(paise) || paise <= 0) {
-      return `Installment ${i + 1} needs an amount above ₹0.`;
-    }
-    if (!isValidDate(rows[i].dueDate)) return `Installment ${i + 1} needs a valid due date.`;
+    const problem = rowProblem(rows[i], ctx);
+    if (problem) return `Installment ${i + 1}: ${problem}`;
   }
+  const same = duplicateDates(rows);
+  if (same.length) return `Two installments fall on ${same.join(", ")}. Give each installment its own date.`;
   const diff = balancePaise - sumPaise(rows);
   if (diff !== 0) {
     const rupees = paiseToRupeeString(Math.abs(diff));

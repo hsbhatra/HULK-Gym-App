@@ -14,12 +14,9 @@ import AdminLayout from "../../components/layout/AdminLayout.jsx";
 import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
 import api from "../../services/api.js";
 import { Tip } from "../../components/ui/Tip.jsx";
+import { inr, formatDate } from "../../utils/format.js";
 
-const formatCurrency = (paise) => `₹${((paise || 0) / 100).toLocaleString("en-IN")}`;
-const formatDate = (date) =>
-  date
-    ? new Date(date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-    : "—";
+const formatCurrency = inr;
 
 const razorpayLink = (paymentId) => `https://dashboard.razorpay.com/app/payments/${paymentId}`;
 

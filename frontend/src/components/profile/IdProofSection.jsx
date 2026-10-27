@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import { IdCard, Lock, LockOpen, ShieldCheck, TriangleAlert } from "lucide-react";
 import { getProfile, saveMyId } from "../../services/profileService.js";
 import { ID_TYPE_OPTIONS, idTypeLabel, normaliseIdNumber, checkIdNumber } from "../../utils/idTypes.js";
+import { inputStyle as baseInput, labelStyle } from "../ui/formStyles.js";
 
 const card = {
   padding: "24px",
@@ -20,27 +21,7 @@ const card = {
   border: "1px solid #26262a",
 };
 
-const labelStyle = {
-  fontSize: "14px",
-  fontWeight: "600",
-  color: "rgba(255,255,255,0.62)",
-  letterSpacing: "0.5px",
-  textTransform: "uppercase",
-  display: "block",
-  marginBottom: "8px",
-};
-
-const inputStyle = {
-  width: "100%",
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: "10px",
-  padding: "12px 14px",
-  color: "#fff",
-  fontSize: "17px",
-  outline: "none",
-  fontFamily: "inherit",
-};
+const inputStyle = { ...baseInput, border: "1px solid rgba(255,255,255,0.12)", fontSize: "17px", padding: "12px 14px", fontFamily: "inherit" };
 
 const minutesLeft = (until) => Math.max(0, Math.ceil((new Date(until).getTime() - Date.now()) / 60000));
 

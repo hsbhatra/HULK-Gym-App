@@ -9,6 +9,8 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { createPlan, updatePlan } from "../../services/planService.js";
 import { Tip, InfoTip } from "../ui/Tip.jsx";
+import { inputStyle, labelStyle } from "../ui/formStyles.js";
+import Modal from "../ui/Modal.jsx";
 
 const DURATION_LABELS = {
   30 : "Monthly",
@@ -38,19 +40,13 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
     existingPlan?.pricingTiers?.map((t) => ({ ...t, price: t.price / 100 })) || emptyTiers
   );
 
+  // Only used when creating; for existing plans the Plans page has the toggle
+  const [showOnLanding, setShowOnLanding] = useState(false);
+
   const [features, setFeatures] = useState(existingPlan?.features || [""]);
   const [saving, setSaving]     = useState(false);
   const [errors, setErrors]     = useState({});
 
-  const inputStyle = {
-    width: "100%", background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.1)", borderRadius: "10px",
-    padding: "11px 14px", color: "#fff", fontSize: "16px", outline: "none",
-  };
-  const labelStyle = {
-    fontSize: "14px", fontWeight: "600", color: "rgba(255,255,255,0.62)",
-    letterSpacing: "0.5px", textTransform: "uppercase", display: "block", marginBottom: "8px",
-  };
 
   const handleNameChange = (value) => {
     setForm({
@@ -108,6 +104,7 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
           ...(t.offerValidUntil != null && { offerValidUntil: t.offerValidUntil }),
         })),
         features: features.filter((f) => f.trim()),
+        ...(!isEditMode && { showOnLanding }),
       };
 
       if (isEditMode) {
@@ -122,7 +119,7 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
       onClose();
     } catch (err) {
       const errs = err.response?.data?.errors;
-      if (errs?.length) errs.forEach((msg) => toast.error(msg));
+      if (errs?.length) [...new Set(errs)].forEach((msg) => toast.error(msg));
       else toast.error(err.response?.data?.message || "Failed to save plan.");
     } finally {
       setSaving(false);
@@ -130,17 +127,7 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
   };
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 200,
-      background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "24px", overflowY: "auto",
-    }}>
-      <div style={{
-        background: "var(--iron-850)", border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: "20px", padding: "32px", maxWidth: "560px", width: "100%",
-        maxHeight: "90vh", overflowY: "auto",
-      }}>
+    <Modal label={isEditMode ? "Edit plan" : "Create plan"} zIndex={200}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <h2 style={{ fontSize: "19px", fontWeight: "700" }}>
             {isEditMode ? "Edit Plan" : "Create New Plan"}
@@ -249,6 +236,17 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
             <InfoTip text="Shows this plan highlighted in yellow with a 'most picked' tag on the website." />
           </label>
 
+          {/* Landing page toggle (new plans only) */}
+          {!isEditMode && (
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+              <input type="checkbox" checked={showOnLanding}
+                onChange={(e) => setShowOnLanding(e.target.checked)}
+                style={{ width: "16px", height: "16px", accentColor: "#f3d400" }} />
+              <span style={{ fontSize: "15px", color: "rgba(255,255,255,0.6)" }}>Show on the landing page</span>
+              <InfoTip text="Off (default): the plan goes to 'Other plans'. It can still be given at the desk or opened by its direct link, but is not listed on the home page. You can change this later on the Plans page." />
+            </label>
+          )}
+
           {/* Actions */}
           <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
             <button type="button" onClick={onClose} className="btn-ghost" style={{ flex: 1, padding: "12px" }}>
@@ -259,7 +257,6 @@ export default function PlanFormModal({ existingPlan, onClose, onSaved }) {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
-}
+}

@@ -25,6 +25,7 @@ import { GYM } from "../utils/gymConfig.js";
 import { FACILITIES, CLASSES, AMENITIES, FAQ, HOURS } from "../content/gymContent.js";
 import { openStatus } from "../utils/hours.js";
 import { Dumbbell as DumbbellProp, Kettlebell } from "../components/ui/GymProps.jsx";
+import { inr } from "../utils/format.js";
 
 const ICONS = {
   Activity, Cctv, Cog, Droplets, Dumbbell, Flame, Flower2, HeartPulse, Lock, Music,
@@ -146,7 +147,7 @@ const DURATIONS = [
   { days: 365, label: "Annual" },
 ];
 
-const rupees = (paise) => `₹${(paise / 100).toLocaleString("en-IN")}`;
+const rupees = inr;
 
 // ── Small building blocks ────────────────────────────────────────────────────
 function SectionHead({ eyebrow, title, intro, id }) {

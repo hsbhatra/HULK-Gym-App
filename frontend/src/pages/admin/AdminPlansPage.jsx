@@ -1,12 +1,14 @@
 // =============================================================================
 // src/pages/admin/AdminPlansPage.jsx
 // =============================================================================
-// Plans appear on the website in the order shown here (top = first).
+// Two lists: "Landing page plans" (shown on the home page, in the order shown
+// here) and "Other plans" (still active — given at the desk or opened by direct
+// link — but not listed on the home page). Each list has its own order.
 // Reorder by dragging the handle or with the ↑ / ↓ buttons — saved instantly.
 // =============================================================================
 
 import { useState, useEffect, useRef } from "react";
-import { Reorder, useDragControls } from "framer-motion";
+import { AnimatePresence, motion, Reorder, useDragControls, useReducedMotion } from "framer-motion";
 import { ArrowDown, ArrowUp, GripVertical } from "lucide-react";
 import toast from "react-hot-toast";
 import AdminLayout from "../../components/layout/AdminLayout.jsx";
@@ -18,7 +20,15 @@ import {
   updatePlanStatus,
   archivePlan,
   reorderPlans,
+  setLandingVisibility,
 } from "../../services/planService.js";
+
+const TABS = [
+  { key: "landing", label: "Landing page plans" },
+  { key: "other", label: "Other plans" },
+];
+const isLanding = (p) => p.showOnLanding !== false;
+const inTab = (p, tab) => (tab === "landing" ? isLanding(p) : !isLanding(p));
 
 const sameOrder = (a, b) => a.length === b.length && a.every((p, i) => p._id === b[i]._id);
 
@@ -40,7 +50,7 @@ const statusBadge = (status) => {
   );
 };
 
-function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit, onArchive }) {
+function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit, onArchive, onLanding }) {
   const controls = useDragControls();
 
   return (
@@ -103,7 +113,26 @@ function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit
       </div>
 
       {/* Actions */}
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+        {plan.status !== "archived" && (
+          <Tip text={isLanding(plan)
+            ? "This plan is listed on the landing page. Switch off to move it to 'Other plans' — it stays active and can still be given at the desk or opened by its link."
+            : "This plan is not listed on the landing page. Switch on to list it there."}>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isLanding(plan)}
+              aria-label={`Show ${plan.name} on the landing page`}
+              disabled={busy}
+              onClick={() => onLanding(plan)}
+              className="plan-switch"
+              data-on={isLanding(plan)}
+            >
+              <span className="plan-switch-track"><span className="plan-switch-knob" /></span>
+              <span className="plan-switch-label">On landing page</span>
+            </button>
+          </Tip>
+        )}
         {plan.status !== "archived" && (
           <Tip text={plan.status === "active"
             ? "Takes this plan off the website. Nobody can buy it online or be given it at the desk. Members who already have it keep it. Press Activate to put it back."
@@ -146,6 +175,9 @@ export default function AdminPlansPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
   const [confirmArchive, setConfirmArchive] = useState(null);
+  const [confirmHide, setConfirmHide] = useState(null);
+  const [tab, setTab] = useState("landing");
+  const reduceMotion = useReducedMotion();
 
   // Latest list (drag callbacks fire after state updates) + last saved order
   const plansRef = useRef([]);
@@ -167,15 +199,27 @@ export default function AdminPlansPage() {
 
   useEffect(() => { fetchPlans(); }, []);
 
-  const saveOrder = async (next) => {
-    if (sameOrder(next, savedRef.current)) return;
+  const landingPlans = plans.filter(isLanding);
+  const otherPlans = plans.filter((p) => !isLanding(p));
+  const tabPlans = tab === "landing" ? landingPlans : otherPlans;
+
+  // Puts one list's new order back into the slots that list already holds
+  const mergeTab = (list, tabKey, next) => {
+    const queue = [...next];
+    return list.map((p) => (inTab(p, tabKey) ? queue.shift() : p));
+  };
+
+  const saveOrder = async (tabKey) => {
+    const next = plansRef.current.filter((p) => inTab(p, tabKey));
+    const before = savedRef.current.filter((p) => inTab(p, tabKey));
+    if (sameOrder(next, before)) return;
     const previous = savedRef.current;
     setSaving(true);
     try {
-      const res = await reorderPlans(next.map((p) => p._id));
+      const res = await reorderPlans(next.map((p) => p._id), tabKey);
       savedRef.current = res.data.data.plans;
       setPlans(res.data.data.plans);
-      toast.success("Order saved. The website shows plans in this order.");
+      toast.success(tabKey === "landing" ? "Order saved. The landing page shows plans in this order." : "Order saved.");
     } catch (err) {
       setPlans(previous); // put it back the way it was
       toast.error(err.response?.data?.message || "Couldn't save the new order.");
@@ -185,12 +229,14 @@ export default function AdminPlansPage() {
   };
 
   const move = (index, dir) => {
-    const next = [...plansRef.current];
+    const list = plansRef.current.filter((p) => inTab(p, tab));
     const target = index + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    setPlans(next);
-    saveOrder(next);
+    if (target < 0 || target >= list.length) return;
+    [list[index], list[target]] = [list[target], list[index]];
+    const merged = mergeTab(plansRef.current, tab, list);
+    plansRef.current = merged;
+    setPlans(merged);
+    saveOrder(tab);
   };
 
   const handleToggleStatus = async (plan) => {
@@ -199,8 +245,8 @@ export default function AdminPlansPage() {
       await updatePlanStatus(plan._id, newStatus);
       toast.success(`Plan is now ${newStatus}.`);
       fetchPlans();
-    } catch {
-      toast.error("Failed to update status.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update status.");
     }
   };
 
@@ -210,9 +256,35 @@ export default function AdminPlansPage() {
       toast.success(res.data.message);
       setConfirmArchive(null);
       fetchPlans();
-    } catch {
-      toast.error("Failed to archive plan.");
+    } catch (err) {
+      setConfirmArchive(null);
+      toast.error(err.response?.data?.message || "Failed to archive plan.");
     }
+  };
+
+  // Landing page on/off. Showing is instant; hiding asks first.
+  const applyLanding = async (plan, show) => {
+    setSaving(true);
+    try {
+      await setLandingVisibility(plan._id, show);
+      toast.success(show ? `"${plan.name}" is now on the landing page.` : `"${plan.name}" moved to Other plans.`);
+      await fetchPlans();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Couldn't change the landing page setting.");
+    } finally {
+      setSaving(false);
+      setConfirmHide(null);
+    }
+  };
+
+  const handleLanding = (plan) => {
+    if (!isLanding(plan)) return applyLanding(plan, true);
+    // Quick check here; the server makes the final decision
+    const othersOnLanding = plans.filter((p) => p._id !== plan._id && isLanding(p) && p.status === "active");
+    if (plan.status === "active" && othersOnLanding.length === 0) {
+      return toast.error(`"${plan.name}" is the only active plan on the landing page. Put another active plan there first.`);
+    }
+    setConfirmHide(plan);
   };
 
   return (
@@ -234,6 +306,15 @@ export default function AdminPlansPage() {
         />
       )}
 
+      {confirmHide && (
+        <ConfirmDialog
+          message={`Remove "${confirmHide.name}" from the landing page? It moves to Other plans. It stays ${confirmHide.status === "active" ? "active — you can still give it at the desk and people with its link can open and buy it" : confirmHide.status} — it just won't be listed on the home page.`}
+          confirmLabel="Yes, hide from landing page"
+          onConfirm={() => applyLanding(confirmHide, false)}
+          onCancel={() => setConfirmHide(null)}
+        />
+      )}
+
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", gap: "12px", flexWrap: "wrap" }}>
         <div>
           <h1 className="page-title">Membership Plans</h1>
@@ -247,43 +328,102 @@ export default function AdminPlansPage() {
         </button>
       </div>
 
-      {plans.length > 1 && (
-        <p className="plan-order-hint">
-          The website shows plans in this order, top first. Drag <GripVertical size={15} aria-hidden="true" /> or use the arrows to change it — it saves on its own.
-          {saving && <span className="plan-saving"> Saving…</span>}
-        </p>
-      )}
+      <div role="tablist" aria-label="Plan lists" className="plan-tabs">
+        {TABS.map((t) => {
+          const count = t.key === "landing" ? landingPlans.length : otherPlans.length;
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              role="tab"
+              id={`plans-tab-${t.key}`}
+              aria-selected={active}
+              aria-controls="plans-panel"
+              type="button"
+              className="plan-tab"
+              data-active={active}
+              onClick={() => setTab(t.key)}
+            >
+              {active && (
+                <motion.span
+                  layoutId="plan-tab-pill"
+                  className="plan-tab-pill"
+                  transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 34 }}
+                />
+              )}
+              <span className="plan-tab-text">{t.label} <span className="plan-tab-count">{count}</span></span>
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="plan-order-hint">
+        {tab === "landing"
+          ? "These plans are listed on the landing page, in this order (top first)."
+          : "These plans are not listed on the landing page. They stay active, so you can still give them at the desk or share their link."}
+        {tabPlans.length > 1 && (
+          <>
+            <span className="plan-hint-wide"> Drag <GripVertical size={15} aria-hidden="true" /> or use the arrows to change the order — it saves on its own.</span>
+            <span className="plan-hint-narrow"> Change the order with the arrows — it saves on its own.</span>
+          </>
+        )}
+        {saving && <span className="plan-saving"> Saving…</span>}
+      </p>
 
       {loading ? (
         <div style={{ textAlign: "center", padding: "60px", color: "rgba(255,255,255,0.55)" }}>
           Loading plans...
         </div>
-      ) : plans.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px", color: "rgba(255,255,255,0.55)" }}>
-          No plans created yet. Click "Create Plan" to get started.
-        </div>
       ) : (
-        <Reorder.Group
-          axis="y"
-          values={plans}
-          onReorder={(next) => { plansRef.current = next; setPlans(next); }}
-          style={{ display: "flex", flexDirection: "column", gap: "12px", listStyle: "none", padding: 0, margin: 0 }}
-        >
-          {plans.map((plan, index) => (
-            <PlanRow
-              key={plan._id}
-              plan={plan}
-              index={index}
-              count={plans.length}
-              busy={saving}
-              onMove={move}
-              onDragEnd={() => saveOrder(plansRef.current)}
-              onToggle={handleToggleStatus}
-              onEdit={(p) => { setEditingPlan(p); setShowModal(true); }}
-              onArchive={setConfirmArchive}
-            />
-          ))}
-        </Reorder.Group>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={tab}
+            id="plans-panel"
+            role="tabpanel"
+            aria-labelledby={`plans-tab-${tab}`}
+            initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            transition={{ duration: reduceMotion ? 0 : 0.18, ease: "easeOut" }}
+          >
+            {tabPlans.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 16px", color: "rgba(255,255,255,0.55)" }}>
+                {plans.length === 0
+                  ? 'No plans created yet. Click "Create Plan" to get started.'
+                  : tab === "landing"
+                    ? "No plans are on the landing page. Switch one on from Other plans."
+                    : "No other plans. Every plan is listed on the landing page."}
+              </div>
+            ) : (
+              <Reorder.Group
+                axis="y"
+                values={tabPlans}
+                onReorder={(next) => {
+                  const merged = mergeTab(plansRef.current, tab, next);
+                  plansRef.current = merged;
+                  setPlans(merged);
+                }}
+                style={{ display: "flex", flexDirection: "column", gap: "12px", listStyle: "none", padding: 0, margin: 0 }}
+              >
+                {tabPlans.map((plan, index) => (
+                  <PlanRow
+                    key={plan._id}
+                    plan={plan}
+                    index={index}
+                    count={tabPlans.length}
+                    busy={saving}
+                    onMove={move}
+                    onDragEnd={() => saveOrder(tab)}
+                    onToggle={handleToggleStatus}
+                    onEdit={(p) => { setEditingPlan(p); setShowModal(true); }}
+                    onArchive={setConfirmArchive}
+                    onLanding={handleLanding}
+                  />
+                ))}
+              </Reorder.Group>
+            )}
+          </motion.div>
+        </AnimatePresence>
       )}
     </AdminLayout>
   );

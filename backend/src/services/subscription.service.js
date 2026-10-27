@@ -59,9 +59,20 @@ const orderResponse = (payment, plan, label) => ({
 // so the membership is activated and the receipt/email sent exactly once.
 // =============================================================================
 
-export const completeOnlinePayment = async ({ orderId, razorpayPaymentId, method }) => {
+export const completeOnlinePayment = async ({ orderId, razorpayPaymentId, method, paidAmount, currency }) => {
   const existing = await Payment.findOne({ "razorpay.orderId": orderId });
   if (!existing) throw ApiError.notFound("Payment record not found for this order.");
+
+  // The amount Razorpay actually took must be exactly what this membership
+  // costs. Never activate on a different amount (when Razorpay tells us one).
+  if (paidAmount !== undefined && paidAmount !== null) {
+    if (Number(paidAmount) !== existing.amountDue || (currency && currency !== "INR")) {
+      console.error(
+        `Online payment amount mismatch for order ${orderId}: expected ${existing.amountDue} paise INR, got ${paidAmount} ${currency || ""}`,
+      );
+      throw ApiError.badRequest("The amount paid does not match the plan price. Please contact the gym.");
+    }
+  }
 
   const done = [PAYMENT_STATUS.COMPLETED, PAYMENT_STATUS.REFUND_DUE];
   if (done.includes(existing.status)) {
@@ -166,11 +177,18 @@ const reconcileOpenOrders = async (openPayments) => {
     const captured = items.find((x) => x.status === "captured");
     if (!captured) continue;
 
-    return completeOnlinePayment({
-      orderId          : order.id,
-      razorpayPaymentId: captured.id,
-      method           : captured.method,
-    });
+    try {
+      return await completeOnlinePayment({
+        orderId          : order.id,
+        razorpayPaymentId: captured.id,
+        method           : captured.method,
+        paidAmount       : captured.amount,
+        currency         : captured.currency,
+      });
+    } catch (err) {
+      console.error("Reconcile skipped:", err.message);
+      continue;
+    }
   }
   return null;
 };
@@ -292,14 +310,31 @@ export const verifyAndActivateSubscription = async (orderId, paymentId, signatur
     throw ApiError.unauthorized("Payment verification failed. Signature mismatch.");
   }
 
-  let method = "online";
+  // Ask Razorpay what really happened: the payment must belong to this order,
+  // be captured, and be for exactly the plan price.
+  let fetched = null;
   try {
-    method = (await razorpay.payments.fetch(paymentId)).method || method;
+    fetched = await razorpay.payments.fetch(paymentId);
   } catch {
-    // non-critical
+    // Razorpay unreachable — the signature already proved the payment; the
+    // webhook re-checks the amount when it arrives.
+  }
+  if (fetched) {
+    if (fetched.order_id && fetched.order_id !== orderId) {
+      throw ApiError.badRequest("This payment does not belong to this order.");
+    }
+    if (fetched.status === "failed") {
+      throw ApiError.badRequest("This payment did not go through.");
+    }
   }
 
-  return completeOnlinePayment({ orderId, razorpayPaymentId: paymentId, method });
+  return completeOnlinePayment({
+    orderId,
+    razorpayPaymentId: paymentId,
+    method: fetched?.method || "online",
+    paidAmount: fetched?.amount,
+    currency: fetched?.currency,
+  });
 };
 
 // =============================================================================
