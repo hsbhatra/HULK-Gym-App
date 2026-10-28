@@ -6,9 +6,8 @@ import Payment from "../models/payment.model.js";
 import Subscription from "../models/subscription.model.js";
 import Installment from "../models/installment.model.js";
 import User from "../models/user.model.js";
-import { MEMBER_ROLES } from "../utils/constants.js";
 import ApiError from "../utils/apiError.js";
-import { parseRange, revenueReport, membersReport, duesReport, renewalsReport } from "./analytics.calc.js";
+import { parseRange, ymdIST, istStart, revenueReport, membersReport, duesReport, renewalsReport } from "./analytics.calc.js";
 
 const range = (q) => {
   const str = (v) => (typeof v === "string" && v ? v : undefined);
@@ -19,7 +18,7 @@ const range = (q) => {
 };
 const meta = (r) => ({ from: r.fromYMD, to: r.toYMD, days: r.days, bucket: r.bucket, previousFrom: r.prevFromYMD, previousTo: r.prevToYMD });
 
-const loadUsers = () => User.find({ role: { $in: MEMBER_ROLES }, deletedAt: null }).select("firstName lastName userId phoneNumber createdAt").lean();
+const loadUsers = () => User.find({ role: "member", deletedAt: null }).select("firstName lastName userId phoneNumber createdAt").lean();
 const loadSubs = () =>
   Subscription.find({ status: { $ne: "pending" } })
     .select("userId status startDate endDate gracePeriodEnds activatedAt createdAt cancelledAt cancelReason planSnapshot.planName")
@@ -34,7 +33,14 @@ export const getRevenue = async (q) => {
       $or: [{ paidAt: { $gte: r.prevStart, $lt: r.end } }, { "refund.initiatedAt": { $gte: r.prevStart, $lt: r.end } }],
     }).select("status amountPaid paidAt refund.amount refund.initiatedAt").lean(),
   ]);
-  return { range: meta(r), ...revenueReport({ receipts, dupPayments: dups }, r) };
+  // Money that came in today (IST), whatever range is on screen
+  const dayStart = istStart(ymdIST(new Date()));
+  const [todayReceipts, todayDups] = await Promise.all([
+    Receipt.find({ paidAt: { $gte: dayStart } }).select("amount").lean(),
+    Payment.find({ status: { $in: ["refund_due", "refunded"] }, paidAt: { $gte: dayStart } }).select("amountPaid").lean(),
+  ]);
+  const todayReceived = todayReceipts.reduce((s, x) => s + x.amount, 0) + todayDups.reduce((s, x) => s + (x.amountPaid || 0), 0);
+  return { range: meta(r), todayReceived, ...revenueReport({ receipts, dupPayments: dups }, r) };
 };
 
 export const getMembers = async (q) => {

@@ -10,6 +10,7 @@ import {
   HTTP_STATUS,
   USER_ROLES,
   MEMBER_ROLES,
+  ASSIGNABLE_ROLES,
   SUBSCRIPTION_STATUS,
   PAYMENT_STATUS,
   PAYMENT_MODE,
@@ -82,7 +83,19 @@ export const searchMembers = asyncHandler(async (req, res) => {
   const rx = (s) => ({ $regex: esc(s), $options: "i" });
 
   // Members only — not the admin account, not deleted (anonymised) accounts
-  let filter = { role: { $in: MEMBER_ROLES }, deletedAt: null }; // empty search → every member
+  // User type: members only by default; staff = receptionists + trainers; or one of them; or everyone
+  const type = typeof req.query.type === "string" ? req.query.type : "";
+  const TYPE_ROLES = {
+    "": [USER_ROLES.MEMBER],
+    member: [USER_ROLES.MEMBER],
+    staff: [USER_ROLES.RECEPTIONIST, USER_ROLES.TRAINER],
+    receptionist: [USER_ROLES.RECEPTIONIST],
+    trainer: [USER_ROLES.TRAINER],
+    all: MEMBER_ROLES,
+  };
+  if (!Object.hasOwn(TYPE_ROLES, type)) throw ApiError.badRequest(`Unknown user type "${type}".`);
+  const roles = TYPE_ROLES[type];
+  let filter = { role: { $in: roles }, deletedAt: null }; // empty search → every member
   if (idMissing) filter["idProof.savedAt"] = null;   // members without a saved ID
   if (trimmed) {
     const orConditions = [
@@ -1071,16 +1084,17 @@ export const rejectDeletionRequest = asyncHandler(async (req, res) => {
 
 // =============================================================================
 // setMemberRole
-// PATCH /api/v1/admin/members/:id/role   { role: "receptionist" | "member" }
+// PATCH /api/v1/admin/members/:id/role   { role: "receptionist" | "trainer" | "member" }
 // =============================================================================
-// Admin only. Makes an existing member a receptionist, or takes it away.
+// Admin only. Makes an existing member a receptionist or trainer, or takes it
+// away. A person has ONE role at a time. A trainer is only a label for now.
 // Their sign-in sessions are ended so the next login carries the new role.
 // =============================================================================
 
 export const setMemberRole = asyncHandler(async (req, res) => {
   const { role } = req.body || {};
-  if (![USER_ROLES.RECEPTIONIST, USER_ROLES.MEMBER].includes(role)) {
-    throw ApiError.badRequest('Role must be "receptionist" or "member".');
+  if (![...ASSIGNABLE_ROLES, USER_ROLES.MEMBER].includes(role)) {
+    throw ApiError.badRequest('Role must be "receptionist", "trainer" or "member".');
   }
   if (!mongoose.isValidObjectId(req.params.id)) throw ApiError.badRequest("Invalid member.");
 
@@ -1088,13 +1102,13 @@ export const setMemberRole = asyncHandler(async (req, res) => {
   if (!target || target.deletedAt) throw ApiError.notFound("Member not found.");
   if (String(target._id) === req.actor.id) throw ApiError.forbidden("You can't change your own role.");
   if (target.role === USER_ROLES.ADMIN) throw ApiError.forbidden("An admin's role can't be changed here.");
-  if (![USER_ROLES.MEMBER, USER_ROLES.RECEPTIONIST].includes(target.role)) {
+  if (!MEMBER_ROLES.includes(target.role)) {
     throw ApiError.badRequest("This account's role can't be changed here.");
   }
   if (target.role === role) {
-    throw ApiError.conflict(role === USER_ROLES.RECEPTIONIST ? "This member is already a receptionist." : "This account is already a regular member.");
+    throw ApiError.conflict(role === USER_ROLES.MEMBER ? "This account is already a regular member." : `This member is already a ${role}.`);
   }
-  if (role === USER_ROLES.RECEPTIONIST) {
+  if (role !== USER_ROLES.MEMBER) {
     if (target.isActive === false) throw ApiError.badRequest("This account is deactivated.");
     if (!target.isEmailVerified) throw ApiError.badRequest("This member hasn't verified their email yet.");
   }
@@ -1123,7 +1137,9 @@ export const setMemberRole = asyncHandler(async (req, res) => {
     HTTP_STATUS.OK,
     role === USER_ROLES.RECEPTIONIST
       ? `${target.firstName} is now a receptionist. They must sign in again to see the staff panel.`
-      : `${target.firstName} is a regular member again. They have been signed out.`,
+      : role === USER_ROLES.TRAINER
+        ? `${target.firstName} is now a trainer. They have been signed out.`
+        : `${target.firstName} is a regular member again. They have been signed out.`,
     { role },
   ).send(res);
 });

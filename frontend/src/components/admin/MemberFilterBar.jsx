@@ -39,7 +39,16 @@ export const SORT_OPTIONS = [
   { value: "dues_high", label: "Highest dues" },
 ];
 
-export const EMPTY_FILTERS = { status: [], plan: [], dues: "", idMissing: false };
+// "" = Members (the default). Staff = receptionists + trainers.
+export const TYPE_OPTIONS = [
+  { value: "", label: "Members" },
+  { value: "staff", label: "Staff" },
+  { value: "receptionist", label: "Receptionists" },
+  { value: "trainer", label: "Trainers" },
+  { value: "all", label: "Everyone" },
+];
+
+export const EMPTY_FILTERS = { status: [], plan: [], dues: "", idMissing: false, type: "" };
 
 const SORT_VALUES = SORT_OPTIONS.map((o) => o.value);
 const csv = (v) => (v ? v.split(",").filter(Boolean) : []);
@@ -51,6 +60,7 @@ export const readFilters = (sp) => ({
     plan: csv(sp.get("plan")),
     dues: DUES_OPTIONS.some((o) => o.value === sp.get("dues")) ? sp.get("dues") : "",
     idMissing: sp.get("id") === "missing",
+    type: TYPE_OPTIONS.some((o) => o.value && o.value === sp.get("type")) ? sp.get("type") : "",
   },
   sort: SORT_VALUES.includes(sp.get("sort")) ? sp.get("sort") : "newest",
   query: (sp.get("q") || "").slice(0, 100),
@@ -63,6 +73,7 @@ export const writeParams = ({ filters, sort, query }) => {
   if (filters.plan.length) p.set("plan", filters.plan.join(","));
   if (filters.dues) p.set("dues", filters.dues);
   if (filters.idMissing) p.set("id", "missing");
+  if (filters.type) p.set("type", filters.type);
   if (sort !== "newest") p.set("sort", sort);
   return p;
 };
@@ -73,10 +84,11 @@ export const apiParams = ({ filters, sort, query, page, limit }) => {
   if (filters.plan.length) p.set("plan", filters.plan.join(","));
   if (filters.dues) p.set("dues", filters.dues);
   if (filters.idMissing) p.set("idMissing", "true");
+  if (filters.type) p.set("type", filters.type);
   return p.toString();
 };
 
-export const countFilters = (f) => f.status.length + f.plan.length + (f.dues ? 1 : 0) + (f.idMissing ? 1 : 0);
+export const countFilters = (f) => f.status.length + f.plan.length + (f.dues ? 1 : 0) + (f.idMissing ? 1 : 0) + (f.type ? 1 : 0);
 
 const toggleIn = (list, v) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
@@ -125,6 +137,21 @@ function Fields({ filters, onChange, plans }) {
             aria-pressed={filters.status.includes(o.value)}
             onClick={() => onChange({ ...filters, status: toggleIn(filters.status, o.value) })}
             style={chipStyle(filters.status.includes(o.value), subscriptionStatusColor(o.value, { admin: true }))}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      <p style={groupLabel}>User type</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+        {TYPE_OPTIONS.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={filters.type === o.value}
+            onClick={() => onChange({ ...filters, type: o.value })}
+            style={chipStyle(filters.type === o.value)}
           >
             {o.label}
           </button>
@@ -194,6 +221,7 @@ export default function MemberFilterBar({ filters, sort, plans, total, onFilters
   const chips = [
     ...filters.status.map((v) => ({ key: `s-${v}`, label: STATUS_OPTIONS.find((o) => o.value === v)?.label || v, remove: () => onFilters({ ...filters, status: filters.status.filter((x) => x !== v) }) })),
     ...filters.plan.map((v) => ({ key: `p-${v}`, label: plans.find((p) => p._id === v)?.name || "Plan", remove: () => onFilters({ ...filters, plan: filters.plan.filter((x) => x !== v) }) })),
+    ...(filters.type ? [{ key: "type", label: TYPE_OPTIONS.find((o) => o.value === filters.type)?.label, remove: () => onFilters({ ...filters, type: "" }) }] : []),
     ...(filters.dues ? [{ key: "dues", label: DUES_OPTIONS.find((o) => o.value === filters.dues)?.label, remove: () => onFilters({ ...filters, dues: "" }) }] : []),
     ...(filters.idMissing ? [{ key: "id", label: "ID not added", remove: () => onFilters({ ...filters, idMissing: false }) }] : []),
   ];

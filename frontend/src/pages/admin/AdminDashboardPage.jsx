@@ -192,7 +192,7 @@ export default function AdminDashboardPage() {
 
       {/* Tabs: Overview is the original dashboard, the rest are analytics */}
       <div role="tablist" aria-label="Dashboard sections" style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 20 }}>
-        {[["overview", "Overview"], ["revenue", "Revenue"], ["members", "Members"], ["dues", "Dues"], ["renewals", "Renewals"]].map(([id, text]) => (
+        {[["overview", "Overview"], ["revenue", "Revenue"], ["members", "Members"]].map(([id, text]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
             className={tab === id ? "btn-gold btn-sm" : "btn-ghost btn-sm"} style={{ flexShrink: 0 }}>{text}</button>
         ))}

@@ -1,10 +1,11 @@
 // =============================================================================
 // src/pages/admin/AdminPlansPage.jsx
 // =============================================================================
-// Two lists: "Landing page plans" (shown on the home page, in the order shown
-// here) and "Other plans" (still active — given at the desk or opened by direct
-// link — but not listed on the home page). Each list has its own order.
-// Reorder by dragging the handle or with the ↑ / ↓ buttons — saved instantly.
+// Three lists: "Landing page plans" (active, shown on the home page, in the
+// order shown here), "Other plans" (active — given at the desk or opened by
+// direct link — but not on the home page) and "Band plans" (switched off).
+// Each active list has its own order: drag the handle or use ↑ / ↓ — saved
+// instantly. One "Active" switch turns a plan on or off (there is no Archive).
 // =============================================================================
 
 import { useState, useEffect, useRef } from "react";
@@ -18,7 +19,6 @@ import { Tip } from "../../components/ui/Tip.jsx";
 import {
   getAllPlansAdmin,
   updatePlanStatus,
-  archivePlan,
   reorderPlans,
   setLandingVisibility,
 } from "../../services/planService.js";
@@ -26,31 +26,26 @@ import {
 const TABS = [
   { key: "landing", label: "Landing page plans" },
   { key: "other", label: "Other plans" },
+  { key: "band", label: "Band plans" },
 ];
 const isLanding = (p) => p.showOnLanding !== false;
-const inTab = (p, tab) => (tab === "landing" ? isLanding(p) : !isLanding(p));
+const isOn = (p) => p.status === "active";
+const inTab = (p, tab) =>
+  tab === "band" ? !isOn(p) : isOn(p) && (tab === "landing" ? isLanding(p) : !isLanding(p));
 
 const sameOrder = (a, b) => a.length === b.length && a.every((p, i) => p._id === b[i]._id);
 
-const statusBadge = (status) => {
-  const colors = {
-    active  : { bg: "rgba(34,197,94,0.1)",  border: "rgba(34,197,94,0.2)",  text: "#22c55e" },
-    inactive: { bg: "rgba(249,115,22,0.1)", border: "rgba(249,115,22,0.2)", text: "#f97316" },
-    archived: { bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.1)", text: "rgba(255,255,255,0.4)" },
-  };
-  const c = colors[status] || colors.archived;
-  return (
-    <span style={{
-      fontSize: "13px", padding: "3px 10px", borderRadius: "100px",
-      background: c.bg, border: `1px solid ${c.border}`, color: c.text,
-      fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px",
-    }}>
-      {status}
-    </span>
-  );
-};
+const offBadge = (
+  <span style={{
+    fontSize: "13px", padding: "3px 10px", borderRadius: "100px",
+    background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)", color: "#f97316",
+    fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px",
+  }}>
+    Band
+  </span>
+);
 
-function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit, onArchive, onLanding }) {
+function PlanRow({ plan, index, count, busy, reorderable, onMove, onDragEnd, onToggle, onEdit, onLanding }) {
   const controls = useDragControls();
 
   return (
@@ -64,7 +59,7 @@ function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit
       whileDrag={{ scale: 1.01, boxShadow: "0 18px 40px rgba(0,0,0,0.55)", zIndex: 5 }}
     >
       {/* Order controls */}
-      <div className="plan-order">
+      {reorderable && <div className="plan-order">
         <Tip touch={false} text="Press and drag to change the order plans appear on the website.">
           <button
             type="button"
@@ -76,7 +71,6 @@ function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit
             <GripVertical size={20} aria-hidden="true" />
           </button>
         </Tip>
-        <span className="plan-pos" aria-label={`Position ${index + 1}`}>{index + 1}</span>
         <div className="plan-arrows">
           <Tip touch={false} text="Move this plan one place up on the website.">
             <button type="button" aria-label={`Move ${plan.name} up`} disabled={busy || index === 0} onClick={() => onMove(index, -1)}>
@@ -89,13 +83,13 @@ function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit
             </button>
           </Tip>
         </div>
-      </div>
+      </div>}
 
       {/* Plan info */}
       <div style={{ flex: 1, minWidth: "200px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px", flexWrap: "wrap" }}>
           <h3 style={{ fontSize: "17px", fontWeight: "700" }}>{plan.name}</h3>
-          {statusBadge(plan.status)}
+          {!isOn(plan) && offBadge}
           {plan.isFeatured && (
             <span style={{ fontSize: "13px", padding: "3px 10px", borderRadius: "100px", background: "rgba(243,212,0,0.1)", border: "1px solid rgba(243,212,0,0.2)", color: "#f3d400", fontWeight: "600" }}>
               ★ Featured
@@ -114,7 +108,24 @@ function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit
 
       {/* Actions */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-        {plan.status !== "archived" && (
+        <Tip text={isOn(plan)
+          ? "Plan is ON: it is on the website and can be given at the desk. Switch off to take it away — members who already have it keep it."
+          : "Plan is OFF: nobody can buy it or be given it. Switch on to bring it back."}>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isOn(plan)}
+            aria-label={`${plan.name} is ${isOn(plan) ? "on" : "off"}`}
+            disabled={busy}
+            onClick={() => onToggle(plan)}
+            className="plan-switch"
+            data-on={isOn(plan)}
+          >
+            <span className="plan-switch-track"><span className="plan-switch-knob" /></span>
+            <span className="plan-switch-label">Active</span>
+          </button>
+        </Tip>
+        {isOn(plan) && (
           <Tip text={isLanding(plan)
             ? "This plan is listed on the landing page. Switch off to move it to 'Other plans' — it stays active and can still be given at the desk or opened by its link."
             : "This plan is not listed on the landing page. Switch on to list it there."}>
@@ -133,36 +144,10 @@ function PlanRow({ plan, index, count, busy, onMove, onDragEnd, onToggle, onEdit
             </button>
           </Tip>
         )}
-        {plan.status !== "archived" && (
-          <Tip text={plan.status === "active"
-            ? "Takes this plan off the website. Nobody can buy it online or be given it at the desk. Members who already have it keep it. Press Activate to put it back."
-            : "Puts this plan back on the website so people can buy it online and you can give it at the desk."}>
-            <button onClick={() => onToggle(plan)}
-              style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: "14px", cursor: "pointer" }}>
-              {plan.status === "active" ? "Deactivate" : "Activate"}
-            </button>
-          </Tip>
-        )}
         <button onClick={() => onEdit(plan)}
           style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(243,212,0,0.2)", background: "rgba(243,212,0,0.08)", color: "#f3d400", fontSize: "14px", cursor: "pointer" }}>
           Edit
         </button>
-        {plan.status !== "archived" && (
-          <Tip text="Retires this plan for good: it is hidden and can't be bought or given. Members who already have it keep it. You can bring it back later with Restore.">
-            <button onClick={() => onArchive(plan)}
-              style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)", background: "transparent", color: "#ef4444", fontSize: "14px", cursor: "pointer" }}>
-              Archive
-            </button>
-          </Tip>
-        )}
-        {plan.status === "archived" && (
-          <Tip text="Brings this plan back as Inactive, so it is still hidden. Press Activate afterwards to show it on the website.">
-            <button onClick={() => onToggle({ ...plan, status: "inactive" })}
-              style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid rgba(34,197,94,0.25)", background: "rgba(34,197,94,0.08)", color: "#22c55e", fontSize: "14px", cursor: "pointer" }}>
-              Restore
-            </button>
-          </Tip>
-        )}
       </div>
     </Reorder.Item>
   );
@@ -174,7 +159,7 @@ export default function AdminPlansPage() {
   const [saving, setSaving]     = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
-  const [confirmArchive, setConfirmArchive] = useState(null);
+  const [confirmOff, setConfirmOff] = useState(null);
   const [confirmHide, setConfirmHide] = useState(null);
   const [tab, setTab] = useState("landing");
   const reduceMotion = useReducedMotion();
@@ -199,9 +184,10 @@ export default function AdminPlansPage() {
 
   useEffect(() => { fetchPlans(); }, []);
 
-  const landingPlans = plans.filter(isLanding);
-  const otherPlans = plans.filter((p) => !isLanding(p));
-  const tabPlans = tab === "landing" ? landingPlans : otherPlans;
+  const landingPlans = plans.filter((p) => inTab(p, "landing"));
+  const otherPlans = plans.filter((p) => inTab(p, "other"));
+  const bandPlans = plans.filter((p) => inTab(p, "band"));
+  const tabPlans = tab === "landing" ? landingPlans : tab === "other" ? otherPlans : bandPlans;
 
   // Puts one list's new order back into the slots that list already holds
   const mergeTab = (list, tabKey, next) => {
@@ -216,7 +202,9 @@ export default function AdminPlansPage() {
     const previous = savedRef.current;
     setSaving(true);
     try {
-      const res = await reorderPlans(next.map((p) => p._id), tabKey);
+      // The server wants the whole group; switched-off plans of that group follow, in their current order
+      const off = plansRef.current.filter((p) => !isOn(p) && (tabKey === "landing" ? isLanding(p) : !isLanding(p)));
+      const res = await reorderPlans([...next, ...off].map((p) => p._id), tabKey);
       savedRef.current = res.data.data.plans;
       setPlans(res.data.data.plans);
       toast.success(tabKey === "landing" ? "Order saved. The landing page shows plans in this order." : "Order saved.");
@@ -239,27 +227,29 @@ export default function AdminPlansPage() {
     saveOrder(tab);
   };
 
-  const handleToggleStatus = async (plan) => {
-    const newStatus = plan.status === "active" ? "inactive" : "active";
+  const applyStatus = async (plan, newStatus) => {
+    setSaving(true);
     try {
       await updatePlanStatus(plan._id, newStatus);
-      toast.success(`Plan is now ${newStatus}.`);
-      fetchPlans();
+      toast.success(newStatus === "active" ? `"${plan.name}" is ON.` : `"${plan.name}" is OFF. Members who already have it keep it.`);
+      await fetchPlans();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update status.");
+      toast.error(err.response?.data?.message || "Failed to update the plan.");
+    } finally {
+      setSaving(false);
+      setConfirmOff(null);
     }
   };
 
-  const handleArchive = async () => {
-    try {
-      const res = await archivePlan(confirmArchive._id);
-      toast.success(res.data.message);
-      setConfirmArchive(null);
-      fetchPlans();
-    } catch (err) {
-      setConfirmArchive(null);
-      toast.error(err.response?.data?.message || "Failed to archive plan.");
+  // Switching ON is instant; switching OFF asks first.
+  const handleToggleStatus = (plan) => {
+    if (!isOn(plan)) return applyStatus(plan, "active");
+    // Quick check here; the server makes the final decision
+    const othersOnLanding = plans.filter((p) => p._id !== plan._id && isLanding(p) && isOn(p));
+    if (isLanding(plan) && othersOnLanding.length === 0) {
+      return toast.error(`"${plan.name}" is the only active plan on the landing page. Put another active plan there first.`);
     }
+    setConfirmOff(plan);
   };
 
   // Landing page on/off. Showing is instant; hiding asks first.
@@ -297,12 +287,12 @@ export default function AdminPlansPage() {
         />
       )}
 
-      {confirmArchive && (
+      {confirmOff && (
         <ConfirmDialog
-          message={`Archive "${confirmArchive.name}"? Existing subscribers keep their plan, but no new members can purchase it.`}
-          confirmLabel="Yes, archive"
-          onConfirm={handleArchive}
-          onCancel={() => setConfirmArchive(null)}
+          message={`Switch off "${confirmOff.name}"? It leaves the website and can't be given at the desk. Members who already have it keep it. You can switch it on again any time.`}
+          confirmLabel="Yes, switch off"
+          onConfirm={() => applyStatus(confirmOff, "inactive")}
+          onCancel={() => setConfirmOff(null)}
         />
       )}
 
@@ -330,7 +320,7 @@ export default function AdminPlansPage() {
 
       <div role="tablist" aria-label="Plan lists" className="plan-tabs">
         {TABS.map((t) => {
-          const count = t.key === "landing" ? landingPlans.length : otherPlans.length;
+          const count = t.key === "landing" ? landingPlans.length : t.key === "other" ? otherPlans.length : bandPlans.length;
           const active = tab === t.key;
           return (
             <button
@@ -360,8 +350,10 @@ export default function AdminPlansPage() {
       <p className="plan-order-hint">
         {tab === "landing"
           ? "These plans are listed on the landing page, in this order (top first)."
-          : "These plans are not listed on the landing page. They stay active, so you can still give them at the desk or share their link."}
-        {tabPlans.length > 1 && (
+          : tab === "other"
+            ? "These plans are not listed on the landing page. They stay active, so you can still give them at the desk or share their link."
+            : "These plans are switched off. Nobody can buy them or be given them. Switch one on to bring it back."}
+        {tab !== "band" && tabPlans.length > 1 && (
           <>
             <span className="plan-hint-wide"> Drag <GripVertical size={15} aria-hidden="true" /> or use the arrows to change the order — it saves on its own.</span>
             <span className="plan-hint-narrow"> Change the order with the arrows — it saves on its own.</span>
@@ -392,7 +384,9 @@ export default function AdminPlansPage() {
                   ? 'No plans created yet. Click "Create Plan" to get started.'
                   : tab === "landing"
                     ? "No plans are on the landing page. Switch one on from Other plans."
-                    : "No other plans. Every plan is listed on the landing page."}
+                    : tab === "other"
+                      ? "No other plans. Every active plan is listed on the landing page."
+                      : "No plans are switched off."}
               </div>
             ) : (
               <Reorder.Group
@@ -412,11 +406,11 @@ export default function AdminPlansPage() {
                     index={index}
                     count={tabPlans.length}
                     busy={saving}
+                    reorderable={tab !== "band"}
                     onMove={move}
                     onDragEnd={() => saveOrder(tab)}
                     onToggle={handleToggleStatus}
                     onEdit={(p) => { setEditingPlan(p); setShowModal(true); }}
-                    onArchive={setConfirmArchive}
                     onLanding={handleLanding}
                   />
                 ))}
