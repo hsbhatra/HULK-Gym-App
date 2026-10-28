@@ -59,7 +59,10 @@ export const USER_ROLES = {
 // Roles that can sign in to the staff panel, and roles that are gym members
 // (a receptionist is still a member of the gym with their own membership)
 export const STAFF_ROLES = [USER_ROLES.ADMIN, USER_ROLES.RECEPTIONIST];
-export const MEMBER_ROLES = [USER_ROLES.MEMBER, USER_ROLES.RECEPTIONIST];
+// Everyone who is also a gym member with their own account/membership
+export const MEMBER_ROLES = [USER_ROLES.MEMBER, USER_ROLES.RECEPTIONIST, USER_ROLES.TRAINER];
+// Roles the admin can give to an existing member (a trainer is only a label for now — no panel access)
+export const ASSIGNABLE_ROLES = [USER_ROLES.RECEPTIONIST, USER_ROLES.TRAINER];
 
 export const USER_ROLES_ARRAY = Object.values(USER_ROLES);
 

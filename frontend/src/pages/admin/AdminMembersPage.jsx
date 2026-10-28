@@ -29,6 +29,13 @@ const ITEMS_PER_PAGE = 10;
 // AdminMembersPage
 // =============================================================================
 
+const roleMessage = (role, user) => {
+  const name = `${user.firstName} ${user.lastName}`.trim();
+  if (role === "receptionist") return `Make ${name} a receptionist? They will be signed out and must sign in again to see the staff panel.`;
+  if (role === "trainer") return `Make ${name} a trainer? They will be signed out. A trainer is only a label for now — it gives no extra access${user.role === "receptionist" ? ", and they will lose their receptionist access" : ""}.`;
+  return `Make ${name} a regular member? They will be signed out${user.role === "receptionist" ? " and lose staff access immediately" : ""}.`;
+};
+
 export default function AdminMembersPage() {
   // Who is using this page. The server enforces every limit again; this only
   // hides what a receptionist can't do (cancel, complimentary, ID number, roles).
@@ -94,7 +101,7 @@ export default function AdminMembersPage() {
 
   // One request per change; an older, slower answer never overwrites a newer one
   const requestId = useRef(0);
-  const viewKey = `${urlQuery}|${filters.status}|${filters.plan}|${filters.dues}|${filters.idMissing}|${sort}|${page}`;
+  const viewKey = `${urlQuery}|${filters.status}|${filters.plan}|${filters.dues}|${filters.idMissing}|${filters.type}|${sort}|${page}`;
   const loadMembers = async () => {
     const mine = ++requestId.current;
     setSearching(true);
@@ -203,13 +210,9 @@ export default function AdminMembersPage() {
 
       {roleDialog && memberDetail && (
         <ConfirmDialog
-          message={
-            roleDialog === "receptionist"
-              ? `Make ${memberDetail.user.firstName} ${memberDetail.user.lastName} a receptionist? They will be signed out and must sign in again to see the staff panel.`
-              : `Remove ${memberDetail.user.firstName}'s receptionist role? They will be signed out and lose staff access immediately.`
-          }
-          confirmLabel={roleDialog === "receptionist" ? "Yes, make receptionist" : "Yes, remove role"}
-          danger={roleDialog !== "receptionist"}
+          message={roleMessage(roleDialog, memberDetail.user)}
+          confirmLabel={roleDialog === "member" ? "Yes, make a regular member" : `Yes, make ${roleDialog}`}
+          danger={roleDialog === "member"}
           onConfirm={changeRole}
           onCancel={() => setRoleDialog(null)}
         />
@@ -500,9 +503,9 @@ export default function AdminMembersPage() {
                         }}
                       >
                         {m.userId} · {m.phoneNumber}
-                        {m.role === "receptionist" && (
+                        {(m.role === "receptionist" || m.role === "trainer") && (
                           <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.8px", textTransform: "uppercase", padding: "2px 8px", borderRadius: "999px", background: "rgba(167,139,250,0.15)", color: "#a78bfa" }}>
-                            Receptionist
+                            {roleLabel(m.role)}
                           </span>
                         )}
                       </p>
@@ -664,9 +667,9 @@ export default function AdminMembersPage() {
                       >
                         {memberDetail.user.userId} · {memberDetail.user.email}
                       </p>
-                      {memberDetail.user.role === "receptionist" && (
+                      {(memberDetail.user.role === "receptionist" || memberDetail.user.role === "trainer") && (
                         <span style={{ display: "inline-block", marginTop: "4px", fontSize: "12px", fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase", padding: "3px 10px", borderRadius: "999px", background: "rgba(167,139,250,0.15)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.35)" }}>
-                          Receptionist
+                          {roleLabel(memberDetail.user.role)}
                         </span>
                       )}
                     </div>
@@ -690,8 +693,8 @@ export default function AdminMembersPage() {
                   </button></Tip>
                 </div>
 
-                {/* Receptionist access — admin only */}
-                {isAdmin && memberDetail.user._id !== me?._id && ["member", "receptionist"].includes(memberDetail.user.role) && (
+                {/* Role — admin only. One role at a time: member, receptionist or trainer */}
+                {isAdmin && memberDetail.user._id !== me?._id && ["member", "receptionist", "trainer"].includes(memberDetail.user.role) && (
                   <div
                     style={{
                       display: "flex",
@@ -708,23 +711,32 @@ export default function AdminMembersPage() {
                   >
                     <div style={{ minWidth: 0, flex: "1 1 220px" }}>
                       <p style={{ fontSize: "15px", fontWeight: "700" }}>
-                        Receptionist access{" "}
-                        <InfoTip text="A receptionist can sign in to the staff panel to search members, record desk payments and unlock ID entry. They can't cancel memberships, give free memberships, see ID numbers, change plans or see revenue." />
+                        Role: {roleLabel(memberDetail.user.role)}{" "}
+                        <InfoTip text="A receptionist can sign in to the staff panel to search members, record desk payments and unlock ID entry. They can't cancel memberships, give free memberships, see ID numbers, change plans or see the dashboard. A trainer is only a label for now — it gives no extra access. A person has one role at a time." />
                       </p>
                       <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.62)", marginTop: "2px" }}>
                         {memberDetail.user.role === "receptionist"
-                          ? "This member works at the front desk."
-                          : "Give desk access to this member."}
+                          ? "Works at the front desk."
+                          : memberDetail.user.role === "trainer"
+                            ? "Listed as a trainer."
+                            : "Regular gym member."}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setRoleDialog(memberDetail.user.role === "receptionist" ? "member" : "receptionist")}
-                      className={memberDetail.user.role === "receptionist" ? "btn-ghost btn-sm" : "btn-gold btn-sm"}
-                      style={{ width: "auto", minHeight: "44px", padding: "8px 16px", flexShrink: 0 }}
-                    >
-                      {memberDetail.user.role === "receptionist" ? "Remove receptionist role" : "Make receptionist"}
-                    </button>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      {[["receptionist", "Make receptionist"], ["trainer", "Make trainer"], ["member", "Make member"]]
+                        .filter(([r]) => r !== memberDetail.user.role)
+                        .map(([r, text]) => (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => setRoleDialog(r)}
+                            className={r === "member" ? "btn-ghost btn-sm" : "btn-gold btn-sm"}
+                            style={{ width: "auto", minHeight: "44px", padding: "8px 16px", flexShrink: 0 }}
+                          >
+                            {text}
+                          </button>
+                        ))}
+                    </div>
                   </div>
                 )}
 

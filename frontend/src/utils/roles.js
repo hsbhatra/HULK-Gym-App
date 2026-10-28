@@ -12,4 +12,5 @@ export const isStaffUser = (user) => user?.role === "admin" || user?.role === "r
 export const homePathFor = (user) =>
   user?.role === "admin" ? "/admin" : user?.role === "receptionist" ? "/admin/members" : "/";
 
-export const roleLabel = (role) => (role === "receptionist" ? "Receptionist" : role === "admin" ? "Admin" : "Member");
+export const roleLabel = (role) =>
+  role === "receptionist" ? "Receptionist" : role === "trainer" ? "Trainer" : role === "admin" ? "Admin" : "Member";
